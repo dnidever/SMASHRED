@@ -1,5 +1,8 @@
 pro smashred_imprep_single,file,redo=redo,nodiffmaskflag=nodiffmaskflag
 
+;+
+;
+; SMASHRED_IMPREP_SINGLE
 ;
 ; Get SMASH "calibrated" images ready for PHOTRED
 ;
@@ -12,6 +15,7 @@ pro smashred_imprep_single,file,redo=redo,nodiffmaskflag=nodiffmaskflag
 ; OUTPUTS:
 ;  This gets CP-reduced images ready for PHOTRED/DAOPHOT
 ; 
+;+ By D.Nidever  2015
 
 if n_elements(file) eq 0 then begin
   print,'Syntax - smashred_imprep_single,file,redo=redo'
@@ -236,6 +240,16 @@ for j=1,next-1 do begin
 
   ; REMOVE DUPLICATE KEYWORDS!!  They cause lots of annoying errors
   ; EXTVER, CHECKSUM, DATASUM
+  bd = where(strmid(newhead,0,6) eq 'EXTVER',nbd)
+  if nbd gt 1 then remove,bd[1:*],newhead
+  bd = where(strmid(newhead,0,8) eq 'CHECKSUM',nbd)
+  if nbd gt 1 then remove,bd[1:*],newhead
+  bd = where(strmid(newhead,0,7) eq 'DATASUM',nbd)
+  if nbd gt 1 then remove,bd[1:*],newhead
+
+  ; Add "COMMENT " before "BEGIN EXTENSION HEADER ---", it causes problems in daophot
+  bd = where(strmid(newhead,0,5) eq 'BEGIN',nbd)
+  if nbd gt 0 then newhead[bd]='COMMENT '+newhead[bd]
 
   ; Write new image
   newfile = expnum+'_'+string(ccdnum,format='(I02)')+'.fits'
