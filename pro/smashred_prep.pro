@@ -65,7 +65,8 @@ for i=0,nfiles-1 do begin
     if strmid(fstr[i].file,1,2,/reverse) eq 'fz' and strmid(outfile,3,4,/reverse) eq 'fits' then outfile+='.fz'
     ; image, ooi
     ;if fstr[i].desext eq '0' then outfile = repstr(outfile,'ori','ooi')
-    if (fstr[i].desext eq '0') and (fstr[i].bitpix eq -32) then outfile = repstr(outfile,'ori','ooi')
+    ;if (fstr[i].desext eq '0') and (fstr[i].bitpix eq -32) then outfile = repstr(outfile,'ori','ooi')
+    if (fstr[i].desext eq '0') and ((fstr[i].bitpix eq -32) or (fstr[i].bitpix eq -64)) then outfile = repstr(outfile,'ori','ooi')  ; added -64 for 08/2013 data
     ; dqmap, ood
     ;if fstr[i].desext2 eq 'MASK' then outfile = repstr(outfile,'ori','ood')
     if (fstr[i].desext2 eq 'MASK') or (fstr[i].bitpix eq 32) then outfile = repstr(outfile,'ori','ood')
