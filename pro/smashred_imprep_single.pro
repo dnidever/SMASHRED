@@ -98,7 +98,7 @@ fits_close,imfile
 print,strtrim(next,2),' extensions'
 
 ; Chip loop
-for j=1,next-1 do begin
+for j=1,next do begin
   fits_read,imfile,fim,fhead,exten=j
   fits_read,maskfile,mim,mhead,exten=j
   ;fits_read,wtfile,wim,whead,exten=j
