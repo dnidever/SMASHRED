@@ -140,7 +140,7 @@ nfstr = n_elements(fstr)
 ;print,''
 ;nfstr = n_elements(fstr)
 
-print,'Check that everything is okay (i.e. remove test exposures).  Then type ".c" to continue."
+print,'Check that everything is okay (i.e. remove test exposures).  Then type ".c" to continue.'
 
 stop
 
@@ -371,7 +371,7 @@ SMASHRED_PREP_FILEINFO,fstr,files=files
 ;-------------------------------------------
 movesepfielddir:
 if keyword_set(sepfielddir) then begin
-  print,'Step 7.  Moving files to separate field directoroes'
+  print,'Step 7.  Moving files to separate field directories'
   readline,'fields',fieldlines
   dum = strsplitter(fieldlines,' ',/extract)
   shnames = reform(dum[0,*])
