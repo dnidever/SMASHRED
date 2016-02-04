@@ -1,4 +1,4 @@
-pro smashred_prep,dir,keepstandards=keepstandards
+pro smashred_prep,dir,nmulti=nmulti,keepstandards=keepstandards
 
 ; Get "calibrated" images ready for PHOTRED
 
@@ -17,6 +17,7 @@ pro smashred_prep,dir,keepstandards=keepstandards
 ;----------
 dodeepstack = 0   ; Are we stacking the deep frames or not
 sepfielddir = 1   ; Fields in separate directories
+if n_elements(nmulti) eq 0 then nmulti=10
 
 ;goto,movesepfielddir
 
@@ -170,7 +171,6 @@ ncmd = n_elements(cmd)
 if ntodo gt 0 then begin
   cd,current=curdir
   cmddir = strarr(ncmd)+curdir
-  nmulti=10 ;5
   print,'Running SMASHRED_IMPREP_SINGLE via PBS_DEAMON on ',strtrim(ncmd,2),' exposures'
   PBS_DAEMON,cmd[todo],cmddir[todo],nmulti=nmulti,prefix='imprep',/hyperthread,/idle,waittime=5 ; 30
 endif
