@@ -1,4 +1,4 @@
-pro getredinfo,info
+pro smashred_getredinfo,info
 
 ; combine all the catalogs for a given field (short/long and multiple
 ; nights), use the overlap to do "ubercal", use APASS to do
