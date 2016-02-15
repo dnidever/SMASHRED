@@ -28,11 +28,15 @@ dcr = 0.5
 srcmatch,apass.ra,apass.dec,cat.ra,cat.dec,dcr,ind1,ind2,count=nmatch,/sph,domains=4000
 
 ; Measure photometric offset in g-band
+; V, B_V, B, GP, RP, IP, and "ERR" for each
+sig = sqrt(apass[ind1].gperr^2+cat[ind2].gerr^2)
+robust_mean,apass[ind1].gp-cat[ind2].gmag,robmn,robsig,sig=sig
 
 stop
 
 ; Apply color correction (to other bands) using SLR
 ;---------------------------------------------------
+gd = where(cat.gmag lt 22 and cat.gerr lt 0.05,ngd)  ; get good sources
 
 stop
 

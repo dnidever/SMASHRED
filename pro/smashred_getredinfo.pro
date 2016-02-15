@@ -1,4 +1,4 @@
-pro smashred_getredinfo,info
+pro smashred_getredinfo,info,silent=silent
 
 ; combine all the catalogs for a given field (short/long and multiple
 ; nights), use the overlap to do "ubercal", use APASS to do
@@ -51,7 +51,8 @@ for i=0,nsumfiles-1 do begin
   endelse
 
   info[i].fstr = ptr_new(fstr)
-  print,i+1,base,info[i].field,info[i].night,info[i].nexp,info[i].bands,format='(I5,A13,A10,A12,I5,A8)'
+  if not keyword_set(silent) then $
+    print,i+1,base,info[i].field,info[i].night,info[i].nexp,info[i].bands,format='(I5,A13,A10,A12,I5,A8)'
 endfor
 
 end
