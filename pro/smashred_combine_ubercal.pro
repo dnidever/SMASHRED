@@ -67,7 +67,7 @@ For c=0,ninfo-1 do begin
 
       chind = where(chstr.chip eq ichip,nchind)
       for j=0,nchind-1 do begin
-        mind = where(tags eq chstr[chind[j]].calib_magname,nmind)
+        mind = where(tags eq strtrim(chstr[chind[j]].calib_magname,2),nmind)
         gd = where(phot.(mind[0]) lt 50,ngd)
         temp = replicate({id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
         struct_assign,phot[gd],temp,/nozero
@@ -236,6 +236,9 @@ fdum = {id:'',ra:0.0d0,dec:0.0d0,ndet:0L,sepindx:lonarr(nuexp)-1,sepfindx:lonarr
 ; SEPALL schema
 sepalldum = {cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,$
              chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0}
+sepall = replicate(sepalldum,5000000L)  ; initial sepall with 5 million elements
+cur_sepall_indx = 0LL         ; next one starts from HERE
+nsepall = n_elements(sepall)  ; current number of total SEPALl elements, NOT all filled
 ; SEPINDX has NDET indices at the front of the array
 ; SEPFINDX has them in the element that matches the frame they were
 ; detected in
@@ -251,7 +254,7 @@ chipstrdum = {field:'NAN',file:'NAN',expnum:'NAN',chip:-1L,base:'NAN',filter:'NA
 
 ; Loop through the exposures
 fstr0 = fstr
-undefine,fstr,fchstr,final,sepall
+undefine,fstr,fchstr,final
 for i=0,nuexp-1 do begin
   expind = where(chstr.expnum eq uexp[i],nexpind)
   fstr0ind = where(fstr0.expnum eq uexp[i],nfstr0ind)
@@ -261,6 +264,7 @@ for i=0,nuexp-1 do begin
 
   ; Get all chips for this exposure
   undefine,expnew,expnewsepallindx
+;dtall = 0
   for j=0,nexpind-1 do begin
     ; Add chip-level information
     ;  remove DATA, add sepallindx, to first element
@@ -269,30 +273,49 @@ for i=0,nuexp-1 do begin
     add_tag,chtemp,'ndata',-1L,chtemp
     add_tag,chtemp,'sepallindx',-1L,chtemp
     struct_assign,chstr[expind[j]],chtemp,/nozero
-    chtemp.sepallindx = n_elements(sepall)
+    chtemp.sepallindx = cur_sepall_indx
 
     ; Add catalog data for this chip
     temp = replicate(sepalldum,chstr[expind[j]].ndata)
     struct_assign,*chstr[expind[j]].data,temp,/nozero
     temp.chipindx = n_elements(fchstr)
+    ntemp = n_elements(temp)
+    temp_sepallindx = lindgen(ntemp)+cur_sepall_indx
 
     push,expnew,temp         ; add to exposure "new" structure
     push,fchstr,chtemp    ; add to FINAL chstr
-    push,expnewsepallindx,lindgen(n_elements(temp))+n_elements(sepall)  ; sepall index for this exposure
+    push,expnewsepallindx,temp_sepallindx  ; sepall index for this exposure
 
-    ; Concatenate TEMP structure to SEPALL
-    ; concatenating two large structures causes lots to be zerod out
-    if n_elements(sepall) gt 0 then begin
-      nold = n_elements(sepall)
-      nnew = n_elements(temp)
-      new = replicate(sepalldum,nold+nnew)
-      new[0:nold-1] = sepall
-      new[nold:*] = temp
+    ; New elements needed for SEPALL
+    if max(temp_sepallindx) gt nsepall-1 then begin
+t0 = systime(1)
+      print,'Adding new elements to SEPALL'
+      new = replicate(sepalldum,nsepall+5000000L)  ; add another 5 million elements
+      new[0:nsepall-1] = sepall
       sepall = new
       undefine,new
-    endif else sepall=temp
-  endfor ; chips in exposure loop
+      nsepall = n_elements(sepall)
+print,'dt=',systime(1)-t0,' sec.  to add new SEPALL elements'
+    endif
 
+    ; Add TEMP structure to SEPALL
+    sepall[temp_sepallindx] = temp
+    cur_sepall_indx += ntemp
+;    ; Concatenate TEMP structure to SEPALL
+;    ; concatenating two large structures causes lots to be zerod out
+;t0 = systime(1)
+;    if n_elements(sepall) gt 0 then begin
+;      nold = n_elements(sepall)
+;      nnew = n_elements(temp)
+;      new = replicate(sepalldum,nold+nnew)
+;      new[0:nold-1] = sepall
+;      new[nold:*] = temp
+;      sepall = new
+;      undefine,new
+;    endif else sepall=temp
+;dtall += systime(1)-t0
+  endfor ; chips in exposure loo
+;print,'dt=',dtall,' sec.  putting chips together'
   ;------------------------------
   ; PUT IN FINAL MERGED CATALOG
   ;------------------------------
@@ -311,8 +334,8 @@ for i=0,nuexp-1 do begin
     final.sepfindx[i] = lindgen(n_elements(expnew))
     final.ndet = 1
     ; Put ID, CMBINDX in SEPALL
-    sepall.fid = final.id
-    sepall.cmbindx = lindgen(n_elements(final))
+    sepall[0:cur_sepall_indx-1].fid = final.id
+    sepall[0:cur_sepall_indx-1].cmbindx = lindgen(n_elements(final))
 
   ; 2nd and later exposures, check for repeats/overlap
   Endif else begin
@@ -321,7 +344,9 @@ for i=0,nuexp-1 do begin
     ;print,'Matching'
     dcr = 0.5  ; 0.7
     ;srcmatch,final.ra,final.dec,expnew.ra,expnew.dec,dcr,ind1,ind2,count=nmatch,/sph,domains=4000
+t0 = systime(1)
     srcmatch,final.ra,final.dec,expnew.ra,expnew.dec,dcr,ind1,ind2,count=nmatch,/sph,/usehist  ; use faster histogram_nd method
+print,'dt=',systime(1)-t0,' sec.  matching time'
     ; some simple tests suggest 4000 domains works best
     print,' ',strtrim(nmatch,2),' matched sources'
     ; Some matches, add data to existing record for these sources
@@ -352,6 +377,7 @@ for i=0,nuexp-1 do begin
       sepall[expnewsepallindx].fid = newfinal.id  ; put ID, CMBINDX in SEPALL
       sepall[expnewsepallindx].cmbindx = lindgen(n_elements(expnew))+n_elements(final)
       ; concatenating two large structures causes lots to be zerod out
+;t0 = systime(1)
       nold = n_elements(final)
       nnew = n_elements(newfinal)
       new = replicate(fdum,nold+nnew)
@@ -359,6 +385,7 @@ for i=0,nuexp-1 do begin
       new[nold:*] = newfinal
       final = new
       undefine,new
+;print,'dt=',systime(1)-t0
       ;PUSH,final,newfinal         ; DOESN'T WORK THIS WAY
     endif
 
@@ -370,6 +397,12 @@ if nbd gt 0 then stop,'FINAL Zerod out elements problem!!!'
     ;stop
 
 Endfor  ; exposure loop
+
+; Pruning extra SEPALL elements
+if nsepall gt cur_sepall_indx then begin
+  print,'Prunning extra SEPALl elements'
+  sepall = sepall[0:cur_sepall_indx-1]
+endif
 
 
 ; Step 4. Combine photometry for all bands and get EBV
@@ -494,7 +527,7 @@ ebv = dust_getval(lon,lat,/interp,/noloop)
 ; add EBV, G0 and I0 to the catalogs
 final.ebv = ebv
 
-stop
+;stop
 
 ; write final file out
 outfile = outdir+field+'_combined'
@@ -504,6 +537,6 @@ mwrfits,fchstr,outfile+'_chips.fits',/create
 mwrfits,sepall,outfile+'_sepall.fits',/create
 mwrfits,final,outfile+'_final.fits',/create
 
-stop
+;stop
 
 end
