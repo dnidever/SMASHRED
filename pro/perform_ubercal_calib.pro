@@ -74,7 +74,7 @@ uexp = allexpnum[uiexp]
 nuexp = n_elements(uexp)
 for k=0,nuexp-1 do begin
   expind = where(allexpnum eq uexp[k],nexpind)
-  if nexpind gt 0 then rel_fmagoff[expind] -= median(fmagoff[expind])
+  if nexpind gt 0 then rel_fmagoff[expind] -= median([fmagoff[expind]])
 endfor
 allchips = overlapstr[*,0].chip1
 uichips = uniq(allchips,sort(allchips))
@@ -83,7 +83,7 @@ nuchips = n_elements(uchips)
 deltamagoff_chip = fltarr(nuchips)
 for k=0,nuchips-1 do begin
   chind = where(allchips eq uchips[k],nchind)
-  if nchind gt 0 then deltamagoff_chip[k] = median(rel_fmagoff[chind])
+  if nchind gt 0 then deltamagoff_chip[k] = median([rel_fmagoff[chind]])
 endfor
 
 ; chips with no overlap
@@ -96,7 +96,7 @@ for k=0,nbdoverlap-1 do begin
   expind = where(allexpnum eq allexpnum[bdoverlap[k]] and totoverlap gt 0 and fmagflag eq 1,nexpind)
   chind = where(uchips eq allchips[bdoverlap[k]],nchind)
 ;stop
-  fmagoff[bdoverlap[k]] = median(fmagoff[expind]) + deltamagoff_chip[chind]
+  fmagoff[bdoverlap[k]] = median([fmagoff[expind]]) + deltamagoff_chip[chind]
 endfor
 
 ;stop
