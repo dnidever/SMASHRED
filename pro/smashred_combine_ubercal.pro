@@ -34,19 +34,19 @@ For c=0,ninfo-1 do begin
 
   info1 = info[c]
   fstr = *info1.fstr
-  fbase = file_basename(info1.file,'_summary.fits')
-  print,strtrim(c+1,2),'/',strtrim(ninfo,2),'  ',fbase
+  fbase = file_basename(info1.file,'_summary.fits')  ; the observed field name
+  print,strtrim(c+1,2),'/',strtrim(ninfo,2),'  ',field
   chstr = mrdfits(info1.file,2,/silent)  ; load the chip structure
   nchstr = n_elements(chstr)
   night = info1.night
 
-  print,'Loading data for ',fbase
+  print,'Loading data for ',field
 
   ; Load in the data
   ;   don't have the "reference" frame information, just search
   ;   for PHOT files
-  print,'---Loading the data for ',fbase,'---'
-  outfile = reduxdir+'catalogs/inst/comb/'+fbase+'_'+night+'_ubercal.dat'
+  print,'---Loading the data for ',field,'---'
+  outfile = reduxdir+'catalogs/inst/comb/'+field+'_'+night+'_ubercal.dat'  ; use REAL field name!!
   if file_test(outfile) eq 0 or keyword_set(redo) then begin
     add_tag,chstr,'refexpnum','',chstr
     add_tag,chstr,'vertices_ra',dblarr(4),chstr
@@ -54,7 +54,7 @@ For c=0,ninfo-1 do begin
     add_tag,chstr,'ndata',-1L,chstr
     add_tag,chstr,'data',ptr_new(),chstr
     photfiles = file_search(reduxdir+night+'/'+chstr[0].field+'/'+chstr[0].field+'-*_??.phot',count=nphotfiles)
-    print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',reduxdir+night+'/'+chstr[0].field+'/'
+    print,strtrim(nphotfiles,2),' PHOT files for ',field,' in ',reduxdir+night+'/'+chstr[0].field+'/'
     for i=0,nphotfiles-1 do begin
   
       print,strtrim(i+1,2),' ',photfiles[i]
@@ -79,7 +79,7 @@ For c=0,ninfo-1 do begin
         chstr[chind[j]].data = ptr_new(temp)  ; save the data
 
         ; get astrometric vertices from header
-        fitsfile = reduxdir+night+'/'+chstr[0].field+'/'+chstr[chind[j]].base+'.fits'
+        fitsfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
         head = headfits(fitsfile)
         nx = sxpar(head,'NAXIS1')
         ny = sxpar(head,'NAXIS2')
@@ -400,7 +400,7 @@ Endfor  ; exposure loop
 
 ; Pruning extra SEPALL elements
 if nsepall gt cur_sepall_indx then begin
-  print,'Prunning extra SEPALl elements'
+  print,'Pruning extra SEPALl elements'
   sepall = sepall[0:cur_sepall_indx-1]
 endif
 
