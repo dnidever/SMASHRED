@@ -322,7 +322,6 @@ print,'dt=',systime(1)-t0,' sec.  to add new SEPALL elements'
   ;------------------------------
   ; PUT IN FINAL MERGED CATALOG
   ;------------------------------
-
   ; Copy to new structure type
   If i eq 0 then begin
     final = replicate(fdum,n_elements(expnew))
@@ -348,10 +347,10 @@ print,'dt=',systime(1)-t0,' sec.  to add new SEPALL elements'
     ;print,'Matching'
     dcr = 0.5  ; 0.7
     ;srcmatch,final.ra,final.dec,expnew.ra,expnew.dec,dcr,ind1,ind2,count=nmatch,/sph,domains=4000
+    ; some simple tests suggest 4000 domains works best
 t0 = systime(1)
     srcmatch,final.ra,final.dec,expnew.ra,expnew.dec,dcr,ind1,ind2,count=nmatch,/sph,/usehist  ; use faster histogram_nd method
 print,'dt=',systime(1)-t0,' sec.  matching time'
-    ; some simple tests suggest 4000 domains works best
     print,' ',strtrim(nmatch,2),' matched sources'
     ; Some matches, add data to existing record for these sources
     if nmatch gt 0 then begin
@@ -460,34 +459,16 @@ for i=0,n_elements(ufilter)-1 do begin
 
     mag = fltarr(n_elements(final),nfiltind)+99.99
     err = mag*0+9.99
-    chi = mag*0+!values.f_nan
-    sharp = mag*0+!values.f_nan
-    flag = long(mag)*0
-    prob = mag*0+!values.f_nan
     for k=0,nfiltind-1 do begin
       gd = where(final.sepfindx[filtind[k]] ge 0,ngd)
       mag[gd,k] = sepall[final[gd].sepfindx[filtind[k]]].mag
       err[gd,k] = sepall[final[gd].sepfindx[filtind[k]]].err
-      chi[gd,k] = sepall[final[gd].sepfindx[filtind[k]]].chi
-      sharp[gd,k] = sepall[final[gd].sepfindx[filtind[k]]].sharp
-      flag[gd,k] = sepall[final[gd].sepfindx[filtind[k]]].flag
-      prob[gd,k] = sepall[final[gd].sepfindx[filtind[k]]].prob
     endfor
-    ; non-ALLFRAME have prob=-1
-    bd = where(finite(prob) eq 1 and prob lt -0.5,nbd)
-    if nbd gt 0 then begin
-      flag[bd] = 0
-      prob[bd] = !values.f_nan
-    endif
     ; Ignore non-detections
     bd = where(mag eq 0.0 or mag gt 50,nbd)
     if nbd gt 0 then begin
       mag[bd] = !values.f_nan
       err[bd] = !values.f_nan
-      chi[bd] = !values.f_nan
-      sharp[bd] = !values.f_nan
-      flag[bd] = 0
-      prob[bd] = !values.f_nan
     endif
 
     ; copied from phot_overlap.pro
@@ -499,34 +480,78 @@ for i=0,n_elements(ufilter)-1 do begin
     newflux = totalflux/totalwt
     newmag = 2.50*alog10(newflux)
     newerr = sqrt(1.0/totalwt)
-    newchi = total(chi*wt,2,/nan)/totalwt
-    newsharp = total(sharp*wt,2,/nan)/totalwt
-    newprob = total(prob*wt,2,/nan)/totalwt
-    ; newflag, do logical OR across all detections
-    ;  0s are essentially ignored
-    newflag = flag[*,0]*0
-    for k=0,nfiltind-1 do newflag=newflag OR flag[*,k]
     bd = where(finite(newmag) eq 0,nbd)
     if nbd gt 0 then begin
       newmag[bd] = 99.99
       newerr[bd] = 9.99
-      newchi[bd] = 99.99
-      newsharp[bd] = 99.99
-      newflag[bd] = -1
-      newprob[bd] = 99.99
     endif
 
     magind = where(lfinaltags eq ufilter[i])
     errind = where(lfinaltags eq ufilter[i]+'err')
     final.(magind) = newmag
     final.(errind) = newerr
-    final.chi = newchi
-    final.sharp = newsharp
-    final.flag = newflag
-    final.prob = newprob
   endelse  ; combine multiple exposures for this filter
 endfor ; unique filter loop
 
+; Get average chi, sharp, flag, prob
+nfinal = n_elements(final)
+totchi = fltarr(nfinal) & numchi = fltarr(nfinal)
+totsharp = fltarr(nfinal) & numsharp = fltarr(nfinal)
+totprob = fltarr(nfinal) & numprob = fltarr(nfinal)
+flag = intarr(nfinal)-1
+nfstr = n_elements(fstr)
+for i=0,nfstr-1 do begin
+  gd = where(final.sepfindx[i] ge 0,ngd)
+  ; CHI
+  chi1 = fltarr(nfinal)+!values.f_nan
+  chi1[gd] = sepall[final[gd].sepfindx[i]].chi
+  gdchi = where(finite(chi1) eq 1 and chi1 lt 1e5,ngdchi)
+  if ngdchi gt 0 then begin
+    totchi[gdchi] += chi1[gdchi]
+    numchi[gdchi]++
+  endif
+  ; SHARP
+  sharp1 = fltarr(nfinal)+!values.f_nan
+  sharp1[gd] = sepall[final[gd].sepfindx[i]].sharp
+  gdsharp = where(finite(sharp1) eq 1 and sharp1 lt 1e5,ngdsharp)
+  if ngdsharp gt 0 then begin
+    totsharp[gdsharp] += sharp1[gdsharp]
+    numsharp[gdsharp]++
+  endif
+  ; PROB
+  prob1 = fltarr(nfinal)+!values.f_nan
+  prob1[gd] = sepall[final[gd].sepfindx[i]].prob
+  gdprob = where(finite(prob1) eq 1 and prob1 lt 50 and prob1 gt -0.5,ngdprob)
+  if ngdprob gt 0 then begin
+    totprob[gdprob] += prob1[gdprob]
+    numprob[gdprob]++
+  endif
+  ; FLAG,  logical OR across all detections
+  ;    0s are essentially ignored
+  flag1 = intarr(nfinal)-1
+  flag1[gd] = sepall[final[gd].sepfindx[i]].flag
+  gdflag = where(finite(flag1) eq 1 and flag1 ge 0,ngdflag)
+  if ngdflag gt 0 then flag[gdflag] OR= flag1[gdflag]
+endfor
+; Make average CHI
+gdchi = where(numchi gt 0,ngdchi)
+avgchi = fltarr(nfinal)+99.99
+if ngdchi gt 0 then avgchi[gdchi]=totchi[gdchi]/numchi[gdchi]
+final.chi = avgchi
+; Make average SHARP
+gdsharp = where(numsharp gt 0,ngdsharp)
+avgsharp = fltarr(nfinal)+99.99
+if ngdsharp gt 0 then avgsharp[gdsharp]=totsharp[gdsharp]/numsharp[gdsharp]
+final.sharp = avgsharp
+; Make average PROB
+gdprob = where(numprob gt 0,ngdprob)
+avgprob = fltarr(nfinal)+99.99
+if ngdprob gt 0 then avgprob[gdprob]=totprob[gdprob]/numprob[gdprob]
+final.prob = avgprob
+; Stuff FLAG in
+final.flag = flag
+
+; Calculate extinction
 print,'Getting SFD E(B-V)'
 glactc,final.ra,final.dec,2000.0,lon,lat,1,/deg
 ebv = dust_getval(lon,lat,/interp,/noloop)
