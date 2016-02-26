@@ -34,7 +34,9 @@ For c=0,ninfo-1 do begin
 
   info1 = info[c]
   fstr = *info1.fstr
-  fbase = file_basename(info1.file,'_summary.fits')  ; the observed field name
+  fbaseold = file_basename(info1.file,'_summary.fits')  ; the observed field name
+  fbase = field  ; use the CORRECT field name with "sh"
+  if info1.sh eq 1 then fbase+='sh'
   print,strtrim(c+1,2),'/',strtrim(ninfo,2),'  ',field
   chstr = mrdfits(info1.file,2,/silent)  ; load the chip structure
   nchstr = n_elements(chstr)
@@ -46,7 +48,7 @@ For c=0,ninfo-1 do begin
   ;   don't have the "reference" frame information, just search
   ;   for PHOT files
   print,'---Loading the data for ',field,'---'
-  outfile = reduxdir+'catalogs/inst/comb/'+field+'_'+night+'_ubercal.dat'  ; use REAL field name!!
+  outfile = reduxdir+'catalogs/inst/comb/'+fbase+'_'+night+'_ubercal.dat'
   if file_test(outfile) eq 0 or keyword_set(redo) then begin
     add_tag,chstr,'refexpnum','',chstr
     add_tag,chstr,'vertices_ra',dblarr(4),chstr
@@ -54,7 +56,7 @@ For c=0,ninfo-1 do begin
     add_tag,chstr,'ndata',-1L,chstr
     add_tag,chstr,'data',ptr_new(),chstr
     photfiles = file_search(reduxdir+night+'/'+chstr[0].field+'/'+chstr[0].field+'-*_??.phot',count=nphotfiles)
-    print,strtrim(nphotfiles,2),' PHOT files for ',field,' in ',reduxdir+night+'/'+chstr[0].field+'/'
+    print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',reduxdir+night+'/'+chstr[0].field+'/'
     for i=0,nphotfiles-1 do begin
   
       print,strtrim(i+1,2),' ',photfiles[i]
@@ -231,7 +233,7 @@ dnan = !values.d_nan
 
 ; Make the final structure
 ;fdum = {id:'',field:'',ra:0.0d0,dec:0.0d0,ndet:0L,sepindx:lonarr(nind)-1,sepfindx:lonarr(nind)-1,$
-fdum = {id:'',ra:0.0d0,dec:0.0d0,ndet:0L,sepindx:lonarr(nuexp)-1,sepfindx:lonarr(nuexp)-1,$
+fdum = {id:'',ra:0.0d0,dec:0.0d0,ndet:0L,depthflag:0B,sepindx:lonarr(nuexp)-1,sepfindx:lonarr(nuexp)-1,$
         u:99.99,uerr:9.99,g:99.99,gerr:9.99,r:99.99,rerr:9.99,i:99.99,ierr:9.99,z:99.99,zerr:9.99,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
 ; SEPALL schema
 sepalldum = {cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,$
@@ -259,6 +261,7 @@ for i=0,nuexp-1 do begin
   expind = where(chstr.expnum eq uexp[i],nexpind)
   fstr0ind = where(fstr0.expnum eq uexp[i],nfstr0ind)
   push,fstr,fstr0[fstr0ind]
+  if fstr0[fstr0ind[0]].exptime lt 100 then depthbit=1 else depthbit=2  ; short or long
 
   print,strtrim(i+1,2),'/',strtrim(nuexp,2),' adding exposure ',uexp[i]
 
@@ -333,6 +336,7 @@ print,'dt=',systime(1)-t0,' sec.  to add new SEPALL elements'
     final.sepindx[0] = lindgen(n_elements(expnew))
     final.sepfindx[i] = lindgen(n_elements(expnew))
     final.ndet = 1
+    final.depthflag OR= depthbit             ; OR combine to depthflag, 1-short, 2-long, 3-short+long
     ; Put ID, CMBINDX in SEPALL
     sepall[0:cur_sepall_indx-1].fid = final.id
     sepall[0:cur_sepall_indx-1].cmbindx = lindgen(n_elements(final))
@@ -356,6 +360,7 @@ print,'dt=',systime(1)-t0,' sec.  matching time'
       for k=0LL,nmatch-1 do final[ind1[k]].sepindx[final[ind1[k]].ndet] = expnewsepallindx[ind2[k]]     ; put SEPINDX in FINAL
       final[ind1].sepfindx[i] = expnewsepallindx[ind2]    ; put SEPFINDX in FINAL
       final[ind1].ndet++
+      final[ind1].depthflag OR= depthbit                  ; OR combine to depthflag  
       sepall[expnewsepallindx[ind2]].fid = final[ind1].id  ; put ID, CMBINDX in SEPALL
       sepall[expnewsepallindx[ind2]].cmbindx = ind1
       ; Remove stars
@@ -374,6 +379,7 @@ print,'dt=',systime(1)-t0,' sec.  matching time'
       newfinal.sepindx[0] = expnewsepallindx      ; put SEPINDX in FINAL
       newfinal.sepfindx[i] = expnewsepallindx     ; put SEPFINDX in FINAL
       newfinal.ndet = 1
+      newfinal.depthflag OR= depthbit             ; OR combine to depthflag
       sepall[expnewsepallindx].fid = newfinal.id  ; put ID, CMBINDX in SEPALL
       sepall[expnewsepallindx].cmbindx = lindgen(n_elements(expnew))+n_elements(final)
       ; concatenating two large structures causes lots to be zerod out
