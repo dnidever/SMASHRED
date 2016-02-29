@@ -5,6 +5,7 @@ pro smashred_roughcal,file
 
 dir = file_dirname(file)
 base = file_basename(file,'.fits')
+if strmid(file,2,/reverse) eq '.gz' then base=file_basename(file,'.fits.gz')
 print,'Calibrating ',file
 cat = MRDFITS(file,1)
 

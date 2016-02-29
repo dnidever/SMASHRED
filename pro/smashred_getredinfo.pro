@@ -16,7 +16,8 @@ dir = '/data/smash/cp/red/photred/catalogs/'
 smash = importascii(dir+'pro/smash_fields_final.txt',/header)
 
 ; Get all of the summary files
-sumfiles = file_search(dir+'inst/20*/F*summary.fits',count=nsumfiles)
+;sumfiles = file_search(dir+'inst/20*/F*summary.fits',count=nsumfiles)
+sumfiles = file_search(dir+'inst/20*/*summary.fits',count=nsumfiles)
 ; Load the summary file information
 info = replicate({file:'',object:'',field:'',sh:-1,night:'',nexp:0L,bands:'',fstr:ptr_new()},nsumfiles)
 for i=0,nsumfiles-1 do begin
