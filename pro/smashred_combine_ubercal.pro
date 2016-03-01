@@ -4,6 +4,8 @@ pro smashred_combine_ubercal,field,reduxdir=reduxdir,redo=redo
 
 if not keyword_set(reduxdir) then reduxdir='/data/smash/cp/red/photred/'
 outdir = reduxdir+'catalogs/inst/comb/'
+tmpdir = outdir+'/tmp/'
+if file_test(tmpdir,/directory) eq 0 then file_mkdir,tmpdir
 
 ; Get reduction info
 smashred_getredinfo,allinfo,/silent
@@ -48,7 +50,8 @@ For c=0,ninfo-1 do begin
   ;   don't have the "reference" frame information, just search
   ;   for PHOT files
   print,'---Loading the data for ',field,'---'
-  outfile = reduxdir+'catalogs/inst/comb/'+fbase+'_'+night+'_ubercal.dat'
+  ;outfile = reduxdir+'catalogs/inst/comb/'+fbase+'_'+night+'_ubercal.dat'
+  outfile = tmpdir+fbase+'_'+night+'_ubercal.dat'
   if file_test(outfile) eq 0 or keyword_set(redo) then begin
     add_tag,chstr,'refexpnum','',chstr
     add_tag,chstr,'vertices_ra',dblarr(4),chstr
@@ -174,7 +177,7 @@ FOR i=0,nufilter-1 do begin
   print,'--- FILTER = ',ifilter,' ',strtrim(nchfiltind,2),' nchips'
 
   ; Calculate all overlaps and magnitude offsets
-  outfile_overlap = outdir+field+'_'+ifilter+'overlap.dat'  ; fits
+  outfile_overlap = tmpdir+field+'_'+ifilter+'overlap.dat'  ; fits
   if file_test(outfile_overlap) eq 0 or keyword_set(redo) then begin
 
     SMASHRED_MEASURE_MAGOFFSET,chfiltstr,overlapstr

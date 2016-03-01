@@ -5,6 +5,7 @@ pro smashred_roughcal,file
 
 dir = file_dirname(file)
 base = file_basename(file,'.fits')
+field = first_el(strsplit(base,'_',/extract))
 if strmid(file,2,/reverse) eq '.gz' then base=file_basename(file,'.fits.gz')
 print,'Calibrating ',file
 cat = MRDFITS(file,1)
@@ -15,6 +16,7 @@ decr = minmax(cat.dec)
 offset = {field:'',goff:99.99,gofferr:99.99,gnused:-1L,ioff:99.99,iofferr:99.99,inused:-1L,$
           uoff:99.99,uofferr:99.99,unused:-1L,roff:99.99,rofferr:99.99,rnused:-1L,$
           zoff:99.99,zofferr:99.99,znused:-1L}
+offset.field = field
 
 ; Get APASS data for this field 
 ;-------------------------------
