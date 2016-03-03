@@ -180,7 +180,7 @@ FOR i=0,nufilter-1 do begin
   outfile_overlap = tmpdir+field+'_'+ifilter+'overlap.dat'  ; fits
   if file_test(outfile_overlap) eq 0 or keyword_set(redo) then begin
 
-    SMASHRED_MEASURE_MAGOFFSET,chfiltstr,overlapstr
+    SMASHRED_MAGOFFSET_PHOTMATCH,chfiltstr,overlapstr
 
     ; Save the overlap structure
     print,'Writing overlaps to ',outfile_overlap
