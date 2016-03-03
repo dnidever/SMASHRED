@@ -1,13 +1,40 @@
-pro smashred_measure_magoffset,chstr,overlapstr,silent=silent
+;+
+;
+; SMASHRED_MEASURE_MAGOFFSET
+;
+; This program measures photometric offsets between pairs of
+; overlapping chip exposures.
+;
+; INPUTS:
+;  chstr       Structure with information on each individual chip.
+;  allsrc      Structure with information on each source detection.
+;
+; OUTPUTS:
+;  overlapstr  Structure with overlap and magnitude offset information.
+;  =error      The error message if one occurred.
+;
+; USAGE:
+;  IDL>smashred_measure_magoffset,chstr,allsrc,overlapstr
+;
+; By D.Nidever  March 2016
+;-
 
-; Measure magnitude offset between sets of exposures to be used later
-; to perform ubercal calibration.
+pro smashred_measure_magoffset,chstr,allsrc,overlapstr,silent=silent,error=error
+
+undefine,overlapstr,error
+
+nchips = n_elements(chstr)
+nallsrc = n_elements(allsrc)
+
+; Not enough inputs
+if nchips eq 0 or nallsrc eq 0 then begin
+  error = 'Not enough inputs'
+  print,'Syntax - smashred_measure_magoffset,chstr,allsrc,overlapstr,silent=silent,error=error'
+  return
+endif
 
 ; Add medoff tag
-add_tag,chstr,'magoffset',0.0,chstr
-
-sz = size(chstr)
-nchips = sz[1]
+;add_tag,chstr,'magoffset',0.0,chstr
 
 ; Calculate all overlaps and magnitude offsets
 overlapstr = replicate({expnum1:'',chip1:0L,expnum2:'',chip2:0L,overlap:-1,magoff:99.99,magofferr:9.99,nmatch:-1L},nchips,nchips)
@@ -17,29 +44,55 @@ for j=0,nchips-1 do begin
   overlapstr[*,j].expnum2 = chstr[j].expnum
   overlapstr[*,j].chip2 = chstr[j].chip
 endfor
+
+; Outer chip loop
 for j=0,nchips-1 do begin
+  ; Inner chip loop
   for k=j+1,nchips-1 do begin
-    ; must be different exposures to overlap
+    ; Must be different exposures to overlap
     if chstr[j].expnum ne chstr[k].expnum then begin
       ; use vertices to check for overlap
       ;   use code from printVisitOverlap.py
       overlap = DOPOLYGONSOVERLAP(chstr[j].vertices_ra, chstr[j].vertices_dec, chstr[k].vertices_ra, chstr[k].vertices_dec)
       overlapstr[j,k].overlap = overlap
       overlapstr[k,j].overlap = overlap
-      ; measure mag offsets
+      ; Measure mag offsets
       if overlap eq 1 then begin
-        str1 = *chstr[j].data
-        str2 = *chstr[k].data
-        dcr = 0.5
-        ;  Match the two catalogs and get photometric offsets
-        PHOTMATCH,str1,str2,ind1,ind2,dcr=dcr,magoffset=magoffset,magoffsig=magoffsig,astoffset=astoffset,count=nmatch,/silent
-        ; too few matches, increase matching radius
-        ;if nmatch lt 5 then $
-        ;  photmatch,str1,str2,ind1,ind2,dcr=1.0,magoffset=magoffset,magoffsig=magoffsig,astoffset=astoffset,count=nmatch,/silent
-        ;if nmatch lt 5 then $
-        ;  photmatch,str1,str2,ind1,ind2,dcr=1.5,magoffset=magoffset,magoffsig=magoffsig,astoffset=astoffset,count=nmatch,/silent
-        if nmatch gt 1 and n_elements(magoffset) gt 0 then begin
-          magofferr = magoffsig/sqrt(nmatch)  ; error in the mean
+        ; Get the overlapping sources
+        id1 = allsrc[chstr[j].allsrcindx:chstr[j].allsrcindx+chstr[j].ndata-1].id
+        id2 = allsrc[chstr[k].allsrcindx:chstr[k].allsrcindx+chstr[k].ndata-1].id
+        MATCH,id1,id2,mind1,mind2,count=nmatch,/sort
+
+        ; We have matching sources
+        undefine,magoff,magoffsig,magofferr,ngdmag
+        if nmatch gt 1 then begin
+          ; Get information for chip 1
+          allind1 = lindgen(chstr[j].ndata)+chstr[j].allsrcindx
+          str1 = allsrc[allind1[mind1]]
+          ; Get information for chip 2
+          allind2 = lindgen(chstr[k].ndata)+chstr[k].allsrcindx
+          str2 = allsrc[allind2[mind2]]
+
+          ; Make the measurement
+          magdiff = str1.mag - str2.mag
+          magerr = sqrt( str1.err^2.0 + str2.err^2.0 )
+          gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.07,ngdmag)
+          if ngdmag lt 10. then $   ; not enough points, lower error threshold
+            gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.1,ngdmag)
+          if ngdmag lt 10. then $   ; not enough points, lower error threshold
+            gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.2,ngdmag)
+          if ngdmag lt 10. then $   ; not enough points, lower error threshold
+            gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.5,ngdmag)
+
+          ; Some sources with decent photometry
+          if ngdmag gt 0 then begin
+            ROBUST_MEAN,magdiff[gdmag],magoff,magofferr,sig=magerr[gdmag],numrej=numrej
+            magoffsig = magoff1err/sqrt(ngdmag-numrej)  ; stdev of mean
+          endif
+        endif else ngdmag=0                    ; enough matches to make a measurement
+
+        if nmatch gt 1 and ngdmag gt 1 then begin
+          ;magofferr = magoffsig/sqrt(nmatch)  ; error in the mean
           if magoffsig lt 1e-8 then magofferr=10.0  ; if it's zero that normally means it's pretty bad
           ;magoffsig = magoffsig > 1e-6  ; let lower limit, can sometimes be zero
           overlapstr[j,k].magoff = magoffset
