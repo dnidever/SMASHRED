@@ -1,5 +1,7 @@
-pro smashred_getredinfo,info,silent=silent
-
+;+
+;
+; SMASHRED_GETREDINFO
+;
 ; combine all the catalogs for a given field (short/long and multiple
 ; nights), use the overlap to do "ubercal", use APASS to do
 ; calibration of ~g-band, and use stellar locus regression (SLR) to
@@ -9,17 +11,48 @@ pro smashred_getredinfo,info,silent=silent
 ;-use the overlapping short exposures to find a common zeropoint for each band
 ;-use SLR to calibrate the colors, maybe use APASS to set zeropoint for g-band??
 ;-use the "summary" files to figure out which field number it actually is
+;
+; INPUTS:
+;  =dir       The directory with the catalogs.  By default,
+;               dir='/data/smash/cp/red/photred/'
+;  /silent    Don't print anything to the screen.
+;
+; OUTPUTS:
+;  info     The structures with information for each SMASH PHOTRED catalog.
+;
+; USAGE:
+;  IDL>smashred_getredinfo,info
+;
+; By D.Nidever Feb 2016
+;-
 
-dir = '/data/smash/cp/red/photred/catalogs/'
+pro smashred_getredinfo,info,silent=silent
+
+undefine,info
+
+if n_elements(dir) eq 0 then dir='/data/smash/cp/red/photred/'
+;dir='/data/smash/cp/red/photred/catalogs/inst/'
+
+; Directory not found
+if file_test(dir,/directory) eq 0 then begin
+  print,dir,' NOT FOUND'
+  return
+endif
 
 ; Load the SMASH fields file
-smash = importascii(dir+'pro/smash_fields_final.txt',/header)
+smash = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
 
 ; Get all of the summary files
 ;sumfiles = file_search(dir+'inst/20*/F*summary.fits',count=nsumfiles)
-sumfiles = file_search(dir+'inst/20*/*summary.fits',count=nsumfiles)
-; Load the summary file information
+;sumfiles = file_search(dir+'inst/20*/*summary.fits',count=nsumfiles)
+sumfiles = file_search(dir+'/20*/*summary.fits',count=nsumfiles)
+if not keyword_set(silent) then print,'Found ',strtrim(nsumfiles,2),' PHOTRED summary files in ',dir,'/20*/'
+
+; Create the output structure
 info = replicate({file:'',object:'',field:'',sh:-1,night:'',nexp:0L,bands:'',fstr:ptr_new()},nsumfiles)
+
+; Load the summary file information
+print,'   NUM     CATNAME SMASHFIELD     NIGHT   NEXP  FILTERS'
 for i=0,nsumfiles-1 do begin
   fstr = mrdfits(sumfiles[i],1,/silent)
   base = file_basename(sumfiles[i],'_summary.fits')
@@ -32,7 +65,7 @@ for i=0,nsumfiles-1 do begin
     info[i].sh = 0
     info[i].object = base
   endelse
-  info[i].night = file_basename(file_dirname(sumfiles[i]))
+  info[i].night = strmid(file_basename(file_dirname(sumfiles[i])),0,8)  ; 20130320
   info[i].nexp = n_elements(fstr)
   ui = uniq(fstr.filter,sort(fstr.filter))
   info[i].bands = strjoin(fstr[ui].filter)
