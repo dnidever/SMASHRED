@@ -51,7 +51,8 @@ for i=0,nphotfiles-1 do begin
   for j=0,nchind-1 do begin
     mind = where(tags eq strtrim(chstr[chind[j]].calib_magname,2),nmind)
     gd = where(phot.(mind[0]) lt 50,ngd)
-    temp = replicate({id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
+    ; cmag/cerr are for calibrated photometry that will be added later
+    temp = replicate({id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
     struct_assign,phot[gd],temp,/nozero
     temp.mag = phot[gd].(mind[0])
     temp.err = phot[gd].(mind[0]+1)   ; assume error is the next column
@@ -60,7 +61,7 @@ for i=0,nphotfiles-1 do begin
     chstr[chind[j]].ndata = ngd
     chstr[chind[j]].data = ptr_new(temp)  ; save the data
 
-    ; get astrometric vertices from header
+    ; Get astrometric vertices from header
     fitsfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
     head = headfits(fitsfile)
     nx = sxpar(head,'NAXIS1')

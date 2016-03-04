@@ -6,14 +6,17 @@
 ; and filter using ALLSRC and ALLOBJT
 ;
 ; INPUTS:
-;  fstr    The structure with information for each exposure.
-;  chstr   The structure with information for each chip.
-;  allstr  The structure with information for each source detection.
-;  allobj  The structure with information for each unique object.
+;  fstr       The structure with information for each exposure.
+;  chstr      The structure with information for each chip.
+;  allstr     The structure with information for each source detection.
+;  allobj     The structure with information for each unique object.
+;  /usecalib  Average the calibrated photometry (CMAG/CERR).  The default
+;               is to use the instrumental photometry (MAG/ERR).
+;  /silent    Don't print anything to the screen.
 ;
 ; OUTPUTS:
 ;  The photometric magnitude and error columns will be updated in ALLOBJ.
-;  =error  The error message if one occurred.
+;  =error     The error message if one occurred.
 ;
 ; USAGE:
 ;  IDL>smashred_averagephot,fstr,chstr,allsrc,allobj
@@ -21,12 +24,12 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_averagephot,fstr,chstr,allsrc,allobj,error=error
+pro smashred_averagephot,fstr,chstr,allsrc,allobj,usecalib=usecalib,error=error,silent=silent
 
 ; Not enough inputs
 if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_averagephot,fstr,chstr,allstr,allobj'
+  print,'Syntax - smashred_averagephot,fstr,chstr,allstr,allobj,usecalib=usecalib,error=error,silent=silent'
   return
 endif
 
@@ -35,35 +38,59 @@ ui = uniq(fstr.filter,sort(fstr.filter))
 ufilter = fstr[ui].filter
 nufilter = n_elements(ufilter)
 
+; Use calibrated magnitudes, check that we have them
+if keyword_set(usecalib) then begin
+  srctags = tag_names(allsrc)
+  dum = where(srctags eq 'CMAG',ncmag)
+  dum = where(srctags eq 'CERR',ncerr)
+  if ncmag eq 0 or ncerr eq 0 then begin
+    error = '/USECALIB set but NO CMAG/CERR columsn in ALLSRC'
+    if not keyword_set(silent) then print,error
+    return
+  endif
+endif
+
 ; Combine photometry from same filter
 print,'Combing all of the photometry'
 for i=0,n_elements(ufilter)-1 do begin
   filtind = where(fstr.filter eq ufilter[i],nfiltind)
   print,ufilter[i]
 
-  ; only one exposure for this filter, copy
+  ; Indices for the magnitude and errors in ALLOBJ
+  magind = where(lallobjtags eq ufilter[i])
+  errind = where(lallobjtags eq ufilter[i]+'err')
+
+  ; Only one exposure for this filter, copy
   if nfiltind eq 1 then begin
-    magind = where(lallobjtags eq ufilter[i])
-    ; get stars that have detections in this frame
+    ; Get stars that have detections in this frame
     gd = where(allobj.srcfindx[filtind] ge 0,ngd)
-    allobj[gd].(magind) = allsrc[allobj[gd].srcfindx[filtind[0]]].mag
-    errind = where(lallobjtags eq ufilter[i]+'err')
-    allobj[gd].(errind) = allsrc[allobj[gd].srcfindx[filtind[0]]].err
+    if keyword_set(usecalib) then begin  ; calibrated phot
+      allobj[gd].(magind) = allsrc[allobj[gd].srcfindx[filtind[0]]].cmag
+      allobj[gd].(errind) = allsrc[allobj[gd].srcfindx[filtind[0]]].cerr
+    endif else begin                ; instrumental phot
+      allobj[gd].(magind) = allsrc[allobj[gd].srcfindx[filtind[0]]].mag
+      allobj[gd].(errind) = allsrc[allobj[gd].srcfindx[filtind[0]]].err
+    endelse
     bd = where(allobj.(magind) gt 50,nbd)
     if nbd gt 0 then begin
       allobj[bd].(magind) = 99.99
       allobj[bd].(errind) = 9.99
     endif
 
-  ; multiple exposures for this filter to combine
+  ; Multiple exposures for this filter to average
   endif else begin
 
     mag = fltarr(n_elements(allobj),nfiltind)+99.99
     err = mag*0+9.99
     for k=0,nfiltind-1 do begin
       gd = where(allobj.srcfindx[filtind[k]] ge 0,ngd)
-      mag[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].mag
-      err[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].err
+      if keyword_set(usecalib) then begin  ; calibrated phot
+        mag[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].cmag
+        err[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].cerr
+      endif else begin                ; instrumental phot 
+        mag[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].mag
+        err[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].err
+      endelse
     endfor
     ; Ignore non-detections
     bd = where(mag eq 0.0 or mag gt 50,nbd)
@@ -87,8 +114,6 @@ for i=0,n_elements(ufilter)-1 do begin
       newerr[bd] = 9.99
     endif
 
-    magind = where(lallobjtags eq ufilter[i])
-    errind = where(lallobjtags eq ufilter[i]+'err')
     allobj.(magind) = newmag
     allobj.(errind) = newerr
   endelse  ; combine multiple exposures for this filter

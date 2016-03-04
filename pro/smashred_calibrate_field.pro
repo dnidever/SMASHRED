@@ -152,6 +152,10 @@ SMASHRED_PHOTCALIB,fstr,chstr,allsrc,allobj
 
 stop
 
+; Compute average morphology values
+SMASHRED_AVERAGEMORPH,fstr,chstr,allsrc,allobj
+; OR SHOULD THIS GO IN SMASHRED_PHOTCALIB????
+
 ; Calculate extinction
 print,'Getting SFD E(B-V)'
 glactc,allobj.ra,allobj.dec,2000.0,lon,lat,1,/deg

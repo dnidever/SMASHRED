@@ -8,6 +8,8 @@
 ; INPUTS:
 ;  chstr       Structure with information on each individual chip.
 ;  allsrc      Structure with information on each source detection.
+;  /usecalib   Use the calibrated photometry (CMAG/CERR).  The default
+;                is to use the instrumental photometry (MAG/ERR).
 ;
 ; OUTPUTS:
 ;  overlapstr  Structure with overlap and magnitude offset information.
@@ -19,7 +21,7 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_measure_magoffset,chstr,allsrc,overlapstr,silent=silent,error=error
+pro smashred_measure_magoffset,chstr,allsrc,overlapstr,usecalib=usercalib,silent=silent,error=error
 
 undefine,overlapstr,error
 
@@ -29,7 +31,7 @@ nallsrc = n_elements(allsrc)
 ; Not enough inputs
 if nchips eq 0 or nallsrc eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_measure_magoffset,chstr,allsrc,overlapstr,silent=silent,error=error'
+  print,'Syntax - smashred_measure_magoffset,chstr,allsrc,overlapstr,usecalib=usecalib,silent=silent,error=error'
   return
 endif
 
@@ -74,15 +76,22 @@ for j=0,nchips-1 do begin
           str2 = allsrc[allind2[mind2]]
 
           ; Make the measurement
-          magdiff = str1.mag - str2.mag
-          magerr = sqrt( str1.err^2.0 + str2.err^2.0 )
-          gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.07,ngdmag)
+          if keyword_set(usecalib) then begin  ; calibrated photometry
+            mag1=str1.cmag & err1=str1.cerr
+            mag2=str2.cmag & err2=str2.cerr
+          endif else begin                     ; instrumental photometry
+            mag1=str1.mag & err1=str1.err
+            mag2=str2.mag & err2=str2.err
+          endelse
+          magdiff = mag1 - mag2
+          magerr = sqrt( err1^2.0 + err1^2.0 )
+          gdmag = where(mag1 lt 50. and mag2 lt 50. and magerr lt 0.07,ngdmag)
           if ngdmag lt 10. then $   ; not enough points, lower error threshold
-            gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.1,ngdmag)
+            gdmag = where(mag1 lt 50. and mag2 lt 50. and magerr lt 0.1,ngdmag)
           if ngdmag lt 10. then $   ; not enough points, lower error threshold
-            gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.2,ngdmag)
+            gdmag = where(mag1 lt 50. and mag2 lt 50. and magerr lt 0.2,ngdmag)
           if ngdmag lt 10. then $   ; not enough points, lower error threshold
-            gdmag = where(str1.mag lt 50. and str2.mag lt 50. and magerr lt 0.5,ngdmag)
+            gdmag = where(mag1 lt 50. and mag2 lt 50. and magerr lt 0.5,ngdmag)
 
           ; Some sources with decent photometry
           if ngdmag gt 0 then begin

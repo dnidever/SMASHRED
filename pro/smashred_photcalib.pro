@@ -59,7 +59,7 @@ WHILE (flag eq 0) do begin
 
     ; Step 1. Measure photometric offsets between chip pairs
     ;SMASHRED_MEASURE_MAGOFFSET,chfiltstr,overlapstr
-    SMASHRED_MEASURE_MAGOFFSET,chfiltstr,allsrc,overlapstr
+    SMASHRED_MEASURE_MAGOFFSET,chfiltstr,allsrc,overlapstr,/usecalib
 
     ; Step 2. determine relative magnitude offsets per chip using ubercal 
 
@@ -76,6 +76,7 @@ WHILE (flag eq 0) do begin
     ; Step 3. Set zeropoint per band with "photometric" data and/or anchor data
 
     ; Step 4. Calculate average photometry per object per filter
+    SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib
 
     ; Step 5. calibrate instrumental photometry with trans eqns. and ubercal mag offsets
 
