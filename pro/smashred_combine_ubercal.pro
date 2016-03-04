@@ -8,7 +8,7 @@ tmpdir = outdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then file_mkdir,tmpdir
 
 ; Get reduction info
-smashred_getredinfo,allinfo,/silent
+smashred_getredinfo,allinfo,dir='/data/smash/cp/red/photred/catalogs/inst/',/silent
 
 gdinfo = where(allinfo.field eq field,ngdinfo)
 if ngdinfo eq 0 then begin
