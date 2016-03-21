@@ -26,7 +26,7 @@
 ; By D.Nidever Feb 2016
 ;-
 
-pro smashred_getredinfo,info,silent=silent
+pro smashred_getredinfo,info,dir=dir,silent=silent
 
 undefine,info
 
@@ -52,7 +52,7 @@ if not keyword_set(silent) then print,'Found ',strtrim(nsumfiles,2),' PHOTRED su
 info = replicate({file:'',object:'',field:'',sh:-1,night:'',nexp:0L,bands:'',fstr:ptr_new()},nsumfiles)
 
 ; Load the summary file information
-print,'   NUM     CATNAME SMASHFIELD     NIGHT   NEXP  FILTERS'
+if not keyword_set(silent) then print,'   NUM     CATNAME SMASHFIELD     NIGHT   NEXP  FILTERS'
 for i=0,nsumfiles-1 do begin
   fstr = mrdfits(sumfiles[i],1,/silent)
   base = file_basename(sumfiles[i],'_summary.fits')

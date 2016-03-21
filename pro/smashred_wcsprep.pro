@@ -1,7 +1,7 @@
-pro smashred_wcsprep,fstr,refcatname=refcatname
+pro smashred_wcsprep,fstr,refcatname=refcatname,redo=redo
 
 if n_elements(fstr) eq 0 then begin
-  print,'Syntax - smashred_wcsprep,fstr,refcatname=refcatname'
+  print,'Syntax - smashred_wcsprep,fstr,refcatname=refcatname,redo=redo'
   return
 endif
 
