@@ -57,38 +57,42 @@ for i=0,nfields-1 do begin
                         abs(refcatall.dej2000-dec1) lt 10./60.,ngdrefcat)
         refcat = refcatall[gdrefcat]
 
-        ; Getting average Rmag, Bmag 
-        rmag = median([[refcat.r1mag],[refcat.r2mag]],dim=2,/even)
-        bmag = median([[refcat.b1mag],[refcat.b2mag]],dim=2,/even)
-        rmagbd = where(finite(rmag) eq 0,nrmagbd)      ; replace NaNs with 99.9999       
-        if nrmagbd gt 0 then rmag[rmagbd] = 99.9999
-        bmagbd = where(finite(bmag) eq 0,nbmagbd)
-        if nbmagbd gt 0 then bmag[bmagbd] = 99.9999
+        ; Add Rmag, Bmag, Rerr, Berr
+        if (refcatname eq 'USNO-B1') then begin
+
+          ; Getting average Rmag, Bmag 
+          rmag = median([[refcat.r1mag],[refcat.r2mag]],dim=2,/even)
+          bmag = median([[refcat.b1mag],[refcat.b2mag]],dim=2,/even)
+          rmagbd = where(finite(rmag) eq 0,nrmagbd)      ; replace NaNs with 99.9999       
+          if nrmagbd gt 0 then rmag[rmagbd] = 99.9999
+          bmagbd = where(finite(bmag) eq 0,nbmagbd)
+          if nbmagbd gt 0 then bmag[bmagbd] = 99.9999
     
-        ; Getting Err, Berr
-        rerr = abs(refcat.r1mag-refcat.r2mag)
-        berr = abs(refcat.b1mag-refcat.b2mag)
-        rerrbd = where(finite(rerr) eq 0,nrerrbd)      ; replace NaNs with 0.2
-        if nrerrbd gt 0 then rerr[rerrbd] = 0.2
-        if nrmagbd gt 0 then rerr[rmagbd] = 9.9999     ; bad mag -> bad error
-        berrbd = where(finite(berr) eq 0,nberrbd)
-        if nberrbd gt 0 then berr[berrbd] = 0.2
-        if nbmagbd gt 0 then berr[bmagbd] = 9.9999     ; bad mag -> bad error
+          ; Getting Err, Berr
+          rerr = abs(refcat.r1mag-refcat.r2mag)
+          berr = abs(refcat.b1mag-refcat.b2mag)
+          rerrbd = where(finite(rerr) eq 0,nrerrbd)      ; replace NaNs with 0.2
+          if nrerrbd gt 0 then rerr[rerrbd] = 0.2
+          if nrmagbd gt 0 then rerr[rmagbd] = 9.9999     ; bad mag -> bad error
+          berrbd = where(finite(berr) eq 0,nberrbd)
+          if nberrbd gt 0 then berr[berrbd] = 0.2
+          if nbmagbd gt 0 then berr[bmagbd] = 9.9999     ; bad mag -> bad error
 
-        ; Adding the BMAG, RMAG, BERR, RERR tags
-        ADD_TAG,refcat,'BMAG',0.0,refcat
-        ADD_TAG,refcat,'RMAG',0.0,refcat
-        ADD_TAG,refcat,'BERR',0.0,refcat
-        ADD_TAG,refcat,'RERR',0.0,refcat
-        refcat.bmag = bmag
-        refcat.rmag = rmag
-        refcat.berr = berr
-        refcat.rerr = rerr
+          ; Adding the BMAG, RMAG, BERR, RERR tags
+          ADD_TAG,refcat,'BMAG',0.0,refcat
+          ADD_TAG,refcat,'RMAG',0.0,refcat
+          ADD_TAG,refcat,'BERR',0.0,refcat
+          ADD_TAG,refcat,'RERR',0.0,refcat
+          refcat.bmag = bmag
+          refcat.rmag = rmag
+          refcat.berr = berr
+          refcat.rerr = rerr
 
-        ; Remove stars with bad photometry
-        gd = where(refcat.bmag lt 50. and refcat.rmag lt 50. and $
-                   refcat.berr lt 2. and refcat.rerr lt 2.,ngd)
-        refcat = refcat[gd]
+          ; Remove stars with bad photometry
+          gd = where(refcat.bmag lt 50. and refcat.rmag lt 50. and $
+                     refcat.berr lt 2. and refcat.rerr lt 2.,ngd)
+          refcat = refcat[gd]
+        endif
 
         print,'  ',strtrim(i+1,2),' ',strtrim(j+1,2),' ',strtrim(k+1,2),' ',strtrim(ngdrefcat,2),' ',refcatname,' sources'
         print,'  Saving to ',outfile1
