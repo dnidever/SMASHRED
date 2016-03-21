@@ -6,6 +6,7 @@
 ;  files      The array of FITS files to use for the custom reference
 ;               catalog.  FILE_cat.dat files need to exist.
 ;  outfile    The output IDL save file.
+;  /single    This is for a single file, so use REFCAT instead of REFCATALL.
 ;  /clobber   If the output file already exists, overwrite it.
 ;
 ; OUTPUTS:
@@ -18,7 +19,7 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro make_custom_refcat,files,outfile,clobber=clobber
+pro make_custom_refcat,files,outfile,single=single,clobber=clobber
 
 ; Make custom reference catalog from exposures with good WCS
 
@@ -26,7 +27,7 @@ nfiles = n_elements(files)
 noutfile = n_elements(outfile)
 ; Not enough inputs
 if nfiles eq 0 or noutfile eq 0 then begin
-  print,'Syntax - make_custom_refcat,files,outfile,clobber=clobber'
+  print,'Syntax - make_custom_refcat,files,outfile,single=single,clobber=clobber'
   return
 endif
 
@@ -82,8 +83,18 @@ for i=0,nfiles-1 do begin
 
 endfor
 
+; Writing output
 print,'Saving catalog to ',outfile
-save,refcatall,file=outfile
+
+; Single file
+if keyword_set(single) then begin
+  refcat = temporary(refcatall)
+  save,refcat,file=outfile
+
+; Field-wide file
+endif else begin
+  save,refcatall,file=outfile
+endelse
 
 ;stop
 
