@@ -54,6 +54,7 @@ if nb gt 0 then remove,b,files
 file_delete,files
 
 ; 6) Check that the als files are the same as the originals
+print,'6) Check that the als files are the same as the originals'
 for i=0,nmissing-1 do begin
   origals = field[i]+'/'+base[i]+'.als'
   newals = 'missingpsf/'+base[i]+'.als'
