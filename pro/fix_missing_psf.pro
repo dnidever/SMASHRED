@@ -24,6 +24,10 @@ allpsffiles = allfield+'/'+allbase+'.psf'
 missind = where(file_test(allpsffiles) eq 0,nmissing)
 print,strtrim(nmissing,2),' psf files are missing'
 if nmissing eq 0 then return
+field = allfield[missind]
+base = allbase[missind]
+
+;goto,step5
 
 ; 2) Make the "missingpsf/" directory
 print,'2) Make the "missingpsf/" directory'
@@ -31,8 +35,6 @@ if file_test('missingpsf',/directory) eq 0 then file_mkdir,'missingpsf'
 
 ; 3) Copy the necessary files to missingpsf/
 print,'3) Copy the necessary files to missingpsf/'
-field = allfield[missind]
-base = allbase[missind]
 for i=0,nmissing-1 do begin
   file_copy,field[i]+'/'+base[i]+'*','missingpsf/',/over
   ;file_copy,field[i]+'/'+base[i]+['.fits','.opt','.als.opt','.cmn.lst'],'missingpsf/'
@@ -40,27 +42,30 @@ endfor
 ; copy the scripts
 file_copy,field[0]+'/'+['daophot.sh','apcor.opt','photo.opt','goodpsf.pro','lstfilter'],'missingpsf/',/verbose,/over
 
+stop
+
 ; 4) Run daophot.sh with pbs_daemon
 print,'4) Run daophot.sh with pbs_daemon'
 cmd = './daophot.sh '+base
 dirs = strarr(nmissing)+curdir+'/missingpsf/'
 pbs_daemon,cmd,dirs,/hyper,nmulti=nmulti,waittime=1,/cdtodir
 
-; 5) Remove temporary files
-print,'5) Remove temporary files'
-files = file_search('missingpsf/F*-*_??*')
-b = where(stregex(files,'.psf$',/boolean) eq 1,nb)  ; the files we want to keep
-if nb gt 0 then remove,b,files
-file_delete,files
-
-; 6) Check that the als files are the same as the originals
-print,'6) Check that the als files are the same as the originals'
+; 5) Check that the als files are the same as the originals
+step5:
+print,'5) Check that the als files are the same as the originals'
 for i=0,nmissing-1 do begin
   origals = field[i]+'/'+base[i]+'.als'
   newals = 'missingpsf/'+base[i]+'.als'
   spawn,['diff','origals','newals'],out,errout,/noshell
   if out[0] ne '' then print,origals,' ',newals,' NOT THE SAME'
 endfor
+
+; 6) Remove temporary files
+print,'6) Remove temporary files'
+files = file_search('missingpsf/F*-*_??*')
+b = where(stregex(files,'.psf$',/boolean) eq 1,nb)  ; the files we want to keep
+if nb gt 0 then remove,b,files
+file_delete,files
 
 ; 7) Copy psf files to individual directories
 print,'7) Copy psf files to individual directories'
