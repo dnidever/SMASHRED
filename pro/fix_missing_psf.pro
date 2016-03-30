@@ -15,6 +15,12 @@ print,'Running fix_missing_psf in ',curdir
 
 if n_elements(nmulti) eq 0 then nmulti=15
 
+;; kludge
+;psffiles = file_search('missingpsf/F*-*_??.psf',count=npsffiles)
+;base = file_basename(psffiles,'.psf')
+;field = reform((strsplitter(base,'-',/extract))[0,*])
+;goto,step8
+
 ; 1) Find the missing PSF files
 print,'1) Find the missing PSF files'
 alsfiles = file_search('F*/F*-*_??.als',count=nalsfiles)
@@ -27,7 +33,7 @@ if nmissing eq 0 then return
 field = allfield[missind]
 base = allbase[missind]
 
-;goto,step5
+goto,step5
 
 ; 2) Make the "missingpsf/" directory
 print,'2) Make the "missingpsf/" directory'
@@ -72,6 +78,7 @@ print,'7) Copy psf files to individual directories'
 for i=0,nmissing-1 do file_copy,'missingpsf/'+base[i]+'.psf',field[i],/verbose
 
 ; 8) Fix summary.fits files, one in individual directory and main directory
+step8:
 print,'8) Fix summary.fits files'
 ui = uniq(field,sort(field))
 ufield = field[ui]
@@ -80,14 +87,14 @@ for i=0,nufield-1 do begin
   print,strtrim(i+1,2),' ',ufield[i]
   sumfile = file_search(ufield[i]+'/*_summary.fits')
   sumfile = sumfile[0]
-  file_copy,sumfile,sumfile+'.bak',/over
+;  file_copy,sumfile,sumfile+'.bak',/over
   print,'Fixing ',sumfile
   head = headfits(sumfile,exten=0)
   expstr = mrdfits(sumfile,1)
   chipstr = mrdfits(sumfile,2)
 
   ; Loop through chips for this field
-  chipind = where(field eq ufield,nchipind)
+  chipind = where(field eq ufield[i],nchipind)
   for j=0,nchipind-1 do begin
     ; Load DAOPHOT PSF file
     psffile = 'missingpsf/'+base[chipind[j]]+'.psf'
@@ -96,7 +103,27 @@ for i=0,nufield-1 do begin
     psfarr = strsplit(psflines[0],' ',/extract)
     chipstr_ind = where(chipstr.base eq base[chipind[j]],nchipstr_ind)
     chipstr[chipstr_ind].dao_psftype = psfarr[0]
-    chipstr[chipstr_ind].dao_psfboxsize = long(psfarr[1])
+    chipstr[chipstr_ind].dao_psfboxsize = long(psfarr[1])    
+    ; Load DAOPHOT option file
+    optfile = field[chipind[j]]+'/'+base[chipind[j]]+'.opt'
+    if file_test(optfile) eq 1 then begin
+      READLINE,optfile,optlines
+      optarr = strsplitter(optlines,'=',/extract)
+    endif else print,optfile,' NOT FOUND'
+    undefine,psfva
+    ; Get PSF spatial variation from OPT file (VA)
+    if n_elements(optarr) gt 0 then begin
+      indva = where(strtrim(optarr[0,*],2) eq 'VA',nindva)
+      if nindva gt 0 then psfva=long(optarr[1,indva[0]])
+    endif
+    ; Get PSF spatial variation from PSF file
+    if n_elements(psfva) eq 0 then begin
+      ; NEXP=1 (VA=0), NEXP=3 (VA=1), NEXP=6 (VA=2)
+      nexp = long(psfarr[3])
+      psfva = nexp/3
+    endif
+    if n_elements(psfva) gt 0 then chipstr[chipstr_ind].dao_psfvarorder=psfva 
+    print,base[chipind[j]],' ',psfarr[0],' ',long(psfarr[1]),' ',psfva
   endfor
 
   file_delete,sumfile
