@@ -6,6 +6,7 @@
 ; Very similar to photcalib.pro
 ;
 ; INPUTS:
+;  fstr     The structure giving informaton on each exposure.
 ;  chstr    The structure giving information on each chip exposure
 ;             including the transformation equations.
 ;  allsrc   The structure with information on each detected source.
@@ -15,7 +16,7 @@
 ;  The CMAG and CERR values in ALLSRC are updated.
 ;
 ; USAGE:
-;  IDL>smashred_apply_phottranseqn,chstr,allsrc,allobj
+;  IDL>smashred_apply_phottranseqn,fstr,chstr,allsrc,allobj
 ;
 ; By D. Nidever  April 2016
 ;-
@@ -48,7 +49,7 @@ end
 pro smashred_apply_phottranseqn,fstr,chstr,allsrc,allobj
 
 ; Not enough inputs
-if n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) then begin
+if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) then begin
   print,'Syntax - smashred_apply_phottranseqn,fstr,chstr,allsrc,allobj'
   return
 endif
@@ -154,13 +155,10 @@ WHILE (converge eq 0) do begin
     allsrc[allsrcind].cmag = tempmag
     allsrc[allsrcind].cerr = temperr
 
-    ;print,chstr[i].expnum,' ',chstr[i].chip,' ',niter
-    ;stop
-
   Endfor  ; chstr loop
 
   ; Now calculate the average mags for ALLOBJ
-  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib
+  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/silent
 
   ; Check for convergence
   ;  iterate until all changes are <0.0001 or niter = 50
@@ -168,9 +166,8 @@ WHILE (converge eq 0) do begin
   maxdiff_thresh = 0.0001
   if max(chstr_maxdiff) lt maxdiff_thresh or niter gt maxiter then converge=1
 
-  print,'Iteration = ',strtrim(niter+1,2),'  max difference = ',strtrim(max(chstr_maxdiff),2),' mag'
-
-stop
+  if not keyword_set(silent) then $
+    print,'Iter = ',strtrim(niter+1,2),'  max diff = ',strtrim(max(chstr_maxdiff),2),' mag'
 
   ; Increment
   niter++

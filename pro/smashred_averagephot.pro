@@ -53,7 +53,7 @@ if keyword_set(usecalib) then begin
 endif
 
 ; Combine photometry from same filter
-print,'Combining all of the photometry'
+if not keyword_set(silent) then print,'Combining all of the photometry'
 for i=0,n_elements(ufilter)-1 do begin
 
   ; Number of exposures for this filter

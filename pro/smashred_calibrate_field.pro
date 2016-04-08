@@ -60,6 +60,15 @@ if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 ; Compression
 if n_elements(compress) eq 0 then compress=1
 
+; Check if the final files already exists
+outfile = outputdir+field+'_combined'
+testfiles = outfile+['_exposures','_chips','_allsrc','_allobj']+'.fits'
+ntestfiles = n_elements(testfiles)
+if (total(file_test(testfiles)) eq ntestfiles or total(file_test(testfiles+'.gz')) eq ntestfiles) and $
+  not keyword_set(redo) then begin
+  print,'Final output files arleady exist for ',field,' and /redo NOT set.'
+  return
+endif
 
 ; Get reduction info
 print,'Getting reduction information'
@@ -143,38 +152,39 @@ crossmatch:
 print,'restoring temporary allsrc/allobj file'
 restore,tmpdir+field+'_crossmatch.dat'
 
-;stop
 
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
-
 SMASHRED_PHOTCALIB,fstr,chstr,allsrc,allobj
 
-stop
 
 ; Compute average morphology values
+print,'Calculating average morphology parameters'
 SMASHRED_AVERAGEMORPH,fstr,chstr,allsrc,allobj
-; OR SHOULD THIS GO IN SMASHRED_PHOTCALIB????
 
 ; Calculate extinction
-print,'Getting SFD E(B-V)'
-glactc,allobj.ra,allobj.dec,2000.0,lon,lat,1,/deg
-ebv = dust_getval(lon,lat,/interp,/noloop)
+print,'Getting SFD E(B-V) extinctions'
+GLACTC,allobj.ra,allobj.dec,2000.0,lon,lat,1,/deg
+ebv = DUST_GETVAL(lon,lat,/interp,/noloop)
 ; add EBV, G0 and I0 to the catalogs
 allobj.ebv = ebv
 
-;stop
-
-; write allobj file out
-outfile = outdir+field+'_combined'
+; Write out the final files
 print,'Writing combined file to ',outfile
 MWRFITS,fstr,outfile+'_exposures.fits',/create
-MWRFITS,fchstr,outfile+'_chips.fits',/create
+MWRFITS,chstr,outfile+'_chips.fits',/create
 MWRFITS,allsrc,outfile+'_allsrc.fits',/create
 MWRFITS,allobj,outfile+'_allobj.fits',/create
+; Compress
+if keyword_set(compress) then begin
+  print,'Compressing output files'
+  spawn,['gzip',outfile+'_exposures.fits'],out,errout,/noshell
+  spawn,['gzip',outfile+'_chips.fits'],out,errout,/noshell
+  spawn,['gzip',outfile+'_allsrc.fits'],out,errout,/noshell
+  spawn,['gzip',outfile+'_allobj.fits'],out,errout,/noshell
+endif
 
-; compress
 
 ;stop
 

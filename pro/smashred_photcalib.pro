@@ -46,11 +46,13 @@ endif
 
 ; Initialize the transformation equations
 ; Add the photometric transformation equation columns to CHSTR
-newtags = ['photometric','band','colband','colsign','zpterm','zptermsig','amterm',$
-           'amtermsig','colterm','coltermsig','amcolterm','amcoltermsig','colsqterm','colsqtermsig']
-temp = chstr & undefine,chstr
-add_tags,temp,newtags,['0B','""','""','-1',replicate('0.0d0',10)],chstr
-undefine,temp
+if tag_exist(chstr,'photometric') eq 0 then begin
+  newtags = ['photometric','band','colband','colsign','zpterm','zptermsig','amterm',$
+             'amtermsig','colterm','coltermsig','amcolterm','amcoltermsig','colsqterm','colsqtermsig']
+  temp = chstr & undefine,chstr
+  add_tags,temp,newtags,['0B','""','""','-1',replicate('0.0d0',10)],chstr
+  undefine,temp
+endif
 ; Stuff in the transformation equation information
 ;  I got these from stdred_201405/n1.trans
 chstr.photometric = 1
@@ -126,72 +128,65 @@ nufilter = n_elements(ufilter)
 
 ; Iterate until we converge
 ;--------------------------
-flag = 0
+lastcmag = allsrc.cmag
+doneflag = 0
 niter = 0
-WHILE (flag eq 0) do begin
+last_zpterm = chstr.zpterm
+WHILE (doneflag eq 0) do begin
 
-  ; do we want to do the "regular" calibration and phot averaging
-  ; outside of the filter loop and only do the loop for the ubercal
-  ; portion??
-  ; it would be nice to do the "regular" calibration with ieration
-  ; (which requires the color bands as well) like photcalib.pro
-  ; maybe like this inside the while loop?
-  ; step 1. "regular" trans calib, use allobj for the other band
-  ;           needed to construct the color, but use the magnitude
-  ;           from that exposure for the other band to construct
-  ;           the color (just like photcalib.pro does), otherwise
-  ;           I'd have to run averagemag many times
-  ; step 2. ubercal measurement and application, with filter loop
-  ;           add these offsets to the zpterm terms for each chip
-  ;           in the TRANS structure so they'll improve the photometry
-  ;           calculated in step 1 the next time around
-  ;  use trans.photometric to help anchor the offsets
-  ; step 3. calculate average mags per band/object
+  print & print,'Global field photometric calibration.  Iteration = ',strtrim(niter+1,2) & print
 
   ;----------------------------------------------------------
   ; Step 1. Regular photometric calibration with trans eqns.
   ;==========================================================
+  ; "regular" trans calib, use allobj for the other band
+  ; needed to construct the color, but use the magnitude
+  ; from that exposure for the other band to construct
+  ; the color (just like photcalib.pro does), otherwise
+  ; I'd have to run averagemag many times
+  ; This also averages mags for allobj to get the color terms
+  print,'--- Step 1. Regular photometric calibration with trans eqns. ---'
 
   ; Do regular calibration with transformation equations
   ;  for non-photometric data only color-terms are applied
   ; this updates CMAG/CERR in ALLSRC
   SMASHRED_APPLY_PHOTTRANSEQN,fstr,chstr,allsrc,allobj
 
-stop
 
   ;----------------------------------------------------------
   ; Step 2. Ubercal measurement and offsets to individual
   ;           exposure zeropoints
   ;==========================================================
+  ; ubercal measurement and application, with filter loop
+  ; add these offsets to the zpterm terms for each chip
+  ; in the TRANS structure so they'll improve the photometry
+  ; calculated in step 1 the next time around
+  ; use trans.photometric to help anchor the offsets
+  print,'--- Step 2. Ubercal measurement and application ---'
 
   ; Filter loop
   For f=0,nufilter-1 do begin
     ifilter = ufilter[f]
     chfiltind = where(chstr.filter eq ifilter,nchfiltind)
     chfiltstr = chstr[chfiltind]
-    print,'--- FILTER = ',ifilter,' ',strtrim(nchfiltind,2),' nchips'
+    print,'- ',strtrim(f+1,2),' FILTER = ',ifilter,' ',strtrim(nchfiltind,2),' nchips'
 
     ; Step 2a. Measure photometric offsets between chip pairs
+    print,'2a. Measuring relative magnitude offsets between chip pairs'
     SMASHRED_MEASURE_MAGOFFSET,chfiltstr,allsrc,overlapstr,/usecalib
 
-    ; Step 2b. determine relative magnitude offsets per chip using ubercal 
-    PERFORM_UBERCAL_CALIB,overlapstr,fmagoff
-; set zeropoint per band with "photometric" data and/or anchor data
+    ; Step 2b. Determine relative magnitude offsets per chip using ubercal 
+    print,'2b. Determine relative magnitude offsets per chip using ubercal'
+    SMASHRED_SOLVE_UBERCAL,overlapstr,ubercalstr
 
-    ; Step 2c. Apply these magnitude offsets to the exposure zeropoints
-; IS THIS THE RIGHT SIGN??
-    for k=0,nchfiltind-1 do chfiltstr[k].zpterm += fmagoff[k]
-    chstr[chfiltind] = chfiltstr  ; stuff it back in
+    ; Step 2c. Set absolute zeropoint of magnitute offsets with
+    ;            photometric data and/or anchor points
+    print,'2c. Set absolute zeropoint with photometric data and achor points'
+    SMASHRED_SET_ZEROPOINTS,chfiltstr,ubercalstr
 
+    ; Stuff it back in
+    chstr[chfiltind] = chfiltstr
   Endfor  ; filter loop
-
-  ;----------------------------------------------------------
-  ; Step 3. Calculate average magnitudes
-  ;==========================================================
-  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib
-
-
-
 
   ; BRIGHTER-FATTER CORRECTION??
   ; maybe make it a (instrumental) magnitude-dependent correction, bfcorr
@@ -200,22 +195,20 @@ stop
   ; it will likely depend on the seeing, so we might need to figure it
   ; out on an exposure-by-exposure level
 
-
-  ; USES
-  ; exptime, airmass, apcorr: from chstr
-  ; imag: from allsrc MAG
-  ; color: from allobj MAG (or allsrc CMAG)
-  ; zpterm: from trans eqns. and ubercal
-  ; colterm, amterm:  from trans eqns
-  ; NO ITERATION, we are doing the iteration on a global level
-
-  ; We could do the "regular" calibration first and then apply the
-  ; ubercal zeropoint offsets second
-
-
-  ; Have we converged?
+  ; Check for convergence
+  ;  check changes in ALLSRC CMAG values, changes in CHSTR ZPTERM and iterations
+  maxiter = 50
+  maxdiff_thresh = 0.0001
+  maxzpterm_thresh = 0.0001
+  diffcmag = abs(allsrc.cmag-lastcmag)
+  diffzpterm = abs(chstr.zpterm-last_zpterm)
+  if (max(diffcmag) lt maxdiff_thresh and max(diffzpterm) lt maxzpterm_thresh) or niter gt maxiter then doneflag=1
+  last_zpterm = chstr.zpterm  ; save for next time
+  lastcmag = allsrc.cmag
 
   niter++
+
+  stop
 
 ENDWHILE
 

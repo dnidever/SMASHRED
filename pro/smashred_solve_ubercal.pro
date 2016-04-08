@@ -10,73 +10,87 @@
 ;  /verbose    Print extra information to the screen.
 ;
 ; OUTPUTS:
-;  fmagoff     The array of relative photometric offsets, one per chip.
+;  ubercalstr  The ubercal structure with information on the final
+;                magnitude offset, errors and number of overlaps.
 ;
 ; USAGE:
-;  IDL>smashred_solve_ubercal,overlapstr,fmagoff,verbose=verbose
+;  IDL>smashred_solve_ubercal,overlapstr,ubercalstr,verbose=verbose
 ;
 ; By D. Nidever  April 2016
 ;-
 
-pro smashred_solve_ubercal,overlapstr,fmagoff,verbose=verbose
+pro smashred_solve_ubercal,overlapstr,ubercalstr,verbose=verbose
 
-undefine,fmagoff
+undefine,ubercalstr
 
 ; Not enough inputs
 if n_elements(overlapstr) eq 0 then begin
-  print,'Syntax - smashred_solve_ubercal,overlapstr,fmagoff,verbose=verbose'
+  print,'Syntax - smashred_solve_ubercal,overlapstr,ubercalstr,verbose=verbose'
   return
 endif
 
 sz = size(overlapstr)
 nchips = sz[1]
 
+; Initialize ubercal structure
+ubercalstr = replicate({expnum:'',chip:-1L,magoff:0.0,magofferr:0.0,noverlap:-1L,flag:-1},nchips)
+ubercalstr.expnum = overlapstr[*,0].expnum1
+ubercalstr.chip = overlapstr[*,0].chip1
+
 ; Now iterate to put them all on the same system
 count = 0
 flag = 0
 davg0 = 100
 dmax0 = 100
-fmagoff = fltarr(nchips)
 fmagflag = lonarr(nchips)  ; 1-good, 0-no good
 magoff = overlapstr.magoff  ; initialize
 bd = where(magoff gt 50,nbd,comp=gd)
-if nbd gt 0 then magoff[bd]=!values.f_nan
+if nbd gt 0 then magoff[bd]=!values.f_nan  ; set bad values to NAN
 WHILE (flag eq 0) do begin
 
-  ; maybe calculate for each chip how (on average) it compares to
-  ; its neighbors, then remove that and start again
-  medoff = median(magoff,dim=1,/even)
-  ; we actually use the weighted mean now, but just in case
+  ; The method is basically to calculate for each chip how it
+  ; (on average) compares to its overlapping neighbors.  Then
+  ; remove that and iterate.  The TRICK is to only go halfway,
+  ; otherwise you faciliate a lot.
 
-  ; update the catalogs with these offsets
-  ; the trick is only to go halfway, otherwise we facilate a lot
-  ;for k=0,nchips-1 do (*chfiltstr[k].data).mag += medoff[k]*0.5
+  ; Calculate median offset, we actually use weighted mean below
+  ; but we use the median as a backup
+  medoff = median(magoff,dim=1,/even)
 
   ; Compute weighted mean offset and remove
   ;  from the magoffset values
   mnoff = fltarr(nchips)
   for k=0,nchips-1 do begin
-    ; get good matches with low sigma
+    ; Get good matches with low sigma
     gd = where(finite(reform(magoff[*,k])) eq 1 and overlapstr[*,k].nmatch gt 3 and overlapstr[*,k].magofferr lt 0.05,ngd)
-    ;gd = where(finite(reform(magoff[*,k])) eq 1 and overlapstr[*,k].nmatch gt 10 and overlapstr[*,k].magofferr lt 0.05,ngd)
-;if ngd eq 0 then stop,'no good matches'
-;if max(magoff[gd,k]) gt 0.5 then stop,'big offset'
+    if ngd eq 0 then $  ; raise the error threshold slightly
+      gd = where(finite(reform(magoff[*,k])) eq 1 and overlapstr[*,k].nmatch gt 3 and overlapstr[*,k].magofferr lt 0.07,ngd)
+    ; Found some good mag offsets
     if ngd gt 0 then begin
       ; calculate the weighted mean
       ROBUST_MEAN,magoff[gd,k],robmean,robsig,sig=overlapstr[gd,k].magofferr
+      if ngd eq 1 or robsig lt 1e-5 then robsig=median([overlapstr[gd,k].magofferr])>1e-2  ; lower limit to robsig
       if finite(robmean) eq 0 then robmean=medoff[k] ; just in case
       magoff[k,gd] += robmean*0.5
       magoff[gd,k] -= robmean*0.5
-      fmagoff[k] += robmean*0.5
+      ubercalstr[k].magoff += robmean*0.5
+      ubercalstr[k].magofferr = robsig/sqrt(ngd)
+      ubercalstr[k].noverlap = ngd
       mnoff[k] = robmean
-      fmagflag[k] = 1
-    endif
-  endfor
+      fmagflag[k] = 1  ; we have a good mag offset for this one
+      if keyword_set(verbose) then print,count,k+1,overlapstr[k,0].expnum1,overlapstr[k,0].chip1,ngd,robmean,robsig,format='(I5,I5,A11,I5,I7,F10.6,F10.6)'
+    ; No good mag offsets
+    endif else begin
+      if keyword_set(verbose) then print,count,k+1,overlapstr[k,0].expnum1,overlapstr[k,0].chip1,ngd,format='(I5,I5,A11,I5,I7)'
+      ubercalstr[k].magoff = 99.99
+      ubercalstr[k].magofferr = 9.99
+    endelse
+  endfor ; chip loop
 
   ; How much have things changed
   davg = total(abs(mnoff))/nchips
   dmax = max(abs(mnoff))
-  if keyword_set(verbose) then print,count,davg,dmax
+  if keyword_set(verbose) then print,count,' avg. diff = ',strtrim(davg,2),'  max diff =',strtrim(dmax,2)
 
   ; Do we need to stop
   if count ge 300 or (abs(davg-davg0)/davg0 lt 1e-2 and abs(dmax-dmax0)/dmax0 lt 1e-2) then flag=1
@@ -91,43 +105,62 @@ WHILE (flag eq 0) do begin
 ENDWHILE
 
 ; PRINT OUT FINAL AVERAGE DIFFERENCE
-print,'Final avg. diff = ',strtrim(davg,2),' mag   max diff = ',strtrim(dmag,2),' mag'
+print,'Final avg. diff = ',strtrim(davg,2),' mag   max diff = ',strtrim(dmax,2),' mag'
+
+; Set flag
+ubercalstr.flag = fmagflag   ; 0-nothing set, 1-good weighted mean offset
 
 ; Calculate the relative offset for each chip
 ;  first calculate the relative mag offset from exposure median
-rel_fmagoff = fmagoff
-;uiexp = uniq(chfiltstr.expnum,sort(chfiltstr.expnum))
-allexpnum = overlapstr[*,0].expnum1
-uiexp = uniq(allexpnum,sort(allexpnum))
-uexp = allexpnum[uiexp]
+rel_magoff = ubercalstr.magoff
+uiexp = uniq(ubercalstr.expnum,sort(ubercalstr.expnum))
+uexp = ubercalstr[uiexp].expnum
 nuexp = n_elements(uexp)
+expmagoff = fltarr(nuexp)
+expmagofferr = fltarr(nuexp)
 for k=0,nuexp-1 do begin
-  expind = where(allexpnum eq uexp[k],nexpind)
-  if nexpind gt 0 then rel_fmagoff[expind] -= median([fmagoff[expind]])
+  ; Measure median magoff for this exposure
+  expindgd = where(ubercalstr.expnum eq uexp[k] and ubercalstr.magoff lt 50,nexpindgd)
+  if nexpindgd gt 0 then begin
+    expmagoff[k] = median([ubercalstr[expindgd].magoff])
+    expmagofferr[k] = mad([ubercalstr[expindgd].magoff]) / sqrt(nexpindgd)  ; error in mean
+  endif
+  ; Measure relative offset for chips of this exposure
+  expindall = where(ubercalstr.expnum eq uexp[k],nexpindall)
+  if nexpindall gt 0 then rel_magoff[expindall] -= expmagoff[k]
 endfor
-allchips = overlapstr[*,0].chip1
-uichips = uniq(allchips,sort(allchips))
-uchips = allchips[uichips]
+; For unique chips measure the median relative offset
+uichips = uniq(ubercalstr.chip,sort(ubercalstr.chip))
+uchips = ubercalstr[uichips].chip
 nuchips = n_elements(uchips)
-deltamagoff_chip = fltarr(nuchips)
+chipdeltamagoff = fltarr(nuchips)
+chipdeltamagofferr = fltarr(nuchips)+9.99
 for k=0,nuchips-1 do begin
-  chind = where(allchips eq uchips[k],nchind)
-  if nchind gt 0 then deltamagoff_chip[k] = median([rel_fmagoff[chind]])
+  chind = where(ubercalstr.chip eq uchips[k],nchind)
+  if nchind gt 0 then begin
+    chipdeltamagoff[k] = median([rel_magoff[chind]])
+    chipdeltamagofferr[k] = mad([rel_magoff[chind]]) / sqrt(nchind)  ; error in mean
+  endif
 endfor
 
-; chips with no overlap
+; Fix chips with no overlap or no good offsets
 ;   use the median offset for all chips of that exposure
-totoverlap = total( (overlapstr.overlap eq 1 and overlapstr.magoff lt 50),1)
-bdoverlap = where(totoverlap eq 0,nbdoverlap)
-for k=0,nbdoverlap-1 do begin
-  ;expind = where(chfiltstr.expnum eq chfiltstr[bdoverlap[k]].expnum and totoverlap gt 0 and fmagflag eq 1,nexpind)
-  ;chind = where(uchips eq chfiltstr[bdoverlap[k]].chip,nchind)
-  expind = where(allexpnum eq allexpnum[bdoverlap[k]] and totoverlap gt 0 and fmagflag eq 1,nexpind)
-  chind = where(uchips eq allchips[bdoverlap[k]],nchind)
-;stop
-  fmagoff[bdoverlap[k]] = median([fmagoff[expind]]) + deltamagoff_chip[chind]
+totoverlap = total( (overlapstr.overlap eq 1 and overlapstr.magoff lt 50),1)  ; 1 for chips with good offsets, 0 otherwise
+bdind = where(totoverlap eq 0 or (totoverlap gt 0 and ubercalstr.magoff gt 50),nbdind)
+for k=0,nbdind-1 do begin
+  expind = where(uexp eq ubercalstr[bdind[k]].expnum,nexpind)
+  chind = where(uchips eq ubercalstr[bdind[k]].chip,nchind)
+  if nexpind gt 0 and nchind gt 0 then begin
+    ubercalstr[bdind[k]].magoff = expmagoff[expind] + chipdeltamagoff[chind]
+    ubercalstr[bdind[k]].magofferr = sqrt( expmagofferr[expind]^2 + chipdeltamagofferr[chind]^2 )  ; add errors in quadrature
+    ubercalstr[bdind[k]].noverlap = total(overlapstr[bdind[k],*].overlap eq 1,2)
+    ubercalstr[bdind[k]].flag = 2  ; set the flag
+  endif
 endfor
 
+; Some chips have no magnitude offsets
+bdflag = where(ubercalstr.flag eq 0,nbdflag)
+if nbdflag gt 0 then print,strtrim(nbdflag,2),'/',strtrim(nchips,2),' chips have NO measured offsets'
 
 ;stop
 
