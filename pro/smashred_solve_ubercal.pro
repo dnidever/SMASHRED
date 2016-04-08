@@ -1,6 +1,6 @@
 ;+
 ;
-; PERFORM_UBERCAL_CALIB
+; SMASHRED_SOLVE_UBERCAL
 ;
 ; Solve the ubercal problem with iteration
 ;
@@ -13,18 +13,18 @@
 ;  fmagoff     The array of relative photometric offsets, one per chip.
 ;
 ; USAGE:
-;  IDL>perform_ubercal_calib,overlapstr,fmagoff,verbose=verbose
+;  IDL>smashred_solve_ubercal,overlapstr,fmagoff,verbose=verbose
 ;
 ; By D. Nidever  April 2016
 ;-
 
-pro perform_ubercal_calib,overlapstr,fmagoff,verbose=verbose
+pro smashred_solve_ubercal,overlapstr,fmagoff,verbose=verbose
 
 undefine,fmagoff
 
 ; Not enough inputs
 if n_elements(overlapstr) eq 0 then begin
-  print,'Syntax - perform_ubercal_calib,overlapstr,fmagoff,verbose=verbose'
+  print,'Syntax - smashred_solve_ubercal,overlapstr,fmagoff,verbose=verbose'
   return
 endif
 
