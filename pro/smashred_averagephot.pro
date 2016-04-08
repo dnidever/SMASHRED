@@ -33,6 +33,8 @@ if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or
   return
 endif
 
+lallobjtags = strlowcase(tag_names(allobj))
+
 ; Get unique filters
 ui = uniq(fstr.filter,sort(fstr.filter))
 ufilter = fstr[ui].filter
@@ -44,17 +46,20 @@ if keyword_set(usecalib) then begin
   dum = where(srctags eq 'CMAG',ncmag)
   dum = where(srctags eq 'CERR',ncerr)
   if ncmag eq 0 or ncerr eq 0 then begin
-    error = '/USECALIB set but NO CMAG/CERR columsn in ALLSRC'
+    error = '/USECALIB set but NO CMAG/CERR columns in ALLSRC'
     if not keyword_set(silent) then print,error
     return
   endif
 endif
 
 ; Combine photometry from same filter
-print,'Combing all of the photometry'
+print,'Combining all of the photometry'
 for i=0,n_elements(ufilter)-1 do begin
+
+  ; Number of exposures for this filter
   filtind = where(fstr.filter eq ufilter[i],nfiltind)
-  print,ufilter[i]
+  ; Chips for this filter
+  chind = where(chstr.filter eq ufilter[i],nchind)
 
   ; Indices for the magnitude and errors in ALLOBJ
   magind = where(lallobjtags eq ufilter[i])
@@ -62,50 +67,40 @@ for i=0,n_elements(ufilter)-1 do begin
 
   ; Only one exposure for this filter, copy
   if nfiltind eq 1 then begin
-    ; Get stars that have detections in this frame
-    gd = where(allobj.srcfindx[filtind] ge 0,ngd)
-    if keyword_set(usecalib) then begin  ; calibrated phot
-      allobj[gd].(magind) = allsrc[allobj[gd].srcfindx[filtind[0]]].cmag
-      allobj[gd].(errind) = allsrc[allobj[gd].srcfindx[filtind[0]]].cerr
-    endif else begin                ; instrumental phot
-      allobj[gd].(magind) = allsrc[allobj[gd].srcfindx[filtind[0]]].mag
-      allobj[gd].(errind) = allsrc[allobj[gd].srcfindx[filtind[0]]].err
-    endelse
-    bd = where(allobj.(magind) gt 50,nbd)
-    if nbd gt 0 then begin
-      allobj[bd].(magind) = 99.99
-      allobj[bd].(errind) = 9.99
-    endif
+
+    ; All bad to start
+    allobj.(magind) = 99.99
+    allobj.(errind) = 9.99
+
+    ; Now copy in the values, ALLSRC only had "good" detections
+    for k=0,nchind-1 do begin
+      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
+      if keyword_set(usecalib) then begin  ; calibrated phot
+        allobj[allsrc[ind].cmbindx].(magind) = allsrc[ind].cmag
+        allobj[allsrc[ind].cmbindx].(errind) = allsrc[ind].cerr
+      endif else begin                ; instrumental phot
+        allobj[allsrc[ind].cmbindx].(magind) = allsrc[ind].mag
+        allobj[allsrc[ind].cmbindx].(errind) = allsrc[ind].err
+      endelse
+    endfor
 
   ; Multiple exposures for this filter to average
   endif else begin
 
-    mag = fltarr(n_elements(allobj),nfiltind)+99.99
-    err = mag*0+9.99
-    for k=0,nfiltind-1 do begin
-      gd = where(allobj.srcfindx[filtind[k]] ge 0,ngd)
+    ; Loop through all of the chips and add up the flux, totalwt, etc.
+    totalwt = dblarr(n_elements(allobj))
+    totalfluxwt = dblarr(n_elements(allobj))
+    for k=0,nchind-1 do begin
+      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
       if keyword_set(usecalib) then begin  ; calibrated phot
-        mag[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].cmag
-        err[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].cerr
+        totalwt[allsrc[ind].cmbindx] += 1.0d0/allsrc[ind].cerr^2
+        totalfluxwt[allsrc[ind].cmbindx] += 2.5118864d^allsrc[ind].cmag * (1.0d0/allsrc[ind].cerr^2)
       endif else begin                ; instrumental phot 
-        mag[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].mag
-        err[gd,k] = allsrc[allobj[gd].srcfindx[filtind[k]]].err
+        totalwt[allsrc[ind].cmbindx] += 1.0d0/allsrc[ind].err^2
+        totalfluxwt[allsrc[ind].cmbindx] += 2.5118864d^allsrc[ind].mag * (1.0d0/allsrc[ind].err^2)
       endelse
     endfor
-    ; Ignore non-detections
-    bd = where(mag eq 0.0 or mag gt 50,nbd)
-    if nbd gt 0 then begin
-      mag[bd] = !values.f_nan
-      err[bd] = !values.f_nan
-    endif
-
-    ; copied from phot_overlap.pro
-    flux = 2.511864d^mag
-    wt = 1.0d0/err^2
-    totalwt = total(wt,2,/nan)
-    totalflux = total(flux*wt,2,/nan)
-    totalerr = total((err^2)*wt,2,/nan) 
-    newflux = totalflux/totalwt
+    newflux = totalfluxwt/totalwt
     newmag = 2.50*alog10(newflux)
     newerr = sqrt(1.0/totalwt)
     bd = where(finite(newmag) eq 0,nbd)
@@ -116,6 +111,7 @@ for i=0,n_elements(ufilter)-1 do begin
 
     allobj.(magind) = newmag
     allobj.(errind) = newerr
+
   endelse  ; combine multiple exposures for this filter
 endfor ; unique filter loop
 

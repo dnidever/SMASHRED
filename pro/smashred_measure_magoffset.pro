@@ -10,6 +10,7 @@
 ;  allsrc      Structure with information on each source detection.
 ;  /usecalib   Use the calibrated photometry (CMAG/CERR).  The default
 ;                is to use the instrumental photometry (MAG/ERR).
+; /silent      Don't print anything to the screen.
 ;
 ; OUTPUTS:
 ;  overlapstr  Structure with overlap and magnitude offset information.
@@ -21,7 +22,7 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_measure_magoffset,chstr,allsrc,overlapstr,usecalib=usercalib,silent=silent,error=error
+pro smashred_measure_magoffset,chstr,allsrc,overlapstr,usecalib=usecalib,silent=silent,error=error
 
 undefine,overlapstr,error
 
@@ -33,6 +34,18 @@ if nchips eq 0 or nallsrc eq 0 then begin
   error = 'Not enough inputs'
   print,'Syntax - smashred_measure_magoffset,chstr,allsrc,overlapstr,usecalib=usecalib,silent=silent,error=error'
   return
+endif
+
+; Use calibrated magnitudes, check that we have them
+if keyword_set(usecalib) then begin
+  srctags = tag_names(allsrc)
+  dum = where(srctags eq 'CMAG',ncmag)
+  dum = where(srctags eq 'CERR',ncerr)
+  if ncmag eq 0 or ncerr eq 0 then begin
+    error = '/USECALIB set but NO CMAG/CERR columsn in ALLSRC'
+    if not keyword_set(silent) then print,error
+    return
+  endif
 endif
 
 ; Add medoff tag
@@ -61,18 +74,18 @@ for j=0,nchips-1 do begin
       ; Measure mag offsets
       if overlap eq 1 then begin
         ; Get the overlapping sources
-        id1 = allsrc[chstr[j].allsrcindx:chstr[j].allsrcindx+chstr[j].ndata-1].id
-        id2 = allsrc[chstr[k].allsrcindx:chstr[k].allsrcindx+chstr[k].ndata-1].id
+        id1 = allsrc[chstr[j].allsrcindx:chstr[j].allsrcindx+chstr[j].nsrc-1].id
+        id2 = allsrc[chstr[k].allsrcindx:chstr[k].allsrcindx+chstr[k].nsrc-1].id
         MATCH,id1,id2,mind1,mind2,count=nmatch,/sort
 
         ; We have matching sources
         undefine,magoff,magoffsig,magofferr,ngdmag
         if nmatch gt 1 then begin
           ; Get information for chip 1
-          allind1 = lindgen(chstr[j].ndata)+chstr[j].allsrcindx
+          allind1 = lindgen(chstr[j].nsrc)+chstr[j].allsrcindx
           str1 = allsrc[allind1[mind1]]
           ; Get information for chip 2
-          allind2 = lindgen(chstr[k].ndata)+chstr[k].allsrcindx
+          allind2 = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
           str2 = allsrc[allind2[mind2]]
 
           ; Make the measurement
@@ -95,8 +108,8 @@ for j=0,nchips-1 do begin
 
           ; Some sources with decent photometry
           if ngdmag gt 0 then begin
-            ROBUST_MEAN,magdiff[gdmag],magoff,magofferr,sig=magerr[gdmag],numrej=numrej
-            magoffsig = magoff1err/sqrt(ngdmag-numrej)  ; stdev of mean
+            ROBUST_MEAN,magdiff[gdmag],magoffset,magofferr,sig=magerr[gdmag],numrej=numrej
+            magoffsig = magofferr/sqrt(ngdmag-numrej)  ; stdev of mean
           endif
         endif else ngdmag=0                    ; enough matches to make a measurement
 

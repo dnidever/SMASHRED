@@ -1,4 +1,4 @@
-pro perform_ubercal_calib,overlapstr,fmagoff
+pro perform_ubercal_calib,overlapstr,fmagoff,verbose=verbose
 
 ; Solve the ubercal problem
 
@@ -50,7 +50,7 @@ WHILE (flag eq 0) do begin
   ; How much have things changed
   davg = total(abs(mnoff))/nchips
   dmax = max(abs(mnoff))
-  print,count,davg,dmax
+  if keyword_set(verbose) then print,count,davg,dmax
 
   ; Do we need to stop
   if count ge 300 or (abs(davg-davg0)/davg0 lt 1e-2 and abs(dmax-dmax0)/dmax0 lt 1e-2) then flag=1
@@ -63,6 +63,10 @@ WHILE (flag eq 0) do begin
   ;stop
 
 ENDWHILE
+
+; PRINT OUT FINAL AVERAGE DIFFERENCE
+print,'Final avg. diff = ',davg,' mag'
+print,'Final max diff  = ',dmax,' mag'
 
 ; Calculate the relative offset for each chip
 ;  first calculate the relative mag offset from exposure median
@@ -98,6 +102,7 @@ for k=0,nbdoverlap-1 do begin
 ;stop
   fmagoff[bdoverlap[k]] = median([fmagoff[expind]]) + deltamagoff_chip[chind]
 endfor
+
 
 ;stop
 

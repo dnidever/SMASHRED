@@ -62,6 +62,7 @@ if n_elements(compress) eq 0 then compress=1
 
 
 ; Get reduction info
+print,'Getting reduction information'
 SMASHRED_GETREDINFO,allinfo,/silent
 gdinfo = where(allinfo.field eq field,ngdinfo)
 if ngdinfo eq 0 then begin
@@ -70,6 +71,7 @@ if ngdinfo eq 0 then begin
   return
 endif
 info = allinfo[gdinfo]
+ninfo = ngdinfo
 
 ; MAYBE GET THE CATALOGS FROM THE PHOTRED DIRECTOREIS DIRECTLY!!!!???
 ; HOW DO WE KNOW IF THE CATALOGS/PHOT FILES ARE CALIBRATED OR INST??
@@ -99,50 +101,49 @@ info = allinfo[gdinfo]
 ; Load the list of photometric/non-photometric nights
 ; Load 0.9m data
 
+print,'Running SMASHRED_CALIBRATE_FIELD on ',field
+print,strtrim(ninfo,2),' PHOTRED catalogs found'
+print,info.file
+
+goto,crossmatch
+
 ; Loop through the catalogs
 print,'--------------------------------------------------'
 print,'--- STEP 1. Load all of the PHOTRED photometry ---'
 print,'=================================================='
 ninfo = n_elements(info)
-undefine,allfstr,allchstr
+undefine,allfstr,allchstr,allsrc
 For c=0,ninfo-1 do begin
-
   info1 = info[c]
+  print,strtrim(c+1,2),'/',strtrim(ninfo,2),' ',info1.file
+  undefine,chstr1,allsrc1
+  SMASHRED_LOAD_CATPHOT,info1,chstr1,allsrc1,/useast,reduxdir=reduxdir,redo=redo
 
-  outfile = tmpdir+fbase+'_'+night+'_ubercal.dat'
-  if file_test(outfile) eq 0 or keyword_set(redo) then begin
+  ; offset indices
+  chstr1.allsrcindx += n_elements(allsrc)
+  allsrc1.chipindx += n_elements(allchstr)
 
-    ; Load the catalog photometry
-    SMASHRED_LOAD_CATPHOT,info1,fstr,chstr,/useast
-
-    print,'Saving info temporarily to ',outfile
-    save,info1,fstr,chstr,file=outfile
-  ; save file already exists
-  endif else begin
-    print,'Restoring previously saved ',outfile
-    restore,outfile
-  endelse
-
-  ; combine
-  push,allfstr,fstr
-  push,allchstr,chstr
-
-  ;stop
-
+  ; Combine structures
+  push,allfstr,*info1.fstr
+  push,allchstr,chstr1
+  push,allsrc,allsrc1
 Endfor ; catalog loop
 
+; Rename
 fstr = allfstr
 chstr = allchstr
 undefine,allfstr,allchstr
 
-
 print,'---------------------------------------------------------------------'
 print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
 print,'====================================================================='
+crossmatch:
+;SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj
+;save,fstr,chstr,allsrc,allobj,file=tmpdir+field+'_crossmatch.dat'
+print,'restoring temporary allsrc/allobj file'
+restore,tmpdir+field+'_crossmatch.dat'
 
-SMASHRED_CROSSMATCH,fstr,chstr,allsrc,allobj
-
-stop
+;stop
 
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'

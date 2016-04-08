@@ -1,3 +1,60 @@
+;+
+;
+; STDRED_TRANSPHOT_SMASH
+;
+; This determined the photometric transformation equations from
+; the standard star data via STDRED.  Modifications for SMASH.
+;
+; This program finds the photometric transformation equations
+; with iterative outlier rejection given the proper input file
+; (same as SKAWDPHOT.PRO).
+;
+; INPUTS:
+;  input    Filename of input data (i.e. g.cat).
+;  =fitzp   The type of fitting to use for the zerpoint term(s).
+;             fitam=1  separate value for each night (default, unless /sepchip)
+;             fitam=2  global nightly variations and chip-specific variations
+;                           fixed across nights (default if /sepchip)
+;  =fitam   The type of fitting to use for the airmass/extinction terms(s).
+;             fitam=1  one global value for all nights (default)
+;             fitam=2  separate extinction terms for each night
+;  =fitcolr The type of fitting to use for the color terms(s).
+;             fitam=1  one global value for all nights and chips (default)
+;             fitam=2  separate color terms for each night
+;  /fitac   Fit the airmass*color term.  The default is keep it fixed at 0.0.
+;  /fitcolsq Fit the color*color term.  The default is keep it fixed at 0.0.
+;  =fixam   Fix the airmass term to this value.
+;  =fixcolr Fix the color term to this value.
+;  =fixac   Fix the airmass*color term to this value.  The default is 0.0.
+;  =fixcolsq Fix the color*color term to this value.  The default is 0.0.
+;  =errlim  Only use stars with observed errors lower than this value.
+;  =inparr  Input the structure instead of the filename
+;  /plotresid  Plot the residuals.
+;  =yrange     Yrange for residual plotting.
+;  /nooutput  Don't print out any of the transformation files.
+;  /sepchip  Each chip separately.
+;  /silent   Don't print anything to the screen.
+;  /stp     Stop at the end of the program.
+;
+; OUTPUTS:
+;  The transformation equations are written to a file called
+;  input+'.trans'.  Separate transformation equations for each
+;  night are also put in the file.  Also, each night's transformation
+;  equations are written to their own files called 'n#MAG.trans'
+;  (i.e. n1M.trans').
+;
+; =arr      The data structure.
+; =tlines   An array of the transformation equations for each night.
+; =trans    The transformation structure, one element for each night.  
+; =rms      The final rms of the fit.
+;
+; USAGE:
+;  IDL>stdred_transphot_smash,'g.cat'
+;
+; By D. Nidever   Jan. 2008
+;       April 2016, modifications
+;-
+
 pro std_trans_dummy
 ; This makes it so that you don't have to compile before running
 FORWARD_FUNCTION std_devtrans, std_transfunc
@@ -55,63 +112,6 @@ pro stdred_transphot_smash,input,stp=stp,arr=arr,plotresid=plotresid,$
                   tlines=tlines,rms=rms,errlim=errlim,nooutput=nooutput,$
                   inparr=inparr,sepchip=sepchip,silent=silent
 
-;+
-;
-; STDRED_TRANSPHOT
-;
-; This is very similar to FIT_TRANSPHOT.PRO, but slightly modified
-; for the STDRED pipeline.  Modifed for SMASH.
-;
-; This program finds the photometric transformation equations
-; with iterative outlier rejection given the proper input file
-; (same as SKAWDPHOT.PRO).
-;
-; INPUTS:
-;  input    Filename of input data (i.e. M.data).  Same as for
-;            SKAWDPHOT.PRO.
-;  =fitzp   The type of fitting to use for the zerpoint term(s).
-;             fitam=1  separate value for each night (default, unless /sepchip)
-;             fitam=2  global nightly variations and chip-specific variations
-;                           fixed across nights (default if /sepchip)
-;  =fitam   The type of fitting to use for the airmass/extinction terms(s).
-;             fitam=1  one global value for all nights (default)
-;             fitam=2  separate extinction terms for each night
-;  =fitcolr The type of fitting to use for the color terms(s).
-;             fitam=1  one global value for all nights and chips (default)
-;             fitam=2  separate color terms for each night
-;  /fitac   Fit the airmass*color term.  The default is keep it fixed at 0.0.
-;  /fitcolsq Fit the color*color term.  The default is keep it fixed at 0.0.
-;  =fixam   Fix the airmass term to this value.
-;  =fixcolr Fix the color term to this value.
-;  =fixac   Fix the airmass*color term to this value.  The default is 0.0.
-;  =fixcolsq Fix the color*color term to this value.  The default is 0.0.
-;  =errlim  Only use stars with observed errors lower than this value.
-;  =inparr  Input the structure instead of the filename
-;  /plotresid  Plot the residuals.
-;  =yrange     Yrange for residual plotting.
-;  /nooutput  Don't print out any of the transformation files.
-;  /sepchip  Each chip separately.
-;  /silent   Don't print anything to the screen.
-;  /stp     Stop at the end of the program.
-;
-; OUTPUTS:
-;  The transformation equations are written to a file called
-;  input+'.trans'.  Separate transformation equations for each
-;  night are also put in the file.  Also, each night's transformation
-;  equations are written to their own files called 'n#MAG.trans'
-;  (i.e. n1M.trans').
-;
-; =arr      The data structure.
-; =tlines   An array of the transformation equations for each night.
-; =trans    The transformation structure, one element for each night.  
-; =rms      The final rms of the fit.
-;
-; USAGE:
-;  IDL>fit_transphot,'M.data',
-;
-; By D. Nidever   Jan. 2008
-;-
-
 ; Not enough inputs
 if n_elements(input) eq 0 and n_elements(inparr) eq 0 then begin
   print,'Syntax - stdred_transphot,input,inparr=inparr,stp=stp,plotresid=plotresid,arr=arr'
@@ -123,15 +123,46 @@ endif
 
 ; Loading the data
 if n_elements(input) gt 0 then if input ne '' then begin
+
   print,'Loading the data'
-  arr = importascii(input[0],/header,/noprint)
+  ext = first_el(strsplit(input[0],'.',/extract),/last)
+  if ext eq 'gz' then begin
+    dum = strsplit(input[0],'.',/extract)
+    ndum = n_elements(dum)
+    ext = strjoin(dum[ndum-2:ndum-1],'.')  
+  endif 
+  ; Go through the possible cases
+  case ext of
+  'fits': arr=MRDFITS(input[0],1)
+  'fits.gz': arr=MRDFITS(input[0],1)
+  'cat': begin
+    ; Get the fieldnames and fieldtypes
+    ; We need ID to be STRING not LONG
+    tempfile = MKTEMP('temp')
+    SPAWN,'head '+input[0]+' >> '+tempfile,out,errout
+    temp = IMPORTASCII(tempfile,/header,/noprint)
+    FILE_DELETE,tempfile,/allow,/quiet
+    fieldnames = TAG_NAMES(temp)
+    nfieldnames = n_elements(fieldnames)
+    fieldtypes = lonarr(nfieldnames)
+    for k=0,nfieldnames-1 do fieldtypes[k] = SIZE(temp[0].(k),/type)
+    idind = where(fieldnames eq 'ID',nidind)
+    fieldtypes[idind[0]] = 7
+    arr = IMPORTASCII(input[0],fieldnames=fieldnames,fieldtypes=fieldtypes,skip=1,/noprint)
+    ;arr = importascii(input[0],/header,/noprint)
+  end
+  else: begin
+    print,'Extension ',ext,' NOT SUPPORTED'
+    return
+  end
+  endcase
 
 ; Using structure input
 endif else begin
   arr = inparr
 endelse
 narr = n_elements(arr)
-orig = arr
+;orig = arr
 
 ; Defaults
 if n_elements(errlim) eq 0 then errlim=0.03
@@ -194,10 +225,13 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
   ;       chip-specific zero-point and color terms
   ; 7.) Construct final transformation equations
   
-  ; Nights
-  ui = uniq(arr.night,sort(arr.night))
-  unights = arr[ui].night
+  ; Nights/MJD
+  ui = uniq(arr.mjd,sort(arr.mjd))
+  unights = arr[ui].mjd
   nnights = n_elements(unights)
+  ;ui = uniq(arr.night,sort(arr.night))
+  ;unights = arr[ui].night
+  ;nnights = n_elements(unights)
 
   ; Chips
   ui = uniq(arr.chip,sort(arr.chip))
@@ -211,9 +245,13 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
   ; ---Check how many data points there are for each chip/night combination---
   print,'' & print,'The matrix of datapoints per night and chip'
   npts_chipnight = lonarr(nnights,nchips)
+  chipnight = strtrim(arr.chip,2)+'-'+strtrim(arr.mjd,2)
   for i=0,nnights-1 do begin
     for j=0,nchips-1 do begin
-      gd = where(arr.night eq unights[i] and arr.chip eq chips[j] and arr.err le errlim,ngd)
+      ;gd = where(arr.night eq unights[i] and arr.chip eq chips[j] and arr.err le errlim,ngd)
+      ;gd = where(arr.mjd eq unights[i] and arr.chip eq chips[j] and arr.err le errlim,ngd)
+      ichipnight = strtrim(chips[j],2)+'-'+strtrim(unights[i],2)
+      MATCH,chipnight,ichipnight,ind1,ind2,count=ngd,/sort
       npts_chipnight[i,j] = ngd
     endfor
   endfor
@@ -221,11 +259,17 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
   print,'NIGHT   ',long(unights)
   for i=0,nchips-1 do print,'CHIP = ',strtrim(chips[i],2),reform(npts_chipnight[*,i])
 
+;stop
+
   ; ---Check airmass coverage for each night
   print,'' & print,'Airmass coverage per night'
   print,'Night  RANGE    MIN   MAX   Individual airmasses per frame'
   for i=0,nnights-1 do begin
-    gd = where(arr.night eq unights[i] and arr.err le errlim,ngd)
+    ;gd = where(arr.night eq unights[i] and arr.err le errlim,ngd)
+    MATCH,arr.mjd,unights[i],ind1,ind2,/sort
+    gd1 = where(arr[ind1].err le errlim,ngd)
+    gd = ind1[gd1]
+    ;gd = where(arr.mjd eq unights[i] and arr.err le errlim,ngd)
     arr0 = arr[gd]
     ; get unique frames, trim chip number
     frame1 = reform( (strsplitter(arr0.frame,'_',/extract))[0,*] )
@@ -242,6 +286,7 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
           '  ',strtrim(medam_uframe1[si],2)
   endfor
 
+stop
   
   ; 1.) Initial solution for all data combined
   ;-------------------------------------------
@@ -329,7 +374,8 @@ stop
     amtermarr = fltarr(nnights)
     amerrarr = fltarr(nnights)
     For i=0,nnights-1 do begin
-      ind = where(allarr1.night eq unights[i],nind)
+      ;ind = where(allarr1.night eq unights[i],nind)
+      ind = where(allarr1.mjd eq unights[i],nind)
       arr1 = allarr1[ind]
       resid = arr1.mag-arr1.cmag-colterm0*arr1.col
       gd = where(arr1.rejected eq 0,ngd)
