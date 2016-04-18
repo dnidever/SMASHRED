@@ -29,23 +29,24 @@ if n_elements(overlapstr) eq 0 then begin
   return
 endif
 
-sz = size(overlapstr)
+sz = size(overlapstr.expnum)
 nchips = sz[1]
 
 ; Initialize ubercal structure
 ubercalstr = replicate({expnum:'',chip:-1L,magoff:0.0,magofferr:0.0,noverlap:-1L,flag:-1},nchips)
-ubercalstr.expnum = overlapstr[*,0].expnum1
-ubercalstr.chip = overlapstr[*,0].chip1
+ubercalstr.expnum = overlapstr.expnum
+ubercalstr.chip = overlapstr.chip
 
 ; Now iterate to put them all on the same system
+data = overlapstr.data
 count = 0
 flag = 0
 davg0 = 100
 dmax0 = 100
 fmagflag = lonarr(nchips)  ; 1-good, 0-no good
-magoff = overlapstr.magoff  ; initialize
-bd = where(magoff gt 50,nbd,comp=gd)
-if nbd gt 0 then magoff[bd]=!values.f_nan  ; set bad values to NAN
+magoff = overlapstr.data.magoff  ; initialize
+;bd = where(magoff gt 50,nbd,comp=gd)
+;if nbd gt 0 then magoff[bd]=!values.f_nan  ; set bad values to NAN
 WHILE (flag eq 0) do begin
 
   ; The method is basically to calculate for each chip how it
@@ -53,38 +54,44 @@ WHILE (flag eq 0) do begin
   ; remove that and iterate.  The TRICK is to only go halfway,
   ; otherwise you faciliate a lot.
 
-  ; Calculate median offset, we actually use weighted mean below
-  ; but we use the median as a backup
-  medoff = median(magoff,dim=1,/even)
-
   ; Compute weighted mean offset and remove
   ;  from the magoffset values
   mnoff = fltarr(nchips)
   for k=0,nchips-1 do begin
-    ; Get good matches with low sigma
-    gd = where(finite(reform(magoff[*,k])) eq 1 and overlapstr[*,k].nmatch gt 3 and overlapstr[*,k].magofferr lt 0.05,ngd)
-    if ngd eq 0 then $  ; raise the error threshold slightly
-      gd = where(finite(reform(magoff[*,k])) eq 1 and overlapstr[*,k].nmatch gt 3 and overlapstr[*,k].magofferr lt 0.07,ngd)
-    ; Found some good mag offsets
-    if ngd gt 0 then begin
-      ; calculate the weighted mean
-      ROBUST_MEAN,magoff[gd,k],robmean,robsig,sig=overlapstr[gd,k].magofferr
-      if ngd eq 1 or robsig lt 1e-5 then robsig=median([overlapstr[gd,k].magofferr])>1e-2  ; lower limit to robsig
-      if finite(robmean) eq 0 then robmean=medoff[k] ; just in case
-      magoff[k,gd] += robmean*0.5
-      magoff[gd,k] -= robmean*0.5
-      ubercalstr[k].magoff += robmean*0.5
-      ubercalstr[k].magofferr = robsig/sqrt(ngd)
-      ubercalstr[k].noverlap = ngd
-      mnoff[k] = robmean
-      fmagflag[k] = 1  ; we have a good mag offset for this one
-      if keyword_set(verbose) then print,count,k+1,overlapstr[k,0].expnum1,overlapstr[k,0].chip1,ngd,robmean,robsig,format='(I5,I5,A11,I5,I7,F10.6,F10.6)'
+    ngd = 0
+    if overlapstr.noverlap[k] gt 0 then begin
+      ind = overlapstr.index[overlapstr.ind0[k]:overlapstr.ind1[k]]
+      revind = overlapstr.revindex[overlapstr.ind0[k]:overlapstr.ind1[k]]
+      ; Get good matches with low sigma
+      gd = where(data[ind].nmatch gt 3 and data[ind].magofferr lt 0.05,ngd)
+      if ngd eq 0 then $  ; raise the error threshold slightly
+        gd = where(data[ind].nmatch gt 3 and data[ind].magofferr lt 0.07,ngd)
+      ; Found some good mag offsets
+      if ngd gt 0 then begin
+        ; calculate the weighted mean
+        ROBUST_MEAN,magoff[ind[gd]],robmean,robsig,sig=data[ind[gd]].magofferr
+        if ngd eq 1 or robsig lt 1e-5 then robsig=median([data[ind[gd]].magofferr])>1e-2  ; lower limit to robsig
+        if finite(robmean) eq 0 then robmean=median([magoff[ind[gd]]])  ; just in case
+        ; remove offset from all overlaps 
+        magoff[ind] -= robmean*0.5   ; offset all of the values
+        magoff[revind] += robmean*0.5
+        ubercalstr[k].magoff -= robmean*0.5
+        ubercalstr[k].magofferr = robsig/sqrt(ngd)
+        ubercalstr[k].noverlap = ngd
+        mnoff[k] = robmean
+        fmagflag[k] = 1  ; we have a good mag offset for this one
+        if keyword_set(verbose) then print,count,k+1,ubercalstr[k].expnum,ubercalstr[k].chip,ngd,robmean,robsig,$
+                                           format='(I5,I5,A11,I5,I7,F10.6,F10.6)'
+      endif
+    endif ; no overlap
+
     ; No good mag offsets
-    endif else begin
-      if keyword_set(verbose) then print,count,k+1,overlapstr[k,0].expnum1,overlapstr[k,0].chip1,ngd,format='(I5,I5,A11,I5,I7)'
+    if ngd eq 0 then begin
+      if keyword_set(verbose) then print,count,k+1,ubercalstr[k].expnum,ubercalstr[k].chip,ngd,format='(I5,I5,A11,I5,I7)'
       ubercalstr[k].magoff = 99.99
       ubercalstr[k].magofferr = 9.99
-    endelse
+    endif
+
   endfor ; chip loop
 
   ; How much have things changed
@@ -145,15 +152,18 @@ endfor
 
 ; Fix chips with no overlap or no good offsets
 ;   use the median offset for all chips of that exposure
-totoverlap = total( (overlapstr.overlap eq 1 and overlapstr.magoff lt 50),1)  ; 1 for chips with good offsets, 0 otherwise
-bdind = where(totoverlap eq 0 or (totoverlap gt 0 and ubercalstr.magoff gt 50),nbdind)
+;totoverlap = total( (overlapstr.overlap eq 1 and overlapstr.magoff lt 50),1)  ; 1 for chips with good offsets, 0 otherwise
+;bdind = where(totoverlap eq 0 or (totoverlap gt 0 and ubercalstr.magoff gt 50),nbdind)
+bdind = where(ubercalstr.flag eq 0,nbdind)
 for k=0,nbdind-1 do begin
   expind = where(uexp eq ubercalstr[bdind[k]].expnum,nexpind)
   chind = where(uchips eq ubercalstr[bdind[k]].chip,nchind)
   if nexpind gt 0 and nchind gt 0 then begin
+    ind = overlapstr.index[overlapstr.ind0[bdind[k]]:overlapstr.ind1[bdind[k]]]   
     ubercalstr[bdind[k]].magoff = expmagoff[expind] + chipdeltamagoff[chind]
     ubercalstr[bdind[k]].magofferr = sqrt( expmagofferr[expind]^2 + chipdeltamagofferr[chind]^2 )  ; add errors in quadrature
-    ubercalstr[bdind[k]].noverlap = total(overlapstr[bdind[k],*].overlap eq 1,2)
+    ;ubercalstr[bdind[k]].noverlap = total(overlapstr[bdind[k],*].overlap eq 1,2)
+    ubercalstr[bdind[k]].noverlap = total(overlapstr.data[ind].overlap eq 1)
     ubercalstr[bdind[k]].flag = 2  ; set the flag
   endif
 endfor

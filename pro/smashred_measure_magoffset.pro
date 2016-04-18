@@ -52,19 +52,15 @@ endif
 ; Add medoff tag
 ;add_tag,chstr,'magoffset',0.0,chstr
 
+
 ; Initialize overlapstr structure
-overlapstr = replicate({expnum1:'',chip1:0L,expnum2:'',chip2:0L,overlap:-1,magoff:99.99,magofferr:9.99,nmatch:-1L},nchips,nchips)
-for j=0,nchips-1 do begin
-  overlapstr[j,*].expnum1 = chstr[j].expnum
-  overlapstr[j,*].chip1 = chstr[j].chip
-  overlapstr[*,j].expnum2 = chstr[j].expnum
-  overlapstr[*,j].chip2 = chstr[j].chip
-endfor
-magoffarr = fltarr(nchips,nchips)+99.99  ; save the offsets for easy access later
-magerrarr = fltarr(nchips,nchips)+9.99  ; save the errors
+overlapdata_schema = {expnum1:'',chip1:0L,expnum2:'',chip2:0L,overlap:-1,magoff:99.99,magofferr:9.99,nmatch:-1L,primary:0B}
+overlapdata = replicate(overlapdata_schema,nchips*3)
+noverlapdata = n_elements(overlapdata)
 
 ; Calculate all overlaps and magnitude offsets
 ;---------------------------------------------
+count = 0LL
 ; Outer chip loop
 for j=0,nchips-1 do begin
   ; Inner chip loop
@@ -74,10 +70,31 @@ for j=0,nchips-1 do begin
       ; use vertices to check for overlap
       ;   use code from printVisitOverlap.py
       overlap = DOPOLYGONSOVERLAP(chstr[j].vertices_ra, chstr[j].vertices_dec, chstr[k].vertices_ra, chstr[k].vertices_dec)
-      overlapstr[j,k].overlap = overlap
-      overlapstr[k,j].overlap = overlap
       ; Measure mag offsets
       if overlap eq 1 then begin
+        ; Add more elements 
+        if noverlapdata lt count+2 then begin
+          old = overlapdata
+          undefine,overlapdata
+          overlapdata = replicate(overlapdata_schema,noverlapdata+(1000L>nchips))
+          struct_assign,old,overlapdata,/nozero
+          noverlapdata = n_elements(overlapdata)
+          undefine,old
+        endif
+        ; Fill in the information
+        overlapdata[count].expnum1 = chstr[j].expnum
+        overlapdata[count].chip1 = chstr[j].chip
+        overlapdata[count].expnum2 = chstr[k].expnum
+        overlapdata[count].chip2 = chstr[k].chip
+        overlapdata[count].overlap = overlap
+        overlapdata[count].primary = 1
+        ; Reverse situation
+        overlapdata[count+1].expnum1 = chstr[k].expnum
+        overlapdata[count+1].chip1 = chstr[k].chip
+        overlapdata[count+1].expnum2 = chstr[j].expnum
+        overlapdata[count+1].chip2 = chstr[j].chip
+        overlapdata[count+1].overlap = overlap
+
         ; Get the overlapping sources
         allind1 = lindgen(chstr[j].nsrc)+chstr[j].allsrcindx
         allind2 = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
@@ -123,31 +140,64 @@ for j=0,nchips-1 do begin
           ;magofferr = magoffsig/sqrt(nmatch)  ; error in the mean
           if magoffsig lt 1e-8 then magofferr=10.0  ; if it's zero that normally means it's pretty bad
           ;magoffsig = magoffsig > 1e-6  ; let lower limit, can sometimes be zero
-          overlapstr[j,k].magoff = magoffset
-          overlapstr[j,k].magofferr = magofferr  ; error in the mean
-          overlapstr[j,k].nmatch = nmatch
+          overlapdata[count].magoff = magoffset
+          overlapdata[count].magofferr = magofferr  ; error in the mean
+          overlapdata[count].nmatch = nmatch
+          ; Reverse situation
+          overlapdata[count+1].magoff = -magoffset
+          overlapdata[count+1].magofferr = magofferr  ; error in the mean
+          overlapdata[count+1].nmatch = nmatch
+          ; Print info
           if keyword_set(verbose) then $
-            print,overlapstr[j,k].expnum1,overlapstr[j,k].chip1,overlapstr[j,k].expnum2,overlapstr[j,k].chip2,overlapstr[j,k].nmatch,$
-                  overlapstr[j,k].magoff,overlapstr[j,k].magofferr,format='(A10,I5,A10,I5,I7,F10.4,F10.5)'
-          ; fill in the reverse situation
-          overlapstr[k,j].magoff = -magoffset
-          overlapstr[k,j].magofferr = magofferr
-          overlapstr[k,j].nmatch = nmatch
-          ; Save the mag offset
-          magoffarr[j,k] = magoffset
-          magerrarr[j,k] = magofferr
+            print,overlapdata[count].expnum1,overlapdata[count].chip1,overlapdata[count].expnum2,overlapdata[count].chip2,overlapdata[count].nmatch,$
+                  overlapdata[count].magoff,overlapdata[count].magofferr,format='(A10,I5,A10,I5,I7,F10.4,F10.5)'
+          ; Increment by two
+          count += 2
         endif ; some matches
       endif ; overlap
     endif  ; different exposures
   endfor ; inner chip loop
 endfor ; outer chip loop
 
+; Trim excess elements
+overlapdata = overlapdata[0:count-1]
+noverlapdata = n_elements(overlapdata)
+
+; Initialize the final output structure
+overlapstr = {expnum:strtrim(chstr.expnum,2),chip:long(chstr.chip),noverlap:lonarr(nchips),$
+              ind0:lonarr(nchips)-1,ind1:lonarr(nchips)-1,$
+              index:lonarr(noverlapdata),revindex:lonarr(noverlapdata),data:overlapdata}
+; ind0 and ind1 are the index into "index" and "revindex" which in
+; turn are indices into the overlapdata structure,
+; e.g. data[index[ind0[i]:ind[i]]] gives the elements of the overlap
+; data structure for the ith chip.
+
+; Get reverse indices
+oid1 = strtrim(overlapdata.expnum1,2)+'-'+strtrim(overlapdata.chip1,2)
+oid2 = strtrim(overlapdata.expnum2,2)+'-'+strtrim(overlapdata.chip2,2)
+index_cnt = 0LL
+for i=0,nchips-1 do begin
+  MATCH,oid1,strtrim(chstr[i].expnum,2)+'-'+strtrim(chstr[i].chip,2),ind1a,ind1b,count=nmatch1,/sort
+  ; reverse ones
+  MATCH,oid2,strtrim(chstr[i].expnum,2)+'-'+strtrim(chstr[i].chip,2),ind2a,ind2b,count=nmatch2,/sort
+  overlapstr.noverlap[i] = nmatch1
+  if nmatch1 ne nmatch2 then stop,'DIFFERENT MATCHES!!'
+  if nmatch1 gt 0 then begin
+    overlapstr.ind0[i] = index_cnt
+    overlapstr.ind1[i] = index_cnt+nmatch1-1
+    overlapstr.index[index_cnt:index_cnt+nmatch1-1] = ind1a
+    overlapstr.revindex[index_cnt:index_cnt+nmatch1-1] = ind2a
+    index_cnt += nmatch1
+  endif
+endfor
+
 ; Print out some statistics of the offsets
-gd = where(magoffarr lt 50,ngd)
-; ngd/2 because they are duplicated
+gd = where(overlapstr.data.magoff lt 50 and overlapstr.data.overlap eq 1 and overlapstr.data.primary eq 1,ngd)
 if not keyword_set(silent) then begin
-  print,ngd,' mag offsets','med=',median(magoffarr[gd]),'rms=',mad(magoffarr[gd]),format='(I5,A12,A5,F11.6,A5,F11.6)'
-  print,'',' errors','med=',median(magerrarr[gd]),'rms=',mad(magerrarr[gd]),format='(A5,A12,A5,F11.6,A5,F11.6)'
+  print,ngd,' mag offsets','med=',median(overlapstr.data[gd].magoff),'rms=',$
+        mad(overlapstr.data[gd].magoff),format='(I5,A12,A5,F11.6,A5,F11.6)'
+  print,'',' errors','med=',median(overlapstr.data[gd].magofferr),'rms=',$
+        mad(overlapstr.data[gd].magofferr),format='(A5,A12,A5,F11.6,A5,F11.6)'
 endif
 
 ;stop
