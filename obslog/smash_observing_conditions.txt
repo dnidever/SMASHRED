@@ -1,0 +1,64 @@
+# NUM	MJD	DATE	PHOTOMETRIC	COMMENTS
+    1	56369	20130317	1	clear, no clouds
+    2	56370 	20130318	0	75% cloudy at the beginning of the night. It got progressively better with time. (no clouds on rasicam)
+    3	56371	20130319	0	clouds
+    4	56372	20130320	1	clear most of the night, clouds at the very end
+    5	56509	20130804	1	clear, no clouds
+    6	56510	20130805	1	clear, no clouds,  HIGHISH EXTINCTION + LOWISH ZEROPOINT??
+    7	56662	20140104	1	DES NIGHT, clear, no clouds
+    8	56663	20140105	1	no clouds
+    9	56664	20140106	1	no clouds
+   10	56665	20140107	1	no clouds
+   11	56666	20140108	1	COMMUNITY NIGHT, clear, no clouds
+   12	56677	20140119	1	no clouds
+   13	56678	20140120	1	no clouds
+   14	56679	20140121	0	very cloudy
+   15	56680	20140122	0	clouds second half of night, cleared up for last ~1 hour
+   16	56681	20140123	0	cloudy, HIGHISH EXTINCTION + LOWISH ZEROPOINT
+   17	56682	20140124	1	no clouds
+   18	56683	20140125	1	no clouds
+   19	56684	20140126	1	a few sporadic clouds
+   20	56685	20140127	1	no clouds
+   21	56686	20140128	1	no clouds
+   22	56687	20140129	1	no clouds
+   23	56688	20140130	1	no clouds,  HIGHISH EXTINCTION + LOWISH ZEROPOINT??, should I use average amterm of nearby nights???
+   24	56689	20140131	1	COMMUNITY NIGHT, clear, no clouds
+   25	56702	20140213	1	clear, no clouds,  HIGHISH EXTINCTION + LOWISH ZEROPOINT??
+   26	56805	20140527	1	clear, nothing on rasicam
+   27	56806	20140528	0	cloudy, no data
+   28	56807	20140529	1	clear, windy, don't see anything on rasicam
+   29	56808	20140530	1	clear, nothing on rasicam
+   30	56809	20140531	1	clear, photometric, nothing on rasicam
+   31	56810	20140601	1	clear, no clouds, nothing on rasicam
+   32	56811	20140602	1	clear, nothing on rasicam
+   33	56983	20141121	1	???, no rasicam video  
+   34	56984	20141122	1	???, no rasicam video
+   35	56985	20141123	1	???, no rasicam video, large stdred RMS
+   36	57009	20141217	1	completely clear
+   37	57010	20141218	1	completeiy clear  
+   38	57095	20150313	1	clear, rasicam shows some clouds in middle of night, but most were far away from our fields
+   39	57096	20150314	1	clear, no clouds
+   40	57097	20150315	0	a few small clouds,  CRAZY STANDARD DATA
+   41	57098	20150316	0	lots of clouds first half of night, very clear for second half
+   42	57099	20150317	0	some clouds, not photometric
+   43	57100	20150318	1	a few minor clouds in first half, clear second half
+   44	57336	20151109	1	clear, no clouds, high wind
+   45	57362	20151205	1	clear, no clouds, photometric
+   46	57363	20151206	1	clear, no clouds
+   47	57389	20160101	1	a few clouds near end of night
+   48	57390	20160102	1	clear, no clouds
+   49	57391	20160103	0	cloudy, NO STANDARDS, NOT REDUCED
+   50	57392	20160104	0	overcast, no data
+   51	57393	20160105	0	overcast, no data
+   52	57394	20160106	0	cloudy, NO STANDARDS, NOT REDUCED
+   53	57432	20160213	1	clear, no clouds
+   54	57433	20160214	1	clear, no clouds
+   55	57434	20160215	1	clear, no clouds
+   56	57435	20160216	0	some clouds first half
+   57	57436	20160217	1	clear, no clouds
+   58	57437	20160218	1	clear, no clouds
+   59	57517	20160508	0	overcast
+   60	57518	20160509	0	overcast
+   61	57519	20160510	0	overcast
+   62	57520	20160511	0	overcast
+   63	57521	20160512	0	overcast
