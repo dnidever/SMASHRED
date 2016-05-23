@@ -31,9 +31,9 @@
    30	56809	20140531	1	clear, photometric, nothing on rasicam
    31	56810	20140601	1	clear, no clouds, nothing on rasicam
    32	56811	20140602	1	clear, nothing on rasicam
-   33	56983	20141121	1	???, no rasicam video  
-   34	56984	20141122	1	???, no rasicam video
-   35	56985	20141123	1	???, no rasicam video, large stdred RMS
+   33	56983	20141121	1	photometric, no rasicam video  
+   34	56984	20141122	1	photometric, no rasicam video
+   35	56985	20141123	0	thin clouds, non-photometric, no rasicam video, large stdred RMS
    36	57009	20141217	1	completely clear
    37	57010	20141218	1	completeiy clear  
    38	57095	20150313	1	clear, rasicam shows some clouds in middle of night, but most were far away from our fields
