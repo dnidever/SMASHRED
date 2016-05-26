@@ -1,5 +1,6 @@
 pro get_transphot_night,arr,mfitstr,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam,fixcolam=fixcolam,$
-                        fixchipzp=fixchipzp,verbose=verbose,silent=silent,pl=pl
+                        fixchipzp=fixchipzp,resid=resid,expstr=expstr,verbose=verbose,silent=silent,pl=pl,$
+                        save=save
 
 ; Fit color and zpterm for each night+chip and airmass term
 ; per night. itertate until convergence
@@ -18,8 +19,11 @@ pro get_transphot_night,arr,mfitstr,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixa
 ; OUTPUTS:
 ;  mfitstr     The structure of fitted values, one element for each
 ;                chip for this night.
+;  =resid      The residuals of the fit.
+;  =expstr     Structure giving statistics for each exposure.
 
 undefine,mfitstr
+undefine,expstr
 
 narr = n_elements(arr)
 imjd = arr[0].mjd
@@ -29,12 +33,31 @@ ui = uniq(arr.chip,sort(arr.chip))
 uchips = arr[ui].chip
 nchips = n_elements(uchips)
 
+tags = tag_names(arr)
+filter = strlowcase(tags[6])  ; this should be the filter name
+
 ; Initialize the fitting structure
 mfitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,nstars:-1L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
                      colterm:999.0,coltermerr:999.0,amterm:0.0,amtermerr:999.0,colamterm:0.0,colamtermerr:999.0,$
                      rms:999.0,sig:999.0,chisq:999.0,nbrt:0L,brtrms:999.0,brtsig:999.0,brtchisq:999.0,status:-1,$
                      relzpterm:99.99,chiprelzpterm:99.99,chiprelcolterm:99.99,$
                      badsoln:-1,photometric:-1},nchips)
+
+
+; Initialize the EXPOSURE structure
+ui = uniq(arr.expnum,sort(arr.expnum))
+uexpnum = arr[ui].expnum
+nexpnum = n_elements(uexpnum)
+expstr = replicate({expnum:'',mjd:-1L,nightnum:-1L,exptime:-1.0,airmass:-1.0,nstars:-1L,medresid:999999.0,sigresid:999999.0,rejected:0},nexpnum)
+for i=0,nexpnum-1 do begin
+  MATCH,arr.expnum,uexpnum[i],ind1,ind2,count=nmatch,/sort
+  expstr[i].expnum = uexpnum[i]
+  expstr[i].mjd = imjd
+  expstr[i].exptime = arr[ind1[0]].exptime
+  expstr[i].airmass = median([arr[ind1].airmass])
+  expstr[i].nstars = nmatch
+endfor
+
 
 ; Use input airmass term
 if n_elements(fixam) gt 0 then begin
@@ -51,15 +74,17 @@ endif
 endflag = 0
 count = 0L
 lastmfitstr = mfitstr
+rejected = bytarr(narr)
 WHILE (endflag eq 0) do begin
 
   ; Fit color term and zpterm for each chip separately
   ;---------------------------------------------------
 
-  resid = fltarr(narr)+999.0       ; use to derive nightly zpterm
+  resid = fltarr(narr)+999.0       ; FULL residuals
+  ntresid = fltarr(narr)+999.0     ; use to derive nightly zpterm, amterm, colterm, colamterm, chip-level zpterm removed
   amresid = fltarr(narr)+999.0     ; use to derive AIRMASS term, col and colam removed
   colamresid = fltarr(narr)+999.0  ; use to derive COLAM term, col and airmass removed
-  for i=0,nchips-1 do begin
+  FOR i=0,nchips-1 do begin
     ichip = uchips[i]
     MATCH,arr.chip,uchips[i],ind1,ind2,count=nmatch,/sort
 
@@ -86,19 +111,25 @@ WHILE (endflag eq 0) do begin
       mfitstr[i].zptermerr = zptermerr
     endif
 
+    ; Get non-rejected points
+    MATCH,rejected[ind1],0,ind1b,ind2b,count=nmatch2,/sort
+
     ; Enough stars to fit the terms
-    if nmatch gt 2 then begin
+    if nmatch gt 2 and nmatch2 gt 2 then begin
+
+      ; non-rejected stars
+      gdind1 = ind1[ind1b]
 
       ; Fit the color term
       ; CMAG - 6
       ; COL - 8
-      x = arr[ind1].(8)
-      mag = arr[ind1].mag
-      y = arr[ind1].mag-arr[ind1].(6)
+      x = arr[gdind1].(8)
+      mag = arr[gdind1].mag
+      y = arr[gdind1].mag-arr[gdind1].(6)
       yorig = y   ; with extinction still in 
-      y -= arr[ind1].airmass*mfitstr[i].amterm                       ; subtract AIRMASS term
-      y -= arr[ind1].(8) * arr[ind1].airmass * mfitstr[i].colamterm  ; subtract COLOR*AIRMASS term
-      err = arr[ind1].err
+      y -= arr[gdind1].airmass*mfitstr[i].amterm                        ; subtract AIRMASS term
+      y -= arr[gdind1].(8) * arr[gdind1].airmass * mfitstr[i].colamterm  ; subtract COLOR*AIRMASS term
+      err = arr[gdind1].err
 
       ; Color term
       ;-------------
@@ -119,6 +150,9 @@ WHILE (endflag eq 0) do begin
           ydiff = y-yfit
           ; use poly_fit to get uncertainties
           coef1 = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
+
+wt = 1.0/err^2 * arr[gdind1].airmass
+STOP,'WEIGHT LOW-AIRMASS POINTS HIGHER!!!!'
 
           zpterm = coef[0]       ; this might get redetermined below
           zptermerr = coeferr[0]
@@ -144,7 +178,7 @@ WHILE (endflag eq 0) do begin
       ;----------------
       ; Fit zpterm
       if n_elements(fixcolr) gt 0 and n_elements(fixchipzp) eq 0 then begin
-        y -= arr[ind1].(8) * colterm  ; subtract input color term
+        y -= arr[gdind1].(8) * colterm  ; subtract input color term
 
         coef0 = median(y)
         yfit0 = poly(x,coef0)
@@ -162,22 +196,33 @@ WHILE (endflag eq 0) do begin
       endif
       ; Use input chip-level zero-point term
       if n_elements(fixchipzp) gt 0 then begin
-        y -= arr[ind1].(8) * colterm  ; subtract input color term
-        zpterm = mfitstr[i].zpterm
+        y -= arr[gdind1].(8) * colterm  ; subtract input color term
+        zpterm = mfitstr[i].zpterm      ; this is the input chip-level zpterm from above
         zptermerr = mfitstr[i].zptermerr
         ydiff = y-zpterm
         yerror = sqrt(mean((ydiff-median(ydiff))^2))  ; subtract out nightly offset
         status = 1
       endif
 
-      yfit = arr[ind1].(8)*colterm + zpterm
-      resid[ind1] = ydiff
-      amresid[ind1] = yorig-yfit     ; remove color + zpterm
-      colamresid[ind1] = yorig-yfit  ; remove color + zpterm
-
       chisq = mean((ydiff/err)^2)
       if n_elements(fixchipzp) gt 0 then chisq = mean(((ydiff-median(ydiff))/err)^2)  ; subtract nightly zpterm
 
+      ; Residuals
+      yfit = arr[ind1].(8)*colterm + zpterm
+      ; residuals for computing nightly zpterm
+      ;   subtract amterm, colamterm, colterm and chip-level zpterm
+      ntresid[ind1] = (arr[ind1].mag-arr[ind1].(6)) - arr[ind1].(8)*colterm - zpterm - arr[ind1].airmass*mfitstr[i].amterm $
+                      - arr[ind1].(8)*arr[ind1].airmass*mfitstr[i].colamterm 
+      ; residuals for computing airmass term
+      ;   subtract colterm, zpterm
+      ;     (nightly zpterm will be subtracted below if necessary)
+      amresid[ind1] = (arr[ind1].mag-arr[ind1].(6)) - yfit
+      ; residuals for computing col*airmass term
+      ;   subtract colterm, zpterm (amterm done below)
+      ;     (nightly zpterm will be subtracted below if necessary)
+      colamresid[ind1] = (arr[ind1].mag-arr[ind1].(6)) - yfit
+
+      ; Stick information into chip structure
       mfitstr[i].zpterm = zpterm
       mfitstr[i].zptermerr = zptermerr
       mfitstr[i].colterm = colterm
@@ -199,13 +244,17 @@ WHILE (endflag eq 0) do begin
       endif
       if keyword_set(verbose) then print,strtrim(i+1,2),' ',ichip,' ',nmatch,' ',zpterm,' ',colterm,' ',yerror,' ',brtrms
     endif
-  endfor  ; chip loop
+
+  ENDFOR  ; chip loop
+
 
   ; Fit nightly zero-point term
   ;-----------------------------
   if n_elements(fixchipzp) gt 0 then begin
+    ; NOT REJECTING ANY POINTS FOR NOW
+
     x = arr.mag*0
-    y = resid  ; amterm, colamterm, colterm and chip-level zpterm removed
+    y = ntresid  ; amterm, colamterm, colterm and chip-level zpterm removed
     err = arr.err
 
     coef0 = median(y)
@@ -226,6 +275,7 @@ WHILE (endflag eq 0) do begin
     mfitstr.zpterm += ntzpterm
     mfitstr.zptermerr = sqrt(mfitstr.zptermerr^2 + ntzptermerr^2)  ; add in quadrature
 
+    ; Subtracted nightly zero-point term from residuals
     amresid -= ntzpterm
     colamresid -= ntzpterm
   endif
@@ -233,10 +283,12 @@ WHILE (endflag eq 0) do begin
   ; Fit airmass term for all chips
   ;-------------------------------
   if n_elements(fixam) eq 0 then begin
-    x = arr.airmass
-    y = amresid
-    mag = arr.mag
-    err = arr.err
+    ; get non-rejected points
+    MATCH,rejected,0,ind1,/sort
+    x = arr[ind1].airmass
+    y = amresid[ind1]
+    mag = arr[ind1].mag
+    err = arr[ind1].err
     ;mfitstr[i].minam = min(x)
     ;mfitstr[i].maxam = max(x)
 
@@ -258,10 +310,11 @@ WHILE (endflag eq 0) do begin
       ; use poly_fit to get uncertainties
       coef1 = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
 
-      colamresid -= yfit  ; remove AIRMASS term
-
       mfitstr.amterm = coef[1]
       mfitstr.amtermerr = coeferr[1]
+
+      ; Remove airmass term from residuals for colamterm
+      colamresid -= arr.airmass*mfitstr.amterm   ; remove AIRMASS term
 
    ; Not enough airmass range
    endif else begin
@@ -298,11 +351,41 @@ WHILE (endflag eq 0) do begin
     mfitstr.colamtermerr = coeferr[1]
   endif
 
-
   ;resid2[ind1] = diff  ; save the residuals
 
   nrms = sqrt(mean((ydiff/err)^2))
 
+
+  ; Final/full residuals
+  for i=0,nchips-1 do begin
+    MATCH,arr.chip,uchips[i],ind1,ind2,count=nmatch,/sort
+    resid[ind1] = arr[ind1].mag - arr[ind1].(6) - mfitstr[i].zpterm - $
+                  arr[ind1].(8)*mfitstr[i].colterm - arr[ind1].airmass*mfitstr[i].amterm
+  endfor
+
+  ; Get residual statistics for each EXPOSURE
+  for i=0,nexpnum-1 do begin
+    MATCH,arr.expnum,uexpnum[i],ind1,ind2,count=nmatch,/sort
+    expstr[i].nstars = nmatch
+    expstr[i].medresid = median([resid[ind1]])
+    expstr[i].sigresid = mad([resid[ind1]-expstr[i].medresid],/zero)
+  endfor
+
+  ; Remove any outlier exposures
+  ;  can't do it on the first iteration because zpterm
+  ;  is messed up due to the contribution of amterm/colamterm
+  if count gt 0 then begin
+    sigexp = mad([expstr.medresid])
+    bdexp = where(abs(expstr.medresid) gt (3*sigexp>0.1),nbdexp)
+    if nbdexp gt 0 then begin
+      print,'Rejected ',strtrim(nbdexp,2),' exposure(s). ',strjoin(expstr[bdexp].expnum,' ')
+      for i=0,nbdexp-1 do begin
+        MATCH,arr.expnum,expstr[bdexp[i]].expnum,ind1,ind2,count=nmatch,/sort
+        rejected[ind1] = 1
+        expstr[bdexp[i]].rejected = 1
+      endfor
+    endif
+  endif  ; 2nd+ iteration
 
   ; Have we converged
   ; difference in zpterm, colterm, airmass terms
@@ -311,7 +394,9 @@ WHILE (endflag eq 0) do begin
   diff = [ abs(mfitstr.zpterm-lastmfitstr.zpterm), $
            abs(mfitstr.colterm-lastmfitstr.colterm), $
            abs(mfitstr[0].amterm-lastmfitstr[0].amterm), abs(mfitstr[0].colamterm-lastmfitstr[0].colamterm) ]
-  if max(diff) lt maxdiff_thresh or count ge maxiter then endflag=1
+  ;  need at least one iteration to get the zpterm right because
+  ;  of the contribution of the airmass and colamterm terms
+  if (count gt 1) and (max(diff) lt maxdiff_thresh or count ge maxiter) then endflag=1
   if not keyword_set(silent) then print,count,median(mfitstr.zpterm),median(mfitstr.colterm),mfitstr[0].amterm,$
           mfitstr[0].colamterm,max(diff[0:nchips-1]),max(diff[nchips:2*nchips-1]),max(diff[2*nchips]),max(diff[2*nchips+1]),format='(I5,8F11.5)'
 
@@ -324,9 +409,31 @@ WHILE (endflag eq 0) do begin
 
 ENDWHILE
 
-if keyword_set(pl) then begin
-  plotc,x,ydiff,err,ps=3,yr=[-2,2],xtit='Airmass',ytit='Residuals',tit='Color-coded by error'
-  oplot,[0,10],[0,0],linestyle=2
+; Make a plot of residuals vs. color and residuals vs. airmass
+; color-coded by the errors
+
+if keyword_set(pl) or keyword_set(save) then begin
+  if keyword_set(save) then begin
+    !p.font = 0
+    loadct,39,/silent
+    psfile = 'get_transphot_'+filter+'_'+strtrim(imjd,2)+'_resid'
+    ps_open,psfile,thick=4,/color,/encap
+  endif
+  yr = [-4,4]*mad(resid)
+  xr1 = [-0.5,3]  ;minmax(arr.(8))
+  sicol = sort(arr.(8))
+  xr1 = [arr[sicol[0.05*narr]].(8)-0.1,arr[sicol[0.95*narr]].(8)+0.1]  ; 5th and 95th percentile 
+  xr2 = [1 < min(arr.airmass)-0.05, max(arr.airmass)+0.05]
+  plotc,arr.(8),resid,arr.err,ps=3,xr=xr1,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
+        pos=[0.08,0.08,0.53,0.90],colpos=[0.08,0.97,0.98,0.99]
+  oplot,[-10,10],[0,0],linestyle=2
+  plotc,arr.airmass,resid,arr.err,ps=3,xr=xr2,yr=yr,xs=1,ys=1,xtit='Airmass',$
+        ytit=' ',ytickformat='(A1)',/noerase,/nocolorbar,pos=[0.53,0.08,0.98,0.90]
+  oplot,[-10,10],[0,0],linestyle=2
+  xyouts,0.5,0.91,'Residuals '+filter+'-band '+strtrim(imjd,2)+' RMS='+stringize(median(mfitstr.brtrms),ndec=3)+'  (color-coded by ERR)',align=0.5,charsize=1.2,/norm
+  if keyword_set(save) then begin
+    ps_close,/silent
+  endif
 endif
 
 ;stop
@@ -336,7 +443,7 @@ end
 ;-----------------
 
 pro get_transphot_allnights,arr,mstr,fitstr,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam,fixcolam=fixcolam,$
-                        fixchipzp=fixchipzp,resid=resid,verbose=verbose,silent=silent,pl=pl
+                        fixchipzp=fixchipzp,resid=resid,expstr=expstr,verbose=verbose,silent=silent,pl=pl,save=save
 
 
 tags = tag_names(arr)
@@ -368,17 +475,24 @@ for i=0,nmjds-1 do begin
   mstr[i].seeing = median(arr1.seeing)
 
   GET_TRANSPHOT_NIGHT,arr1,mfitstr,/silent,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam,$
-                      fixchipzp=fixchipzp,fixcolam=fixcolam,verbose=verbose
+                      fixchipzp=fixchipzp,fixcolam=fixcolam,resid=resid1,expstr=expstr1,$
+                      verbose=verbose,pl=pl,save=save
   mfitstr.nightnum = i+1
 
-  for j=0,nchips-1 do begin
-    MATCH,arr1.chip,uchips[j],chind,ind4,count=nmatch2,/sort
-    MATCH,mfitstr.chip,uchips[j],mind,/sort
-    if nmatch gt 0 then begin
-      resid[ind1[chind]] = arr[ind1[chind]].mag - arr[ind1[chind]].(6) - mfitstr[mind].zpterm - $
-            arr[ind1[chind]].(8)*mfitstr[mind].colterm - arr[ind1[chind]].airmass*mfitstr[mind].amterm
-    endif
-  endfor
+  resid[ind1] = resid1
+  expstr1.mjd = umjds[i]
+  expstr1.nightnum = i+1
+  push,expstr,expstr1
+
+  ;; Calculate residuals
+  ;for j=0,nchips-1 do begin
+  ;  MATCH,arr1.chip,uchips[j],chind,ind4,count=nmatch2,/sort
+  ;  MATCH,mfitstr.chip,uchips[j],mind,/sort
+  ;  if nmatch gt 0 then begin
+  ;    resid[ind1[chind]] = arr[ind1[chind]].mag - arr[ind1[chind]].(6) - mfitstr[mind].zpterm - $
+  ;          arr[ind1[chind]].(8)*mfitstr[mind].colterm - arr[ind1[chind]].airmass*mfitstr[mind].amterm
+  ;  endif
+  ;endfor
 
   ; Measure total RMS and NRMS per night
   totresid = mfitstr.nstars*mfitstr.rms^2
@@ -420,6 +534,7 @@ for i=0,nmjds-1 do begin
 
 endfor
 
+;stop
 
 end
 
@@ -444,13 +559,39 @@ narr = n_elements(arr)
 tags = tag_names(arr)
 filter = strlowcase(tags[6])  ; this should be the filter name
 
+; Trim stars
+errlim = 0.05
+;if filter eq 'u' then errlim=0.08
+print,'Emposing error cut, ERR<=',strtrim(errlim,2),' mag'
+gd = where(arr.err lt errlim,ngd)
+arr = arr[gd]
+narr = n_elements(arr)
 
-; Git all of the nights
-GET_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0
+; u-band, removing very blue and very red stars
+if filter eq 'u' then begin
+  print,'Removing very blue/red stars'
+  gd = where(arr.(8) ge 0.73 and arr.u_g lt 2.5,ngd)  ; u-g
+  arr = arr[gd]
+  narr = n_elements(arr)
+endif
+
+; Adding expnum to ARR
+if tag_exist(arr,'expnum') eq 0 then begin
+  print,'Adding EXPNUM column to ARR'
+  add_tag,arr,'EXPNUM','',arr
+  dum = strsplitter(arr.frame,'_',/extract)
+  expnum = reform(dum[0,*])
+  arr.expnum = expnum
+endif
+
+
+; Get all of the nights
+GET_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0  ;,/save
 nmjds = n_elements(mstr0)
 uimjd = uniq(mstr0.mjd,sort(mstr0.mjd))
 umjd = mstr0[uimjd]
 nfitstr = n_elements(fitstr0)
+
 
 ; Non-photometric weather
 ;------------------------
