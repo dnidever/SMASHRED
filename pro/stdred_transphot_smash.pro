@@ -33,6 +33,7 @@
 ;  =yrange     Yrange for residual plotting.
 ;  /nooutput  Don't print out any of the transformation files.
 ;  /sepchip  Each chip separately.
+;  /usemjd   Use MJD instead of NIGHT for the night numbers.
 ;  /silent   Don't print anything to the screen.
 ;  /stp     Stop at the end of the program.
 ;
@@ -110,7 +111,7 @@ pro stdred_transphot_smash,input,stp=stp,arr=arr,plotresid=plotresid,$
                   yrange=yrange,fitzp=fitzp,fitam=fitam,fitcolr=fitcolr,fitac=fitac,fitcolsq=fitcolsq,$
                   fixam=fixam,fixcolr=fixcolr,fixac=fixac,fixcolsq=fixcolsq,trans=trans,$
                   tlines=tlines,rms=rms,errlim=errlim,nooutput=nooutput,$
-                  inparr=inparr,sepchip=sepchip,silent=silent
+                  inparr=inparr,sepchip=sepchip,silent=silent,usemjd=usemjd
 
 ; Not enough inputs
 if n_elements(input) eq 0 and n_elements(inparr) eq 0 then begin
@@ -118,6 +119,7 @@ if n_elements(input) eq 0 and n_elements(inparr) eq 0 then begin
   print,'                          fitzp=fitzp,fitam=fitam,fitcolr=fitcolr,fitac=fitac,fitcolsq=fitcolsq'
   print,'                          fixam=fixam,fixcolr=fixcolr,fixac=fixac,fixcolsq=fixcolsq'
   print,'                          errlim=errlim,sepchip=sepchip,nooutput=nooutout,silent=silent'
+  print,'                          usemjd=usemjd'
   return
 endif
 
@@ -172,6 +174,7 @@ if n_elements(fitam) eq 0 then fitam=1
 if n_elements(fitcolr) eq 0 then fitcolr=1
 if n_elements(fitac) eq 0 then fitac=0
 if n_elements(fitcolsq) eq 0 then fitcolsq=0
+if n_elements(usemjd) eq 0 then usemjd=1
 
 if not keyword_set(silent) then begin
   case fitzp of
@@ -190,6 +193,12 @@ if not keyword_set(silent) then begin
      else: print,'FITCOLR=',strtrim(fitcolr,2),'  ???'
   endcase
 end
+
+; Use MJD instead of NIGHT
+if keyword_set(usemjd) then begin
+  print,'Replacing NIGHT with MJD!!!!!'
+  arr.night = arr.mjd
+endif
 
 
 ; Each chip separately
@@ -224,14 +233,36 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
   ; 6.) Remove airmass terms and nightly zpterm and fit for
   ;       chip-specific zero-point and color terms
   ; 7.) Construct final transformation equations
+
+  ; Adding new colummns to ARR
+  ;print,'Adding new columns.  This could take a while'
+  tags = tag_names(arr)
+  ntags = n_elements(tags)
+  tagtypes = lonarr(ntags)
+  for i=0,ntags-1 do tagtypes[i]=size(arr[0].(i),/type)
+  newtags = tags
+  newtags = [tags,'cmag','col','rejected','realstar','resid']
+  newtypes = [tagtypes, 4, 4, 1, 14, 4]
+  new = create_struct(newtags[0],fix(0,type=newtypes[0]))
+  nnewtags = n_elements(newtags)
+  for i=1,nnewtags-1 do new=create_struct(new,newtags[i],fix(0,type=newtypes[i]))
+  old = temporary(arr)
+  arr = replicate(new,n_elements(old))
+  STRUCT_ASSIGN,old,arr,/nozero
+  undefine,old
+
+  ; Trim strings
+  ;print,'Trimming strings'
+  strind = where(newtypes eq 7,nstrind)
+  for i=0,nstrind-1 do arr.(strind[i])=strtrim(arr.(strind[i]),2)
   
   ; Nights/MJD
-  ui = uniq(arr.mjd,sort(arr.mjd))
-  unights = arr[ui].mjd
-  nnights = n_elements(unights)
-  ;ui = uniq(arr.night,sort(arr.night))
-  ;unights = arr[ui].night
+  ;ui = uniq(arr.mjd,sort(arr.mjd))
+  ;unights = arr[ui].mjd
   ;nnights = n_elements(unights)
+  ui = uniq(arr.night,sort(arr.night))
+  unights = arr[ui].night
+  nnights = n_elements(unights)
 
   ; Chips
   ui = uniq(arr.chip,sort(arr.chip))
@@ -245,7 +276,8 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
   ; ---Check how many data points there are for each chip/night combination---
   print,'' & print,'The matrix of datapoints per night and chip'
   npts_chipnight = lonarr(nnights,nchips)
-  chipnight = strtrim(arr.chip,2)+'-'+strtrim(arr.mjd,2)
+  ;chipnight = strtrim(arr.chip,2)+'-'+strtrim(arr.mjd,2)
+  chipnight = strtrim(arr.chip,2)+'-'+strtrim(arr.night,2)
   for i=0,nnights-1 do begin
     for j=0,nchips-1 do begin
       ;gd = where(arr.night eq unights[i] and arr.chip eq chips[j] and arr.err le errlim,ngd)
@@ -266,7 +298,8 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
   print,'Night  RANGE    MIN   MAX   Individual airmasses per frame'
   for i=0,nnights-1 do begin
     ;gd = where(arr.night eq unights[i] and arr.err le errlim,ngd)
-    MATCH,arr.mjd,unights[i],ind1,ind2,/sort
+    ;MATCH,arr.mjd,unights[i],ind1,ind2,/sort
+    MATCH,arr.night,unights[i],ind1,ind2,/sort
     gd1 = where(arr[ind1].err le errlim,ngd)
     gd = ind1[gd1]
     ;gd = where(arr.mjd eq unights[i] and arr.err le errlim,ngd)
@@ -286,7 +319,7 @@ if (keyword_set(sepchip) or fitzp eq 2 or fitam eq 2 or fitcolr eq 2) and tag_ex
           '  ',strtrim(medam_uframe1[si],2)
   endfor
 
-stop
+;stop
   
   ; 1.) Initial solution for all data combined
   ;-------------------------------------------
@@ -312,7 +345,7 @@ stop
 
 
   
-stop
+;stop
   
   ; 2.) Initial separate solutions for each chip  
   ;---------------------------------------------
@@ -354,7 +387,7 @@ stop
              trans[j].colterm,trans[j].rms,format='(2I5,4F10.5)'
   endfor
 
-stop
+;stop
 
   ; 3.) Fit nightly airmass terms
   ;------------------------------
@@ -374,8 +407,8 @@ stop
     amtermarr = fltarr(nnights)
     amerrarr = fltarr(nnights)
     For i=0,nnights-1 do begin
-      ;ind = where(allarr1.night eq unights[i],nind)
-      ind = where(allarr1.mjd eq unights[i],nind)
+      ind = where(allarr1.night eq unights[i],nind)
+      ;ind = where(allarr1.mjd eq unights[i],nind)
       arr1 = allarr1[ind]
       resid = arr1.mag-arr1.cmag-colterm0*arr1.col
       gd = where(arr1.rejected eq 0,ngd)
@@ -405,6 +438,7 @@ stop
     arr_nozpamterm = arr       ; amterm removed
     for i=0,nnights-1 do begin
       ind = where(arr_nozpamterm.night eq unights[i],nind)
+      ;ind = where(arr_nozpamterm.mjd eq unights[i],nind)
       ind2 = where(trans0.night eq unights[i],nind2)
       arr_nozpamterm[ind].mag -= amtermarr[i]*arr_nozpamterm[ind].airmass
       arr_nozpamterm[ind].mag -= trans0[ind2[0]].zpterm
@@ -430,7 +464,7 @@ stop
     colsqerr = 0.0
  endelse
     
-stop
+;stop
   
   ; 4.) Remove airmass terms and fit chip-specfic color-terms and chip/night
   ;       specific zero-point terms
@@ -443,6 +477,7 @@ stop
     arr_noamterm = arr            ; amterm removed
     for i=0,nnights-1 do begin
       ind = where(arr_noamterm.night eq unights[i],nind)
+      ;ind = where(arr_noamterm.mjd eq unights[i],nind)
       arr_noamterm[ind].mag -= amtermarr[i]*arr_noamterm[ind].airmass
     endfor
     print,' Chip  Night ZPterm    AMterm   COLterm      RMS'
@@ -472,6 +507,7 @@ stop
     arr_noamterm = arr            ; amterm removed
     for i=0,nnights-1 do begin
       ind = where(arr_noamterm.night eq unights[i],nind)
+      ;ind = where(arr_noamterm.mjd eq unights[i],nind)
       arr_noamterm[ind].mag -= amtermarr[i]*arr_noamterm[ind].airmass
     endfor
     print,' Chip  Night ZPterm    AMterm   COLterm      RMS'
@@ -501,7 +537,7 @@ stop
   endelse
   ENDCASE  ; fitcolr case
 
-stop
+;stop
   
   ; 5.) Measure nightly zero-point term
   ;------------------------------------
@@ -510,11 +546,13 @@ stop
   zperrarr = fltarr(nnights)
   for i=0,nnights-1 do begin
     ind = where(allarr2.night eq unights[i],nind)
+    ;ind = where(allarr2.mjd eq unights[i],nind)
     arr2 = allarr2[ind]
     resid = arr2.mag-arr2.cmag
     for j=0,nchips-1 do begin
       indch = where(arr2.chip eq chips[j],nindch)
       indtrans = where(alltrans2.night eq unights[i] and alltrans2.chip eq chips[i],nindtrans)
+      ;indtrans = where(alltrans2.mjd eq unights[i] and alltrans2.chip eq chips[i],nindtrans)
       resid[indch] -= alltrans2[indtrans[0]].colterm*arr2[indch].col
     endfor
     gd = where(arr2.rejected eq 0,ngd)
@@ -528,7 +566,7 @@ stop
 
 
   
-stop
+;stop
   
   ; 6.)  Remove airmass terms and nightly zpterm and fit for
   ;       chip-specific zero-point and color terms
@@ -537,6 +575,7 @@ stop
   tarr = arr            ; amterm and nightly zpterm removed
   for i=0,nnights-1 do begin
     ind = where(tarr.night eq unights[i],nind)
+    ;ind = where(tarr.mjd eq unights[i],nind)
     tarr[ind].mag -= amtermarr[i]*tarr[ind].airmass
     tarr[ind].mag -= zptermarr[i]
   endfor
@@ -547,6 +586,7 @@ stop
     ind = where(tarr.chip eq chips[i],nind)
     inparr = tarr[ind]
     inparr.night = min(inparr.night)  ; solve as ONE night, one solution
+    ;inparr.mjd = min(inparr.mjd)  ; solve as ONE night, one solution
     undefine,arr3,fixcolr1
     if fitcolr eq 1 then fixcolr1=colterm   ; use global color term
     stdred_transphot_smash,'',stp=stp,plotresid=plotresid,$
@@ -568,7 +608,7 @@ stop
   if nbdtrans gt 0 then alltrans3[bdtrans].zperr = min(alltrans3[gdtrans].zperr)
 
   
-stop
+;stop
   
   ; 7.) Construct final transformation equations
   ;---------------------------------------------
@@ -583,7 +623,8 @@ stop
       indtrans = i*nchips+j
 
       ; start with final chip-specific color/zpterm and errors
-      indtrans3 = where(alltrans3.chip eq chips[j],nindtrans3)
+      ;indtrans3 = where(alltrans3.chip eq chips[j],nindtrans3)
+      indtrans3 = where(alltrans3.night eq unights[i] and alltrans3.chip eq chips[j],nindtrans3)
       trans = alltrans3[indtrans3]
       ; Add nightly zpterm
       trans.zpterm += zptermarr[i]
@@ -611,6 +652,7 @@ stop
       
       ; Calculate final residuals and rms
       ind = where(allarr1.night eq unights[i] and allarr1.chip eq chips[j],nind)
+      ;ind = where(allarr1.mjd eq unights[i] and allarr1.chip eq chips[j],nind)
       if nind gt 0 then begin
         arr1 = allarr1[ind]
         arr1.resid = arr1.mag-arr1.cmag-trans.zpterm-$
@@ -685,8 +727,10 @@ stop
 
   ; Figure out what the magnitude and color names are
   tags = TAG_NAMES(arr)
-  magname = strlowcase(tags[6])  ; lowercase, ugriz
-  colname = strlowcase(tags[8])  ; lowercase, ugriz
+  ;magname = strlowcase(tags[6])  ; lowercase, ugriz
+  ;colname = strlowcase(tags[8])  ; lowercase, ugriz
+  magname = strupcase(tags[6])  ; lowercase, ugriz
+  colname = strupcase(tags[8])  ; lowercase, ugriz
   colname = REPSTR(colname,'_','-')
 
 
@@ -709,7 +753,8 @@ stop
       itrans = alltrans[tind[0]]
 
       undefine,lines1
-      add=string(itrans.chip,format='(I3)')+'  '+magname+'  '+colname+'  '
+      ;add=string(itrans.chip,format='(I3)')+'  '+magname+'  '+colname+'  '
+      add=string(itrans.night,format='(I7)')+'  '+string(itrans.chip,format='(I3)')+'  '+magname+'  '+colname+'  '
       nadd = strlen(add)
       magline = add+string(itrans.zpterm,format=fmt2)+'   '+string(itrans.amterm,format=fmt2)+$
            '   '+string(itrans.colterm,format=fmt2)+'   '+string(itrans.amcolterm,format=fmt2)+'   '+string(itrans.colsqterm,format=fmt2)
@@ -746,21 +791,22 @@ stop
   
 
   
-stop
+;stop
   
   return
 
 endif  ; each chip separately
 
+;t0 = systime(1)
 
 ; Add CMAG, COL to arr
-ADD_TAG,arr,'CMAG',0.0,arr
+if tag_exist(arr,'CMAG') eq 0 then ADD_TAG,arr,'CMAG',0.0,arr
 arr.cmag = arr.(6)
-ADD_TAG,arr,'COL',0.0,arr
+if tag_exist(arr,'COL') eq 0 then ADD_TAG,arr,'COL',0.0,arr
 arr.col = arr.(8)
 
 ; Add a rejection tag
-ADD_TAG,arr,'rejected',0,arr
+if tag_exist(arr,'rejected') eq 0 then ADD_TAG,arr,'rejected',0,arr
 arr.rejected = 0
 
 ; Select only stars with good instrumental and calibrated photometry
@@ -801,14 +847,15 @@ idhi = where(shift(arr.id,-1) ne arr.id)
 
 ;; Get a number for each unique "real" star
 ; Use the calibrated color and magnitude to do this.
-ADD_TAG,arr,'REALSTAR',0L,arr
+if tag_exist(arr,'realstar') eq 0 then ADD_TAG,arr,'REALSTAR',0L,arr
 ui = uniq(arr.id,sort(arr.id))
 uniqid = arr[ui].id
 nuniqid = n_elements(ui)
-for i=0,nuniqid-1 do begin
-  gd = where(arr.id eq uniqid[i],ngd)
-  arr[gd].realstar=i+1
-end
+for i=0LL,nuniqid-1 do begin
+  ;gd = where(arr.id eq uniqid[i],ngd)
+  ;arr[gd].realstar=i+1
+  arr[idlo[i]:idhi[i]].realstar=i+1
+endfor
 
 
 ; Nights
@@ -831,6 +878,8 @@ nchips = n_elements(uchips)
 mapchip = lonarr(max(uchips)+1)-1
 mapchip[uchips] = indgen(nchips)
 
+;print,systime(1)-t0
+
 ; Outlier rejection loop
 flag=0
 count=0
@@ -847,6 +896,8 @@ if not keyword_set(silent) then begin
   print,'====================================='
 endif
 WHILE (flag ne 1) do begin
+
+;t0 = systime(1)
 
   ; Get non-rejected stars
   gd = where(arr.rejected eq 0,ngd)
@@ -920,6 +971,7 @@ WHILE (flag ne 1) do begin
     par = fpar
   endif
 
+;t1 = systime(1)
   ; Chuck any stars that are REALLY off
   nbad2 = 0
   com=''
@@ -938,9 +990,10 @@ WHILE (flag ne 1) do begin
 
       nstar_rej++
     endif
-  end
+  endfor
   if nstar_rej gt 0 then com=strtrim(nstar_rej,2)+' stars rejected'
   ;if com ne '' then com=com+' rejected'
+;print,systime(1)-t1
 
   count++
 
@@ -955,6 +1008,7 @@ WHILE (flag ne 1) do begin
   if not keyword_set(silent) then $
     print,format=fmt,count,npts,rms,sig,nnewrej,'',com
 
+;print,systime(1)-t0
   ;stop
 
 endwhile
@@ -965,7 +1019,7 @@ if not keyword_set(silent) then $
 
 
 ; Put the residual information into the structure
-ADD_TAG,arr,'resid',0.0,arr
+if tag_exist(arr,'resid') eq 0 then ADD_TAG,arr,'resid',0.0,arr
 model = std_transfunc(fpar,mag=arr.mag,col=arr.col,am=arr.airmass,night=arr.night,mapnight=mapnight)
 resid = model-arr.cmag
 arr.resid = resid
@@ -983,7 +1037,7 @@ for i=0,nnights-1 do begin
   dum = where(arr.night eq inight and arr.rejected eq 0,ngd_inight)
   if not keyword_set(silent) then $
     print,'Night '+strtrim(inight,2)+' Nobs = '+strtrim(ngd_inight,2)
-end
+endfor
 
 ; Print out RMS per night
 ;------------------------
@@ -999,7 +1053,7 @@ for i=0,nnights-1 do begin
   if ngd_inight eq 1 then irms = 0.0
   if not keyword_set(silent) then $
     print,'Night '+strtrim(inight,2)+' RMS = '+string(irms,format='(F10.5)')
-end
+endfor
 if not keyword_set(silent) then print,''
 
 ; Plot the residuals

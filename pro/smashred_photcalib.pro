@@ -53,6 +53,7 @@ if tag_exist(chstr,'photometric') eq 0 then begin
   add_tags,temp,newtags,['0B','""','""','-1',replicate('0.0d0',10)],chstr
   undefine,temp
 endif
+print,'STILL NEED TO WRITE CODE TO LOAD TRANSFORMATION EQUATIONS!!!!'
 ; Stuff in the transformation equation information
 ;  I got these from stdred_201405/n1.trans
 chstr.photometric = 1
@@ -206,13 +207,16 @@ WHILE (doneflag eq 0) do begin
   last_zpterm = chstr.zpterm  ; save for next time
   lastcmag = allsrc.cmag
 
+  print,''
+  print,'CMAG diff  ','max=',max(diffcmag),'med=',median(diffcmag),'rms=',stddev(diffcmag),format='(A12,A5,F11.6,A5,F11.6,A5,F11.6)'
+  print,'ZPTERM diff','max=',max(diffzpterm),'med=',median(diffzpterm),'rms=',stddev(diffzpterm),format='(A12,A5,F11.6,A5,F11.6,A5,F11.6)'
+
   niter++
 
-  stop
+  ;stop
 
 ENDWHILE
 
-
-stop
+;stop
 
 end

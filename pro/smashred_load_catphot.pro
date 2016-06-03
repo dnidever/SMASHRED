@@ -8,6 +8,7 @@
 ;  info        The structure with the relevant input information needed
 ;                to load the data.
 ;  /useast     Use the .ast files, by default the .phot files are used.
+;  /usrorig    Use the original als/alf files.
 ;  =reduxdir   The reduction directory, the default is "/data/smash/cp/red/photred/"
 ;  /redo       Reget the photometry even if the temporary output file
 ;                already exists.
@@ -24,7 +25,7 @@
 ; By D.Nidever April 2016
 ;-
 
-pro smashred_load_catphot,info,chstr,allsrc,useast=useast,reduxdir=reduxdir,redo=redo,error=error
+pro smashred_load_catphot,info,chstr,allsrc,useast=useast,useorig=useorig,reduxdir=reduxdir,redo=redo,error=error
 
 undefine,error
 undefine,chstr
@@ -33,7 +34,7 @@ undefine,allsrc
 ; Checking the inputs
 if n_elements(info) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_load_catphot,info,chstr,allsrc,useast=useast,reduxdir=reduxdir,redo=redo,error=error'
+  print,'Syntax - smashred_load_catphot,info,chstr,allsrc,useast=useast,useorig=useorig,reduxdir=reduxdir,redo=redo,error=error'
   return
 endif
 
@@ -84,7 +85,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   add_tag,chstr,'allsrcindx',-1LL,chstr
 
   ; Use PHOT files
-  if not keyword_set(useast) then begin
+  if not keyword_set(useast) and not keyword_set(useorig) then begin
     ext = '.phot'
     photfiles = file_search(reduxdir+night+'/'+chstr[0].field+'/'+chstr[0].field+'-*_??'+ext,count=nphotfiles)
     print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',reduxdir+night+'/'+chstr[0].field+'/'
@@ -117,6 +118,47 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
         mind = where(tags eq 'MAG'+strtrim(j+1,2),nmind)
       endelse
       gd = where(phot.(mind[0]) lt 50,ngd)
+
+      ; Load the FITS header
+      fitsfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
+      if file_test(fitsfile) eq 0 then stop,fitsfile,' NOT FOUND'
+      head = headfits(fitsfile)
+
+      ; Load the original values from ALS or ALF files
+      ;  X, Y, CHI, SHARP, RA, DEC
+      if keyword_set(useorig) then begin
+
+      ; FOR NOW DON'T DO THIS!
+      ; USING THE SAME X/Y/RA/DEC IS EASIER FOR MATCHING
+
+        ; determine if als/alf if prob/flag is there
+        ; Load ALS files
+        if alf eq 1 then origphotexten='alf' else origphotexten='als' 
+        origphotfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
+        if file_test(origphotfile) eq 0 then stop,origphotfile,' NOT FOUND'
+
+        ; Load original photometry als/alf file
+        LOADALS,origphotfile,origphot,origphothead,count=norigphot
+
+        ; MATCH THEM UP
+
+        ; ID, X, Y, MAG, ERR, SKY, ITER, CHI, SHARP
+
+        ; Get RA/DEC from the FITS header
+        ;HEAD_XYAD,head,
+
+        ; Converting to IDL X/Y convention, starting at (0,0)
+        ; DAOPHOT has X/Y start at (1,1)
+        x = phot.x - 1.0
+        y = phot.y - 1.0
+
+        ; Get RA/DEC coordinates for X/Y
+        HEAD_XYAD,head,x,y,ra,dec,/degree
+
+        ; Get ID, MAG, ERR, PROB, FLAG from AST/PHOT file
+        stop
+      endif
+
       ; ALLSRC structure schema
       ;  cmbindx   index into ALLOBJ, added later on in smashred_crossmatch.pro
       ;  fix       final ID, added later on in smashred_crossmatch.pro
@@ -134,8 +176,6 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       chstr[chind[j]].allsrcindx = cur_allsrc_indx
 
       ; Get astrometric vertices from header
-      fitsfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
-      head = headfits(fitsfile)
       nx = sxpar(head,'NAXIS1')
       ny = sxpar(head,'NAXIS2')
       head_xyad,head,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree

@@ -66,7 +66,7 @@ testfiles = outfile+['_exposures','_chips','_allsrc','_allobj']+'.fits'
 ntestfiles = n_elements(testfiles)
 if (total(file_test(testfiles)) eq ntestfiles or total(file_test(testfiles+'.gz')) eq ntestfiles) and $
   not keyword_set(redo) then begin
-  print,'Final output files arleady exist for ',field,' and /redo NOT set.'
+  print,'Final output files already exist for ',field,' and /redo NOT set.'
   return
 endif
 
@@ -114,7 +114,7 @@ print,'Running SMASHRED_CALIBRATE_FIELD on ',field
 print,strtrim(ninfo,2),' PHOTRED catalogs found'
 print,info.file
 
-goto,crossmatch
+;goto,crossmatch
 
 ; Loop through the catalogs
 print,'--------------------------------------------------'
@@ -147,10 +147,10 @@ print,'---------------------------------------------------------------------'
 print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
 print,'====================================================================='
 crossmatch:
-;SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj
-;save,fstr,chstr,allsrc,allobj,file=tmpdir+field+'_crossmatch.dat'
-print,'restoring temporary allsrc/allobj file'
-restore,tmpdir+field+'_crossmatch.dat'
+SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj
+;;save,fstr,chstr,allsrc,allobj,file=tmpdir+field+'_crossmatch.dat'
+;print,'restoring temporary allsrc/allobj file'
+;restore,tmpdir+field+'_crossmatch.dat'
 
 
 print,'-----------------------------------------------'
@@ -179,13 +179,14 @@ MWRFITS,allobj,outfile+'_allobj.fits',/create
 ; Compress
 if keyword_set(compress) then begin
   print,'Compressing output files'
-  spawn,['gzip',outfile+'_exposures.fits'],out,errout,/noshell
-  spawn,['gzip',outfile+'_chips.fits'],out,errout,/noshell
-  spawn,['gzip',outfile+'_allsrc.fits'],out,errout,/noshell
-  spawn,['gzip',outfile+'_allobj.fits'],out,errout,/noshell
+  spawn,['gzip','-f',outfile+'_exposures.fits'],out,errout,/noshell
+  spawn,['gzip','-f',outfile+'_chips.fits'],out,errout,/noshell
+  spawn,['gzip','-f',outfile+'_allsrc.fits'],out,errout,/noshell
+  spawn,['gzip','-f',outfile+'_allobj.fits'],out,errout,/noshell
 endif
 
+; Print processing time
 
-;stop
+stop
 
 end

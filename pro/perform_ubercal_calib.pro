@@ -91,7 +91,7 @@ WHILE (flag eq 0) do begin
 ENDWHILE
 
 ; PRINT OUT FINAL AVERAGE DIFFERENCE
-print,'Final avg. diff = ',strtrim(davg,2),' mag   max diff = ',strtrim(dmag,2),' mag'
+print,'Final avg. diff = ',strtrim(davg,2),' mag   max diff = ',strtrim(dmax,2),' mag'
 
 ; Calculate the relative offset for each chip
 ;  first calculate the relative mag offset from exposure median

@@ -151,7 +151,7 @@ WHILE (endflag eq 0) do begin
           ; use poly_fit to get uncertainties
           coef1 = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
 
-wt = 1.0/err^2 * arr[gdind1].airmass
+wt = 1.0/err^2 * 1.0/arr[gdind1].airmass^2
 STOP,'WEIGHT LOW-AIRMASS POINTS HIGHER!!!!'
 
           zpterm = coef[0]       ; this might get redetermined below

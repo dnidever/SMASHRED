@@ -1,4 +1,4 @@
-pro smashred_prep,dir,nmulti=nmulti,keepstandards=keepstandards
+pro smashred_prep,dir,nmulti=nmulti,keepstandards=keepstandards,refname=refname
 
 ; Get "calibrated" images ready for PHOTRED
 
@@ -111,6 +111,7 @@ nfiles = n_elements(files)
 print,'Step 2. Move standards into their own directory'
 if not keyword_set(keepstandards) then begin
   stdind = where( strmid(strupcase(fstr.object),0,4) eq 'SDSS' or $
+                  strmid(strupcase(fstr.object),0,2) eq 'SA' or $
                   strmid(strupcase(fstr.object),0,6) eq 'MAXVIS' or $
                   stregex(fstr.object,'[0-9]{6}-[0-9]{6}',/boolean) eq 1 or $
                   strmid(strupcase(fstr.object),0,1) eq 'E',nstdind)
@@ -278,20 +279,27 @@ WRITELINE,'fields',fieldstr.shname+'   '+fieldstr.name
 ;stop
 
 ; Now move/rename the files
-print,''
-print,'Renaming the files'
-for i=0,nfstr-1 do begin
-  ; This should get renamed
-  if fstr[i].newfile ne '' then begin
-    files1 = file_search(fstr[i].expnum+'_*.fits',count=nfiles1)
-    if nfiles1 gt 0 then begin
-      print,strtrim(i+1,2),'/',strtrim(nfstr,2),'  ',fstr[i].expnum,' -> ',fstr[i].newfile
-      newfiles1 = fstr[i].shname+'-'+files1
-      ;writecol,-1,files1,'  '+newfiles1
-      file_move,files1,newfiles1
-    endif else print,'NO files for ',fstr[i].expnum
-  endif
-endfor
+if not keyword_set(keepstandards) then begin
+  print,''
+  print,'Renaming the files'
+  for i=0,nfstr-1 do begin
+    ; This should get renamed
+    if fstr[i].newfile ne '' then begin
+      files1 = file_search(fstr[i].expnum+'_*.fits',count=nfiles1)
+      if nfiles1 gt 0 then begin
+        print,strtrim(i+1,2),'/',strtrim(nfstr,2),'  ',fstr[i].expnum,' -> ',fstr[i].newfile
+        newfiles1 = fstr[i].shname+'-'+files1
+        ;writecol,-1,files1,'  '+newfiles1
+        file_move,files1,newfiles1
+      endif else print,'NO files for ',fstr[i].expnum
+    endif
+  endfor
+
+; don't rename standards
+endif else begin
+  print,'Standards. Not renaming'
+  fstr.newfile = fstr.expnum  ; we are using the original filenames
+endelse
 
 save,fstr,fields,fieldstr,file='smashred_prep.dat'
 
@@ -347,17 +355,25 @@ fieldstr = importascii('fields',fieldnames=['SHNAME','NAME'],fieldtypes=[7,7])
 nfields = n_elements(fieldstr)
 
 ; get renamed split files, chip 1 only
-files = file_search('F*-*_01.fits',count=nfiles)
-if nfiles eq 0 then begin
-  print,'No RENAMED SPLIT/STACKED images to run WCS on.  Quitting.'
-  return
-endif
+if not keyword_set(keepstandards) then begin
+  files = file_search('F*-*_01.fits',count=nfiles)
+  if nfiles eq 0 then begin
+   print,'No RENAMED SPLIT/STACKED images to run WCS on.  Quitting.'
+     return
+  endif
+endif else files=file_search('*_01.fits',count=nfiles)
 SMASHRED_PREP_FILEINFO,fstr,files=files
+if keyword_set(keepstandards) then fstr.newfile=fstr.expnum
 
 ;ui = uniq(fstr.object,sort(fstr.object))
 ;fieldstr = fstr[ui]  ; unique fields
-;if n_elements(refcat) eq 0 then refcat='2MASS-PSC'
 ;nfields = n_elements(fieldstr)
+
+
+; Reference catalog
+if n_elements(refname) eq 0 then begin
+  if not keyword_set(keepstandards) then refcatname='USNO-B1' else refcatname='2MASS-PSC'
+endif else refcatname=refname
 
 
 ;for i=0,nfields-1 do begin
@@ -370,7 +386,7 @@ SMASHRED_PREP_FILEINFO,fstr,files=files
 ; Step 7: Move to separate field directories
 ;-------------------------------------------
 movesepfielddir:
-if keyword_set(sepfielddir) then begin
+if keyword_set(sepfielddir) and not keyword_set(keepstandards) then begin
   print,'Step 7.  Moving files to separate field directories'
   readline,'fields',fieldlines
   dum = strsplitter(fieldlines,' ',/extract)
@@ -392,7 +408,7 @@ endif
 ;----------------------------------
 print,'Step 8. Creating PHOTRED WCS.inlist file'
 if file_test('logs',/directory) eq 0 then file_mkdir,'logs'
-if keyword_set(sepfielddir) then begin
+if keyword_set(sepfielddir) and not keyword_set(keepstandards) then begin
   files = file_search('F*/F*-*_??.fits',/fully)
 endif else begin
   files = file_search('F*-*_??.fits',/fully)
