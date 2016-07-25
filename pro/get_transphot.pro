@@ -130,6 +130,7 @@ WHILE (endflag eq 0) do begin
       y -= arr[gdind1].airmass*mfitstr[i].amterm                        ; subtract AIRMASS term
       y -= arr[gdind1].(8) * arr[gdind1].airmass * mfitstr[i].colamterm  ; subtract COLOR*AIRMASS term
       err = arr[gdind1].err
+      am = arr[gdind1].airmass
 
       ; Color term
       ;-------------
@@ -145,14 +146,17 @@ WHILE (endflag eq 0) do begin
           ; reject outliers and refit
           diff0 = y-yfit0
           gd = where(abs(diff0) lt 3*yerror0 and err lt 0.05,ngd)
-          coef = robust_poly_fitq(x[gd],y[gd],1)  ; use robust fit for final values
-          yfit = poly(x,coef)
-          ydiff = y-yfit
+          coef1 = robust_poly_fitq(x[gd],y[gd],1)  ; second robust fit
+          ;yfit = poly(x,coef1)
+          ;ydiff = y-yfit
           ; use poly_fit to get uncertainties
-          coef1 = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
+;invwt = err*am^2
+          ;coef1 = poly_fit(x[gd],y[gd],1,measure_errors=invwt[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
+          coef = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
+          yfit = poly(x,coef1)
+          ydiff = y-yfit
 
-wt = 1.0/err^2 * 1.0/arr[gdind1].airmass^2
-STOP,'WEIGHT LOW-AIRMASS POINTS HIGHER!!!!'
+          ; The weighted fit actually gives better results
 
           zpterm = coef[0]       ; this might get redetermined below
           zptermerr = coeferr[0]
@@ -304,11 +308,14 @@ STOP,'WEIGHT LOW-AIRMASS POINTS HIGHER!!!!'
       ydiff0 = y-yfit0
       gd = where(abs(ydiff0) lt 3*yerror0 and err lt 0.05,ngd)
       if yerror0 lt 0.0001 then gd = where(abs(ydiff0) lt 3*0.01 and err lt 0.05,ngd)
-      coef = robust_poly_fitq(x[gd],y[gd],1)
+      coef1 = robust_poly_fitq(x[gd],y[gd],1)
+      ;yfit = poly(x,coef)
+      ;ydiff = y-yfit
+      ; use weighted polynomial fit
+      coef = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
       yfit = poly(x,coef)
       ydiff = y-yfit
-      ; use poly_fit to get uncertainties
-      coef1 = poly_fit(x[gd],y[gd],1,measure_errors=err[gd],sigma=coeferr,yerror=yerror,status=status,yfit=yfit1)
+      ; the weighted fit actually gives better results
 
       mfitstr.amterm = coef[1]
       mfitstr.amtermerr = coeferr[1]
@@ -461,12 +468,13 @@ uchips = arr[ui].chip
 nchips = n_elements(uchips)
 
 ; Loop through nights and fit the color and airmass terms
-mstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,nstars:0L,seeing:99.9,rms:99.0,brtrms:99.0,zpterm:99.0,zptermsig:99.0,$
-                  colterm:99.0,coltermsig:99.0,amterm:99.0,amtermsig:99.0,colamterm:99.0,colamtermsig:99.0,badsoln:-1,photometric:-1},nmjds)
+mstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,nstars:0L,seeing:99.9,rms:99.0,brtrms:99.0,airmass0:0.0,airmass1:0.0,amrange:0.0,$
+                  zpterm:99.0,zptermsig:99.0,colterm:99.0,coltermsig:99.0,amterm:99.0,amtermsig:99.0,colamterm:99.0,colamtermsig:99.0,$
+                  badsoln:-1,photometric:-1},nmjds)
 observatory,'ctio',obs
 undefine,fitstr
 if not keyword_set(silent) then $
-  print,'  NUM    MJD     DATE     NSTARS    ZPTERM    COLTERM     AMTERM   COLAMTERM      RMS      BRTRMS    MEDSIG'
+  print,'  NUM    MJD     DATE     NSTARS    ZPTERM    COLTERM     AMTERM    AMRANGE   COLAMTERM     RMS       BRTRMS     MEDSIG'
 resid = fltarr(narr)+999.9
 for i=0,nmjds-1 do begin
 
@@ -474,7 +482,13 @@ for i=0,nmjds-1 do begin
   arr1 = arr[ind1]
   mstr[i].seeing = median(arr1.seeing)
 
-  GET_TRANSPHOT_NIGHT,arr1,mfitstr,/silent,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam,$
+  ; Fixing airmass term
+  if n_elements(fixam) gt 0 then begin
+    MATCH,fixam.mjd,umjds[i],ind3,ind4,count=nmatch,/sort
+    if nmatch gt 0 then fixam1=fixam[ind3].amterm else undefine,fixam1
+  endif
+
+  GET_TRANSPHOT_NIGHT,arr1,mfitstr,/silent,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam1,$
                       fixchipzp=fixchipzp,fixcolam=fixcolam,resid=resid1,expstr=expstr1,$
                       verbose=verbose,pl=pl,save=save
   mfitstr.nightnum = i+1
@@ -517,6 +531,9 @@ for i=0,nmjds-1 do begin
   mstr[i].amtermsig = mfitstr[0].amtermerr
   mstr[i].colamterm = mfitstr[0].colamterm
   mstr[i].colamtermsig = mfitstr[0].colamtermerr
+  mstr[i].airmass0 = min(arr1.airmass)
+  mstr[i].airmass1 = max(arr1.airmass)
+  mstr[i].amrange = range(arr1.airmass)
 
   ; Convert MJD to YYYYMMDD date
   jd = umjds[i]+2400000.5d0-0.5+obs.tz/24.  
@@ -526,7 +543,7 @@ for i=0,nmjds-1 do begin
 
   ; Print summary info to screen
   print,i+1,umjds[i],date,nmatch,median(mfitstr.zpterm),median(mfitstr.colterm),$
-        mfitstr[0].amterm,mfitstr[0].colamterm,rms,brtrms,medsig,format='(I5,I8,A10,I8,7F11.4)'
+        mfitstr[0].amterm,mstr[i].amrange,mfitstr[0].colamterm,rms,brtrms,medsig,format='(I5,I8,A10,I8,8F11.4)'
   ; Save structure
   push,fitstr,mfitstr
 
@@ -540,7 +557,7 @@ end
 
 ;----------------------
 
-pro get_transphot,file,fitcolam=fitcolam
+pro get_transphot,file,fitcolam=fitcolam,errlim=errlim
 
 ; Check the STDRED data to see if we need separate color terms
 ; for each chip
@@ -549,6 +566,34 @@ if n_elements(file) eq 0 then begin
   print,'Syntax - get_transphot,file'
   return
 endif
+
+; Outline of the program
+; 1.) Removing outlier exposures
+; 2.) Run on all the nights fitting everything individually
+;  -set photometric tag
+;  -flag bad solutions with not enough stars
+; 3.) Determine median zpterm and colterm per chip
+; 4.) Fixing colterm. Redetermining zpterm and amter
+;  -set photometric tag
+;  -flag bad solutions with not enough stars
+; 5.) Redetermining median zpterm per chip
+; 6.) Fixing chip-level relative zpterm and colterm.  Retermining
+;       nightly zpterm
+
+; chip-level color terms
+; chip-level zpterm
+; nightly zpterm
+; nightly airmass term
+
+; -fit everything (colterm, zpterm, amterm)
+; -determine chip-level color terms across everything
+; -fix chip-level color terms, redetermine everything else
+; -determine chip-level zpterm  + AMTERM???
+; -fix chip-level color and zpterm, redetermine nightly zpterm and
+;    airmass term
+; -determine nightly airmass terms
+; -fix color-level color and zpterm and nightly airmass term, redetermine
+;    nightly zpterm 
 
 reduxdir = '/data/smash/cp/red/photred/'
 
@@ -560,9 +605,9 @@ tags = tag_names(arr)
 filter = strlowcase(tags[6])  ; this should be the filter name
 
 ; Trim stars
-errlim = 0.05
+if n_elements(errlim) eq 0 then errlim = 0.05
 ;if filter eq 'u' then errlim=0.08
-print,'Emposing error cut, ERR<=',strtrim(errlim,2),' mag'
+print,'Imposing error cut, ERR<=',strtrim(errlim,2),' mag'
 gd = where(arr.err lt errlim,ngd)
 arr = arr[gd]
 narr = n_elements(arr)
@@ -584,8 +629,95 @@ if tag_exist(arr,'expnum') eq 0 then begin
   arr.expnum = expnum
 endif
 
+; Loading the weather conditions table
+conditions = importascii('smash_observing_conditions.txt',/header)
+print,'Weather conditions'
+print,'  NUM    MJD       DATE  PHOTOMETRIC     COMMENTS'
+WRITECOL,-1,conditions.num,conditions.mjd,conditions.date,conditions.photometric,'   '+conditions.comments,fmt='(I5,I8,I12,I5,A-50)'
 
-; Get all of the nights
+
+; 1.) Removing outlier exposures
+;---------------------------------
+; there is also an exposure outlier rejection in get_transphot_night.pro
+print,'' & print,'' & print,'1.) Removing outlier exposures'
+ui = uniq(arr.expnum,sort(arr.expnum))
+uexp = arr[ui].expnum
+nexp = n_elements(uexp)
+colcoef = robust_poly_fitq(arr.(8),arr.mag-arr.(6),1,/silent)
+amcoef = robust_poly_fitq(arr.airmass,arr.mag-arr.(6),1,/silent)
+expstr = replicate({expnum:'',night:0L,mjd:0L,exptime:0.0,airmass:0.0,nsources:0L,zeropt:0.0,residzeropt:0.0,residzeroptnsig:0.0},nexp)
+; Get indices for each group
+expsi = sort(arr.expnum)
+expbrk = where(shift(arr[expsi].expnum,1) ne arr[expsi].expnum,nexpbrk)
+explo = expbrk
+exphi = [expbrk[1:nexpbrk-1]-1,n_elements(arr)-1]
+for i=0,nexp-1 do begin
+  ;MATCH,arr.expnum,uexp[i],ind1,ind2,/sort,count=nmatch
+  ind = expsi[explo[i]:exphi[i]]
+  nind = exphi[i]-explo[i]+1
+  medoff = median([arr[ind].mag-arr[ind].(6)-arr[ind].(8)*colcoef[1]-arr[ind].airmass*amcoef[1]])
+  expstr[i].expnum = uexp[i]
+  ;expstr[i].night = arr[ind[0]].night
+  expstr[i].mjd = arr[ind[0]].mjd
+  expstr[i].exptime = arr[ind[0]].exptime
+  expstr[i].airmass = median([arr[ind].airmass])
+  expstr[i].nsources = nind
+  expstr[i].zeropt = medoff
+  ;print,i+1,uexp[i],medoff,format='(I5,A12,F10.4)'
+endfor
+; Compute medoff per MJD
+uimjd = uniq(expstr.mjd,sort(expstr.mjd))
+umjd = expstr[uimjd].mjd
+nmjd = n_elements(umjd)
+mjdzeropt = fltarr(nmjd)
+mjdzpsig = fltarr(nmjd)
+for i=0,nmjd-1 do begin
+  ind = where(expstr.mjd eq umjd[i],nind)
+  expstr[ind].night = i+1
+  mjdzeropt[i] = median([expstr[ind].zeropt])
+  mjdzpsig[i] = mad([expstr[ind].zeropt])
+  expstr[ind].residzeropt = expstr[ind].zeropt - mjdzeropt[i]
+endfor
+; Measure sigma for each MJD
+bdsig = where(mjdzpsig lt 1e-8,nbdsig,comp=gdsig)
+zpsig = median(mjdzpsig[gdsig])
+if nbdsig gt 0 then mjdzpsig[bdsig] = zpsig
+; Measure deviation in Nsigma
+for i=0,nmjd-1 do begin
+  ind = where(expstr.mjd eq umjd[i],nind)
+  expstr[ind].residzeroptnsig = abs(expstr[ind].residzeropt) / mjdzpsig[i]
+endfor
+; Find bad exposures
+bdexp = where(expstr.residzeroptnsig gt 5,nbdexp)
+if nbdexp gt 0 then print,'Removing ',strtrim(nbdexp,2),' bad exposures: ',expstr[bdexp].expnum
+undefine,bdind
+for i=0,nbdexp-1 do begin
+  ind = expsi[explo[bdexp[i]]:exphi[bdexp[i]]]
+  push,bdind,ind
+endfor
+REMOVE,bdind,arr
+narr = n_elements(arr)
+
+; 57097  huge airmass dependence, maybe only use low-airmass exps to
+;          get zpterm
+; 57099  ~4 expnums are way off the others
+
+; Other bad exposures
+badexp = ['00187877','00187878',$  ; there are ~10 chips that have problems, night 5+6, i-band
+          '00422929','00423077','00423026','00422153','00422939','00422158']   ; 57097, 57099 bad data
+nbadexp = n_elements(badexp)
+for i=0,nbadexp-1 do begin
+  MATCH,arr.expnum,badexp[i],ind1,ind2,/sort,count=nmatch
+  if nmatch gt 0 then begin
+    remove,ind1,arr
+    print,'Removing bad exposure: ',badexp[i]
+  endif
+endfor
+
+
+; 2.) Run on all the nights fitting everything individually
+;------------------------------------------------------------
+print,'' & print,'2.) Run on all the nights fitting everything individually'
 GET_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0  ;,/save
 nmjds = n_elements(mstr0)
 uimjd = uniq(mstr0.mjd,sort(mstr0.mjd))
@@ -593,15 +725,14 @@ umjd = mstr0[uimjd]
 nfitstr = n_elements(fitstr0)
 
 
-; Non-photometric weather
-;------------------------
+; Set PHOTOMETRIC tag
+;--------------------
 ;   2   56370  20130318   24080     0.1266,  zpterm high by 0.5 mag
 ;        log says there were intermittent clouds
 ;  40   57099  20150317   64949     0.6022,  zpterm WAY HIGH by 1.0 mag
 ;        log says non-photometric
 ;  50   57435  20160216    5579     0.0409,  zpterm high by 0.3 mag
 ;        log says thin cirrus, non-photometric
-conditions = importascii('smash_observing_conditions.txt',/header)
 MATCH,mstr0.mjd,conditions.mjd,ind1,ind2
 mstr0[ind1].photometric = conditions[ind2].photometric
 for i=0,n_elements(conditions)-1 do begin
@@ -611,7 +742,7 @@ endfor
 
 ; SHOULD I REMOVE THESE FROM "ARR" so they don't POLLUTE the rest???
 
-; Not enough stars for a solution
+; Flag "bad" solution with not Not enough stars
 ;--------------------------------
 ; 8   56664  20140106, only 16 stars,  SO FEW STARS, DON'T TRUST ANY OF THE RESULTS
 ;      maybe determine single global zpterm for the night
@@ -626,15 +757,16 @@ for i=0,nbdmjd-1 do begin
 endfor
 
 
-; Determine median zpterm and color terms per chip
-;-------------------------------------------------
-print,'Determining median zpterm and colterm per chip'
+; 3.) Determine median zpterm and color terms per chip
+;------------------------------------------------------
+print,'' & print,'3.) Determining median zpterm and colterm per chip'
 ui = uniq(fitstr0.chip,sort(fitstr0.chip))  ; unique chips
 uchips = fitstr0[ui].chip
 nuchips = n_elements(uchips)
 ; Measure median and RMS per chip
 chipstr = replicate({chip:0L,zpterm:99.0,zptermsig:99.0,zptermerr:99.0,colterm:99.0,coltermsig:99.0,coltermerr:99.0,rms:99.0,medrms:99.0},nuchips)
 fitstr0.relzpterm = fitstr0.zpterm        ; initialize with zpterm
+print,' CHIP   ZPTERM   ZPTERMERR  COLTERM  COLTERMER    RMS'
 for i=0,nuchips-1 do begin
   chipstr[i].chip = uchips[i]
   MATCH,fitstr0.chip,uchips[i],ind,ind0,count=nind,/sort
@@ -656,11 +788,14 @@ for i=0,nuchips-1 do begin
     chipstr[i].medrms = median([fitstr0[ind[gdphot]].rms])
     fitstr0[ind].chiprelzpterm = fitstr0[ind].relzpterm - chipstr[i].zpterm   ; relative MJD and chip medians
     fitstr0[ind].chiprelcolterm = fitstr0[ind].colterm - chipstr[i].colterm
+    print,chipstr[i].chip,chipstr[i].zpterm,chipstr[i].zptermerr,chipstr[i].colterm,chipstr[i].coltermerr,chipstr[i].rms,format='(I5,5F10.5)'
   endif
 endfor
 
 ;stop
 
+; Making some figures
+print,'Making some figures'
 setdisp,/silent
 !p.font = 0
 ; Relative ZPTERM vs. chip
@@ -726,14 +861,14 @@ plotc,fitstr0.nightnum+rnd,fitstr0.chiprelcolterm,fitstr0.coltermerr,ps=8,sym=0.
 ps_close
 ps2png,file+'.eps',/eps
 
-stop
 
-; Redetermine zpterm and airmass term, fix colterm
-;--------------------------------------------------
-print,'Fixing colterm.  Redetermining zpterm and amterm'
+
+; 4.) Fixing colterm, Redetermine zpterm and airmass term
+;---------------------------------------------------------
+print,'' & print,'4.) Fixing colterm.  Redetermining zpterm and amterm'
 GET_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolr,fitstr_fixcolr,fixcolr=chipstr
 
-; Reset PHOTOMETRIC tag
+; Set PHOTOMETRIC tag
 MATCH,mstr_fixcolr.mjd,conditions.mjd,ind1,ind2
 mstr_fixcolr[ind1].photometric = conditions[ind2].photometric
 for i=0,n_elements(conditions)-1 do begin
@@ -741,7 +876,7 @@ for i=0,n_elements(conditions)-1 do begin
   if nmatch gt 0 then fitstr_fixcolr[ind1].photometric=conditions[i].photometric
 endfor
 
-; Not enough stars for a solution
+; Flag "bad" solution with not Not enough stars
 bdmjd = where(mstr_fixcolr.nstars lt 100,nbdmjd,comp=gdmjd,ncomp=ngdmjd)
 if nbdmjd gt 0 then mstr_fixcolr[bdmjd].badsoln = 1    ; not enough stars
 if ngdmjd gt 0 then mstr_fixcolr[gdmjd].badsoln = 0    ; enough stars
@@ -751,11 +886,14 @@ for i=0,nbdmjd-1 do begin
   fitstr_fixcolr[ind1].badsoln = 1
 endfor
 
-; Re-Determine median zpterm per chip
-;-------------------------------------
+
+; 5.) Re-Determine median zpterm per chip
+;------------------------------------------
+print,'' & print,'5.) Re-determine median zpterm per chip'
 ; Measure median chip zpterm again
 chipstr_fixcolr = replicate({chip:0L,zpterm:99.0,zptermsig:99.0,zptermerr:99.0,colterm:99.0,coltermsig:99.0,coltermerr:99.0,rms:99.0,medrms:99.0},nuchips)
 fitstr_fixcolr.relzpterm = fitstr_fixcolr.zpterm        ; initialize with zpterm
+print,' CHIP   ZPTERM   ZPTERMERR  COLTERM  COLTERMER    RMS'
 for i=0,nuchips-1 do begin
   chipstr_fixcolr[i].chip = uchips[i]
   MATCH,fitstr_fixcolr.chip,uchips[i],ind,ind0,count=nind,/sort
@@ -777,15 +915,20 @@ for i=0,nuchips-1 do begin
     chipstr_fixcolr[i].medrms = median([fitstr_fixcolr[ind[gdphot]].rms])
     fitstr_fixcolr[ind].chiprelzpterm = fitstr_fixcolr[ind].relzpterm - chipstr_fixcolr[i].zpterm   ; relative MJD and chip medians
     fitstr_fixcolr[ind].chiprelcolterm = fitstr_fixcolr[ind].colterm - chipstr_fixcolr[i].colterm
+    print,chipstr_fixcolr[i].chip,chipstr_fixcolr[i].zpterm,chipstr_fixcolr[i].zptermerr,chipstr_fixcolr[i].colterm,$
+          chipstr_fixcolr[i].coltermerr,chipstr_fixcolr[i].rms,format='(I5,5F10.5)'
   endif
 endfor
+; COLTERMERR = 0.0 because it was fixed
 
 
-; Redetermine NIGHTLY zpterm with chip-level relative zpterm fixed and
-; colterm fixed
-;-----------------------------------------------------------------------
-print,'Fixing chip-level relative zpterm and colterm.  Redetermining NIGHTLY zpterm'
-GET_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr
+
+
+; 6.) Redetermine NIGHTLY zpterm and amterm with chip-level relative zpterm 
+;      and colterm fixed
+;---------------------------------------------------------------------------
+print,'' & print,'6.) Fixing chip-level relative zpterm and colterm.  Redetermining NIGHTLY zpterm and amterm'
+GET_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,resid=resid_fixcolzp
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzp.mjd,conditions.mjd,ind1,ind2
@@ -795,7 +938,7 @@ for i=0,n_elements(conditions)-1 do begin
   if nmatch gt 0 then fitstr_fixcolzp[ind1].photometric=conditions[i].photometric
 endfor
 
-; Not enough stars for a solution
+; Flag "bad" solution with not Not enough stars
 bdmjd = where(mstr_fixcolzp.nstars lt 100,nbdmjd,comp=gdmjd,ncomp=ngdmjd)
 if nbdmjd gt 0 then mstr_fixcolzp[bdmjd].badsoln = 1    ; not enough stars
 if ngdmjd gt 0 then mstr_fixcolzp[gdmjd].badsoln = 0    ; enough stars
@@ -806,12 +949,92 @@ for i=0,nbdmjd-1 do begin
 endfor
 
 
-; Airmass terms
-;-----------------
+; 7.) Fixing airmass terms
+;-------------------------
 ; Bad for non-photometric nights 2, 40, 50
 ; Bad for bad solution nights 8, 9
 ; Bad for 38
 ; 6, 15, 22, 24 are a bit high
+
+; i-band: 6, 14, 23, 37, 39, 49  these are off
+;      56510 (clear/phot), 56681 (cloudy), 56702 (clear), 57097 (a few
+;      cloud, crazy standard data), 57099 (nonphot), 57435 (some clouds)
+; most are non-phot or bad soln, but only one that's "good" is off 56510 (clear/phot)
+
+; the airmass terms DO get more consistent/better after the various "fixings"
+
+; Fix airmass terms for nights with low airmass range
+print,'' & print,'7.) Fixing airmass terms for nights with low airmass range'
+ntstr_fixcolzp = mstr_fixcolzp
+add_tag,ntstr_fixcolzp,'amtermavg',0,ntstr_fixcolzp  ; amterm averaged
+for i=0,nmjd-1 do begin
+  ; Only look at photometric nights
+  if mstr_fixcolzp[i].photometric eq 1 then begin
+    ; Low airmass range
+    if mstr_fixcolzp[i].amrange lt 0.35 then begin
+      ; Get nights close in time with good airmass range
+      si = sort(abs(mstr_fixcolzp.mjd-mstr_fixcolzp[i].mjd))
+      gdnei = where(mstr_fixcolzp[si].amrange gt 0.35,ngdnei)
+      nei = si[gdnei[0:3]]
+      ; Weights, time difference and amterm uncertainty
+      wt = 1.0 / abs(mstr_fixcolzp[nei].mjd-mstr_fixcolzp[i].mjd)
+      wt *= 1.0/mstr_fixcolzp[nei].amtermsig^2
+      wt /= total(wt)   ; normalize
+      ; Computed weighted mean
+      xmn = total(mstr_fixcolzp[nei].amterm * wt) / total(wt)
+      ; error of weighted mean
+      ;  https://en.wikipedia.org/wiki/Weighted_arithmetic_mean
+      ;  "Statistical Properties" section
+      xsig = sqrt( total( wt^2 * mstr_fixcolzp[nei].amtermsig^2 ) )
+      ; Stuff it in the structure
+      ntstr_fixcolzp[i].amterm = xmn
+      ntstr_fixcolzp[i].amtermsig = xsig
+      ntstr_fixcolzp[i].amtermavg = 1   ; we averaged it
+      print,ntstr_fixcolzp[i].mjd,xmn,xsig,format='(I7,2F10.5)'
+    endif ; low amrange
+  endif else begin ; non-photometric
+    ntstr_fixcolzp[i].amterm = 0.0
+    ntstr_fixcolzp[i].amtermsig = 0.0
+  endelse
+endfor
+
+;plotc,mstr_fixcolzp.nightnum,mstr_fixcolzp.amterm,mstr_fixcolzp.amrange,ps=1
+;oplot,mstr_fixcolr.nightnum,mstr_fixcolr.amterm,ps=4,co=250
+;oplot,mstr0.nightnum,mstr0.amterm,ps=6,co=150
+;
+;plotc,mstr_fixcolzp.mjd,mstr_fixcolzp.amterm,mstr_fixcolzp.amrange,ps=1,xs=1
+;oplot,mstr_fixcolr.mjd,mstr_fixcolr.amterm,ps=4,co=250
+;oplot,mstr0.mjd,mstr0.amterm,ps=6,co=150
+
+; Do NOT determine/set airmass or zpterm for NON-PHOTOMETRIC nights
+
+; Sometimes a night doesn't have much of a AIRMASS span to fit the
+; AMTERM properly, maybe fit across multiple nights?
+
+
+; 7.) Redetermine NIGHTLY zpterm holding everything else fixed
+;--------------------------------------------------------------
+print,'' & print,'7.) Redetermine NIGHTLY zpterm holding everything else fixed'
+GET_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,$
+                        fixam=ntstr_fixcolzp,resid=resid_fixcolzpam
+
+; Reset PHOTOMETRIC tag
+MATCH,mstr_fixcolzpam.mjd,conditions.mjd,ind1,ind2
+mstr_fixcolzpam[ind1].photometric = conditions[ind2].photometric
+for i=0,n_elements(conditions)-1 do begin
+  MATCH,fitstr_fixcolzpam.mjd,conditions[i].mjd,ind1,ind2,count=nmatch,/sort
+  if nmatch gt 0 then fitstr_fixcolzpam[ind1].photometric=conditions[i].photometric
+endfor
+
+; Flag "bad" solution with not Not enough stars
+bdmjd = where(mstr_fixcolzpam.nstars lt 100,nbdmjd,comp=gdmjd,ncomp=ngdmjd)
+if nbdmjd gt 0 then mstr_fixcolzpam[bdmjd].badsoln = 1    ; not enough stars
+if ngdmjd gt 0 then mstr_fixcolzpam[gdmjd].badsoln = 0    ; enough stars
+fitstr_fixcolzpam.badsoln = 0
+for i=0,nbdmjd-1 do begin
+  MATCH,fitstr_fixcolzpam.mjd,mstr_fixcolzpam[bdmjd[i]].mjd,ind1,ind2,count=nmatch,/sort
+  fitstr_fixcolzpam[ind1].badsoln = 1
+endfor
 
 
 ; Deal with nights that don't have enough stars for their own solutions
@@ -837,6 +1060,11 @@ for i=0,nbdmjd-1 do begin
 
 endfor
 
+; FINAL OUTPUT
+; 1st extension: chip-level structure with color term (+err) and
+;     zpterm (+err)
+; 2nd extension: night-level structure with zpter (+err) and
+;     amterm (+err) and photometric flag
 
 
 stop
