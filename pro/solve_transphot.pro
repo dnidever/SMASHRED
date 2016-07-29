@@ -609,6 +609,7 @@ endif
 ;    nightly zpterm 
 
 reduxdir = '/data/smash/cp/red/photred/'
+plotsdir = reduxdir+'stdred/plots/'
 
 ; Load the data
 arr = MRDFITS(file,1)
@@ -731,7 +732,7 @@ endfor
 ; 2.) Run on all the nights fitting everything individually
 ;------------------------------------------------------------
 print,'' & print,'2.) Run on all the nights fitting everything individually'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,/bootstrap  ;,/save
+SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,rejected=rejected0,/bootstrap  ;,/save
 nmjds = n_elements(mstr0)
 uimjd = uniq(mstr0.mjd,sort(mstr0.mjd))
 umjd = mstr0[uimjd]
@@ -812,7 +813,7 @@ print,'Making some figures'
 setdisp,/silent
 !p.font = 0
 ; Relative ZPTERM vs. chip
-file = 'transphot_'+filter+'_zpterm_chip'
+file = plotsdir+'transphot_'+filter+'_zpterm_chip'
 ps_open,file,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -829,7 +830,7 @@ xyouts,2,yr[1]-0.08*range(yr),'RMS = '+stringize(mad(fitstr0[gd].chiprelzpterm),
 ps_close
 ps2png,file+'.eps',/eps
 ; COLTERM vs. chip
-file = 'transphot_'+filter+'_colterm_chip'
+file = plotsdir+'transphot_'+filter+'_colterm_chip'
 ps_open,file,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -846,7 +847,7 @@ xyouts,2,yr[1]-0.08*range(yr),'RMS = '+stringize(mad(fitstr0[gd].chiprelcolterm)
 ps_close
 ps2png,file+'.eps',/eps
 ; CHIPRELZPTERM vs. NIGHTNUM
-file = 'transphot_'+filter+'_chiprelzpterm_nightnum'
+file = plotsdir+'transphot_'+filter+'_chiprelzpterm_nightnum'
 ps_open,file,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -860,7 +861,7 @@ plotc,fitstr0.nightnum+rnd,fitstr0.chiprelzpterm,fitstr0.zptermerr,ps=8,sym=0.5,
 ps_close
 ps2png,file+'.eps',/eps
 ; CHIPRELCOLTERM vs. NIGHTNUM
-file = 'transphot_'+filter+'_chiprelcolterm_nightnum'
+file = plotsdir+'transphot_'+filter+'_chiprelcolterm_nightnum'
 ps_open,file,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -879,7 +880,7 @@ ps2png,file+'.eps',/eps
 ; 4.) Fixing colterm, Redetermine zpterm and airmass term
 ;---------------------------------------------------------
 print,'' & print,'4.) Fixing colterm.  Redetermining zpterm and amterm'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolr,fitstr_fixcolr,fixcolr=chipstr,/bootstrap
+SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolr,fitstr_fixcolr,fixcolr=chipstr,resid=resid_fixcolr,rejected=rejected_fixcolr,/bootstrap
 
 ; Set PHOTOMETRIC tag
 MATCH,mstr_fixcolr.mjd,conditions.mjd,ind1,ind2
@@ -941,7 +942,8 @@ endfor
 ;      and colterm fixed
 ;---------------------------------------------------------------------------
 print,'' & print,'6.) Fixing chip-level relative zpterm and colterm.  Redetermining NIGHTLY zpterm and amterm'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,resid=resid_fixcolzp,/bootstrap
+SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,resid=resid_fixcolzp,$
+                          rejected=rejected_fixcolzp,/bootstrap
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzp.mjd,conditions.mjd,ind1,ind2
@@ -981,7 +983,7 @@ averageamterm:
 ; parameter "fixings"
 
 ; Fix airmass terms for nights with low airmass range
-print,'' & print,'7.) Averagine airmass terms'
+print,'' & print,'7.) Averaging airmass terms'
 ntstr_fixcolzp = mstr_fixcolzp
 add_tag,ntstr_fixcolzp,'amavgflag',0,ntstr_fixcolzp  ; amterm averaged
 add_tag,ntstr_fixcolzp,'namavg',0,ntstr_fixcolzp  ; amterm averaged
@@ -1039,7 +1041,8 @@ for i=0,nmjd-1 do begin
         endfor
         coef1 = robust_poly_fitq(arr[useind].airmass,resid,1)
         sig1 = mad(resid-poly(arr[useind].airmass,coef1))
-        gdind = where(abs(resid-poly(arr[useind].airmass,coef1)) lt 4.0*sig1,ngdind)
+        ; cut outliers and stars previously rejected
+        gdind = where(abs(resid-poly(arr[useind].airmass,coef1)) lt 4.0*sig1 and rejected_fixcolzp[useind] eq 0,ngdind)
         coef = dln_poly_fit(arr[useind[gdind]].airmass,resid[gdind],1,measure_errors=arr[useind[gdind]].err,sigma=coeferr,yerror=yerror,status=status,/bootstrap)
         ntstr_fixcolzp[i].amterm = coef[1]
         ntstr_fixcolzp[i].amtermsig = coeferr[1]
@@ -1070,7 +1073,7 @@ endfor
 
 
 ; Make a figure of AMTERM
-file = 'transphot_'+filter+'_amterm'
+file = plotsdir+'transphot_'+filter+'_amterm'
 ps_open,file,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 gphot = where(ntstr_fixcolzp.photometric eq 1,ngphot)
@@ -1093,7 +1096,7 @@ ps2png,file+'.eps',/eps
 ;--------------------------------------------------------------
 print,'' & print,'7.) Redetermine NIGHTLY zpterm holding everything else fixed'
 SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,$
-                        fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,/bootstrap
+                        fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzpam.mjd,conditions.mjd,ind1,ind2
@@ -1118,42 +1121,47 @@ print,'Making final residual plots'
 for i=0,nmjds-1 do begin
 
   MATCH,arr.mjd,mstr_fixcolzpam[i].mjd,ind1,ind2,count=nmatch,/sort
+  gd = where(rejected_fixcolzp[ind1] eq 0,ngd)
+  ind = ind1[gd]
 
   ; Make resid plots, one per night
   ;  resid vs. color, resid vs. airmass, resid vs. chip number
 
-  file = 'transphot_'+filter+'_'+strtrim(mstr_fixcolzpam[i].mjd,2)+'_resid'
+  file = plotsdir+'transphot_'+filter+'_'+strtrim(mstr_fixcolzpam[i].mjd,2)+'_resid'
   ps_open,file,/color,thick=4,/encap
   device,/inches,xsize=9.5,ysize=9.5
   x0 = 0.08 & x1=0.97
   y0 = 0.05 & dy = 0.30
-  sig = mad(resid_fixcolzpam[ind1])
-  ;yr = minmax(resid_fixcolzpam[ind1])
+  sig = mad(resid_fixcolzpam[ind])
+  ;yr = minmax(resid_fixcolzpam[ind])
   yr = [-1,1]*(3.5*sig > 0.2)
   yr = [yr[0] > (-1.0), yr[1] < 1.0]
+  if nmatch lt 1000 then psym=1 else psym = 3
+  symsize = 0.5
   ; Resid vs. color
-  xr = minmax(arr[ind1].(8))
+  xr = minmax(arr[ind].(8))
   xr = [-0.5,2.0 < (xr[1]+0.05) > 3.5]
-  plotc,arr[ind1].(8),resid_fixcolzpam[ind1],arr[ind1].err,ps=3,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
+  plotc,arr[ind].(8),resid_fixcolzpam[ind],arr[ind].err,ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
         pos=[x0,y0,x1,dy],colpos=[x0,0.97,x1,0.99],xticklen=0.04
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'<COLTERM> = '+stringize(mstr_fixcolzpam[i].colterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].coltermsig,ndec=4),align=0,charsize=1.3
   oplot,xr,[0,0],linestyle=2
   ; Resid vs. airmass
-  xr = minmax(arr[ind1].airmass)
+  xr = minmax(arr[ind].airmass)
   xr = [0.9,(xr[1]+0.05) > 2.0]
-  plotc,arr[ind1].airmass,resid_fixcolzpam[ind1],arr[ind1].err,ps=3,xr=xr,yr=yr,xs=1,ys=1,xtit='Airmass',ytit='Residuals',/noerase,$
-        pos=[x0,y0+dy,x1,2*dy],/nocolorbar,xticklen=0.04
+  plotc,arr[ind].airmass,resid_fixcolzpam[ind],arr[ind].err,ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Airmass',ytit='Residuals',$
+        pos=[x0,y0+dy,x1,2*dy],/nocolorbar,xticklen=0.04,/noerase
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'AMTERM = '+stringize(mstr_fixcolzpam[i].amterm,ndec=4)+'+/'+$
          stringize(ntstr_fixcolzp[i].amtermsig,ndec=4),align=0,charsize=1.3
   if mstr_fixcolzpam[i].photometric eq 1 then photcom='PHOTOMETRIC' else photcom='NON-PHOTOMETRIC'
-  xyouts,xr[1]-0.03*range(xr),yr[1]-0.12*range(yr),photcom,align=1,charsize=1.3
+  if mstr_fixcolzpam[i].photometric eq 1 then col=0 else col=250
+  xyouts,xr[1]-0.03*range(xr),yr[1]-0.12*range(yr),photcom,align=1,charsize=1.3,color=col
   oplot,xr,[0,0],linestyle=2
   ; Resid vs. chip number
   rnd = randomu(seed,nmatch)*0.6-0.3
   xr = [0,63]
-  plotc,arr[ind1].chip+rnd,resid_fixcolzpam[ind1],arr[ind1].err,ps=3,xr=xr,yr=yr,xs=1,ys=1,xtit='Chip',ytit='Residuals',/noerase,xticklen=0.04,$
-        tit=strtrim(mstr_fixcolzpam[i].mjd,2)+' - Residuals vs. color/airmass/chip (color-coded by ERR)',pos=[x0,y0+2*dy,x1,3*dy],/nocolorbar
+  plotc,arr[ind].chip+rnd,resid_fixcolzpam[ind],arr[ind].err,ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Chip',ytit='Residuals',/noerase,$
+        xticklen=0.04,tit=strtrim(mstr_fixcolzpam[i].mjd,2)+' - Residuals vs. color/airmass/chip (color-coded by ERR)',pos=[x0,y0+2*dy,x1,3*dy],/nocolorbar
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'ZPTERM = '+stringize(mstr_fixcolzpam[i].zpterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].zptermsig,ndec=4),align=0,charsize=1.3
   xyouts,xr[1]-0.03*range(xr),yr[1]-0.12*range(yr),'RMS = '+stringize(mstr_fixcolzpam[i].rms,ndec=4),align=1,charsize=1.3
@@ -1162,263 +1170,60 @@ for i=0,nmjds-1 do begin
   ps_close
   ps2png,file+'.eps',/eps
 
+  ;stop
+
 endfor
 
-stop
 
 
 ; 8.) Making final chip and night-level structures
 ;-------------------------------------------------
-print,'' & print,'8.) Making final chip and night-level structures'
+print,'' & print,'8.) Making final chip and night-level transformation equation structures'
 
 
 ; Chip-level color and zero-point terms
+;   CHIPSTR has the fixed color terms
+;   CHIPSTR_FIXCOLR has the 
+fchipstr = chipstr_fixcolr
+fchipstr.colterm = chipstr.colterm
+fchipstr.coltermsig = chipstr.coltermsig
+fchipstr.coltermerr = chipstr.coltermerr
 
 ; Nightly zeropoint and airmass terms
+;  NTSTR_FIXCOLZP has the fixed airmass terms
+;  MSTR_FIXCOLZPAM has the nightly zero-point terms
+fntstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,nstars:0L,seeing:99.9,rms:99.0,brtrms:99.0,airmass0:0.0,airmass1:0.0,amrange:0.0,$
+                    zpterm:99.0,zptermsig:99.0,amterm:99.0,amtermsig:99.0,colamterm:99.0,colamtermsig:99.0,$
+                    badsoln:-1,photometric:-1,amavgflag:0,namavg:0},nmjds)
+struct_assign,mstr_fixcolzpam,fntstr
+; Copy the AMTERM info from NTSTR_FIXCOLZP
+fntstr.amterm = ntstr_fixcolzp.amterm
+fntstr.amtermsig = ntstr_fixcolzp.amtermsig
+fntstr.amavgflag = ntstr_fixcolzp.amavgflag
+fntstr.namavg = ntstr_fixcolzp.namavg
+
 
 ; DO I NEED A LINE FOR EVERY NIGHT+CHIP???
 
-
-
-
-
 ; Deal with nights that don't have enough stars for their own solutions
-;----------------------------------------------------------------------
 
 
-
-; Deal with non-photometric nights
-;---------------------------------
-; use median chip-level color terms
-; set zpterm, amterm and colamter to ZERO
-
-
-stop
-
-
-
-for i=0,nbdmjd-1 do begin
-
-  ; Fit global zpterm, use colterm and amterm from neighbors
-
-  stop
-
-endfor
-
-; FINAL OUTPUT
+; -- FINAL OUTPUT --
 ; 1st extension: chip-level structure with color term (+err) and
 ;     zpterm (+err)
 ; 2nd extension: night-level structure with zpter (+err) and
 ;     amterm (+err) and photometric flag
-
-
-stop
-
-rnd = randomu(seed,nfitstr)*0.6-0.3
-plotc,fitstr.nightnum+rnd,fitstr.zpterm,fitstr.sig,ps=3,xr=[0,nmjds+1],yr=[-1,1],xs=1,ys=1,max=0.1,$
-      xtit='Night Number',ytit='ZP term',tit='Zero-point term (color-coded by zptermerr)'
-
-
-; Photometric night, based on zpterm scatter
-bdmjd = where(mstr.brtrms gt median(mstr.brtrms)+2.5*mad(mstr.brtrms),nbdmjd)
-print,strtrim(nbdmjd,2),' nights have high RMS'
-if nbdmjd gt 0 then print,umjds[bdmjd]
-
-
-stop
-
-; Unique CHIPS
-ui = uniq(fitstr.chip,sort(fitstr.chip))
-uchips = fitstr[ui].chip
-nuchips = n_elements(uchips)
-
-; Measure median and RMS per chip
-chipmedzpterm = fltarr(nuchips)+99.99
-chipzptermsig = fltarr(nuchips)+99.99
-chipzptermerr = fltarr(nuchips)+99.99
-chiprelzpterm = fltarr(nfitstr)+99.99
-chipmedcolterm = fltarr(nuchips)+99.99
-chipcoltermsig = fltarr(nuchips)+99.99
-chipcoltermerr = fltarr(nuchips)+99.99
-chiprelcolterm = fltarr(nfitstr)+99.99
-chipmedrms = fltarr(nuchips)+99.99
-
-for i=0,nuchips-1 do begin
-  ind = where(fitstr.chip eq uchips[i],nind)
-  if nind gt 0 then begin
-    chipmedzpterm[i] = median([fitstr[ind].zpterm])
-    chipzptermsig[i] = mad([fitstr[ind].zpterm])
-    chipzptermerr[i] = chipzptermsig[i] / sqrt(nind)
-    chiprelzpterm[ind] = fitstr[ind].zpterm - chipmedzpterm[i]
-    chipmedcolterm[i] = median([fitstr[ind].colterm])
-    chipcoltermsig[i] = mad([fitstr[ind].colterm])
-    chipcoltermerr[i] = chipcoltermsig[i] / sqrt(nind)
-    chiprelcolterm[ind] = fitstr[ind].colterm - chipmedcolterm[i]
-    chipmedrms[i] = median([fitstr[ind].rms])
-  endif
-endfor
-
-plotc,fitstr.chip+rnd,fitstr.zpterm,fitstr.mjd,ps=3,yr=[-0.5,0.5],xs=1
-plotc,fitstr.chip+rnd,fitstr.zpterm,fitstr.zptermerr,ps=3,yr=[-0.5,0.5],xs=1,max=0.01
-oplot,uchips,chipmedzpterm,ps=-1
-plotc,fitstr.chip+rnd,fitstr.colterm,fitstr.mjd,ps=3,yr=[-0.3,0.1],xs=1
-plotc,fitstr.chip+rnd,fitstr.colterm,fitstr.coltermerr,ps=3,yr=[-0.3,0.1],xs=1,max=0.01
-oplot,uchips,chipmedcolterm,ps=-1
-
-
-; Measure median relative chip zpterm/colterm per night
-mjdchipmedzpterm = fltarr(nmjds)
-mjdchipzptermsig = fltarr(nmjds)
-mjdchipzptermerr = fltarr(nmjds)
-mjdchipmedcolterm = fltarr(nmjds)
-mjdchipcoltermsig = fltarr(nmjds)
-mjdchipcoltermerr = fltarr(nmjds)
-nightnum = lonarr(nfitstr)
-for i=0,nmjds-1 do begin
-  ind = where(fitstr.mjd eq umjds[i],nind)
-  ; ZP term
-  mjdchipmedzpterm[i] = median( chiprelzpterm[ind] )
-  mjdchipzptermsig[i] = mad(chiprelzpterm[ind])
-  mjdchipzptermerr[i] = mjdchipzptermsig[i] / sqrt(nind)
-  ; Color term
-  mjdchipmedcolterm[i] = median( chiprelcolterm[ind] )
-  mjdchipcoltermsig[i] = mad(chiprelcolterm[ind])
-  mjdchipcoltermerr[i] = mjdchipcoltermsig[i] / sqrt(nind)
-  nightnum[ind] = i+1   ; night number
-endfor
-
-; Zero-point
-plotc,fitstr.mjd+rnd,chiprelzpterm,fitstr.coltermerr,ps=3,yr=[-0.1,0.1],max=0.01,xtit='MJD',ytit='Relative ZP Term',tit='ZP relative to median per chip'
-oplot,umjds,mjdchipmedzpterm,ps=1,sym=2
-
-; Color term vs. night
-;plotc,fitstr.mjd+rnd,chiprelcolterm,fitstr.coltermerr,ps=3,yr=[-0.02,0.02],max=0.01,xtit='MJD',ytit='Relative Color Term',tit='Color term relative to median per chip'
-;oplot,umjds,mjdchipmedcolterm,ps=1,sym=2
-z = fitstr.zpterm ; fitstr.coltermerr
-;zr = minmax(z)
-zr = [-0.5,0.5]
-ztit = 'zpterm'
-plotc,nightnum+rnd,chiprelcolterm,z,ps=8,sym=0.6,xs=1,ys=1,xr=[0,max(nightnum)+1],yr=[-0.06,0.06],min=zr[0],max=zr[1],$
-      xtit='Night Number',ytit='Relative Color Term',tit='Color term relative to median per chip (color-coded by '+ztit+')'
-;col = scale(fitstr.coltermerr,[min(fitstr.coltermerr),0.01],[50,250])<250
-col = 50 > scale(z,zr,[50,250]) < 250
-for i=0,nfitstr-1 do oplot,[0,0]+nightnum[i]+rnd[i],fitstr[i].coltermerr*[-1,1]+chiprelcolterm[i],co=col[i]
-oplot,indgen(nmjds)+1,mjdchipmedcolterm,ps=1,sym=2,thick=2
-oplot,[0,100],[-1,-1]*mad(mjdchipmedcolterm),linestyle=2
-oplot,[0,100],[1,1]*mad(mjdchipmedcolterm),linestyle=2
-
-; These two nights have lower color-terms on average by 0.01
-;  43   57362  20151205   43397 
-;  44   57363  20151206   37811 
-; This one is a "normal" color-term night
-;   42   57336  20151109   36156 
-; if you plot resid vs. color for this night it is very tight,
-; the same plot for 57362 shows much more variation due to airmass
-; could it be a color*extinction term that we need????
-
-; fit color terms for 57362, there is a small difference with airmass
-; at the 0.01 level
-; coef for airmass<1.2
-;    0.0556403     0.113632  (intercept, slope)
-; coef for airmass>1.6
-;   -0.0722108     0.121178
-
-; same for 57336, smaller effect
-;    0.0646907     0.112354
-; -0.000309065     0.118200
-
-;    38   57097  20150315   14386    -2.4869    -0.1065, very low
-;         zpterm (??), large scatter in color terms
-
-; There definitively are mean color term variations for a few
-; nights, it's about a ~3% variation
-; COULD THESE BE NON-PHOTOMETRIC NIGHTS??
-
-
-; Color term vs. chip
-z = nightnum
-zr = minmax(z)
-ztit = 'nightnum'
-plotc,fitstr.chip+rnd,chiprelcolterm,z,ps=8,sym=0.6,xs=1,ys=1,xr=[0,max(uchips)+1],yr=[-0.06,0.06],min=zr[0],max=zr[1],$
-      xtit='Chip Number',ytit='Relative Color Term',tit='Color term relative to median per chip (color-coded by '+ztit+')'
-col = 50 > scale(z,zr,[50,250]) < 250
-for i=0,nfitstr-1 do oplot,[0,0]+fitstr[i].chip+rnd[i],fitstr[i].coltermerr*[-1,1]+chiprelcolterm[i],co=col[i]
-oplot,indgen(nmjds)+1,chipmedcolterm,ps=1,sym=2,thick=2
-oplot,[0,100],[0,0],linestyle=1
-oplot,[0,100],[-1,-1]*mad(chiprelcolterm),linestyle=2
-oplot,[0,100],[1,1]*mad(chiprelcolterm),linestyle=2
-; I don't see any real systematics here
-
-
-; Discrepant nights
-bd = where(abs(mjdchipmedcolterm) gt 0.04,nbd)
-print,strtrim(nbd,2),' nights with discrepant median color terms'
-if nbd gt 0 then print,umjds[bd]
-
-stop
-
-; some chip-to-chip variations
-; some night-to-night variations, especially between two years
-;   could some of those be from using SDSS and the Smith standards?
-;  maybe it was a non-photometric night???
-
-; These groups of days have lower color terms then the ones after that
-; 56369-56372 and 56509+56510
-; March 2013 and Aug 2013
-; you see this in g-band and r-band but not i-band or u-band
-; z-band doesn't show a constant offset, but the chip-to-chip patterns
-; seem to change
-
-; 56677-56686 color-terms are a bit high, but these are the Jan 21-28, 2014
-; days when only small-field Smith/DES fields were observed and so
-; only a handful of chips have observations
-; the one day in that range that has low RMS seems to have a similar
-; color-term in the r-band.
-
-plotc,mchfitstr.chip+rnd,mchfitstr.rms,mchfitstr.mjd,ps=3,yr=[-2,2],xs=1  
-
-
-; airmass terms
-ploterror,mfitstr.mjd-min(mfitstr.mjd),mfitstr.coef[0],mfitstr.mjd*0,mfitstr.coeferr[1],ps=1,yr=[-1,1]
-
-; 56678 and 56680 have less than 50 stars
-; 56677, 56678, 56680, 56683-56686, less than 600 stars, not good fits
-; maybe use the "standard" value for these
-
-
-rndmjd = randomu(seed,numjdchip)*0.8-0.4
-plotc,mchfitstr.mjd+rndmjd,mchfitstr.coef[0],mchfitstr.chip,ps=3,yr=[-1,1],xs=1
-plotc,mchfitstr.mjd+rndmjd,mchfitstr.coef[1],mchfitstr.chip,ps=3,yr=[-0.3,0.1],xs=1
-; plot using unique night numbers
-
-
-
-; Measure median and RMS per chip
-chipmed = fltarr(2,nuchips)+99.99
-chiprms = fltarr(nuchips)+99.99
-for i=0,nuchips-1 do begin
-  ind = where(mchfitstr2.chip eq uchips[i],nind)
-  if nind gt 0 then begin
-    chipmed[0,i] = median([mchfitstr2[ind].coef[0]])
-    chipmed[1,i] = median([mchfitstr2[ind].coef[1]])
-    chiprms[i] = median([mchfitstr2[ind].rms])
-  endif
-endfor
-
-
-plothist,mfitstr.medrms,bin=0.04,xr=[0,2]
-
-bdmjd = where(mfitstr.rms gt median(mfitstr.rms)+2.5*mad(mfitstr.rms),nbdmjd)
-print,strtrim(nbdmjd,2),' nights have high RMS'
-if nbdmjd gt 0 then print,umjds[bdmjd]
-
-; There are definitely some outlier stars, should remove them
-plot,arr.mag,resid3,ps=3,yr=[-1,1]
-
-; Compare the two RMS values, should improve slightly with airmass
-; term removed
-plot,mchfitstr.rms,ps=1,yr=[0,1]
-oplot,mchfitstr2.rms,ps=4,co=250
+outfile = 'transphot_'+filter+'_eqns.fits'
+print,'Writing final photometric transformation equations to ',outfile
+print,'HDU1: chip-level information'
+print,'HDU2: night-level information'
+MKHDR,head,0
+sxaddpar,head,'filter',filter
+sxaddhist,'SMASH photometric transformation equuations for filter='+filter,head
+sxaddhist,'HDU2: chip-level information (colterm, relative zeropoint)',head
+sxaddhist,'HDU2: night-level information (amterm, nightly zeropoint)',head
+MWRFITS,fchipstr,outfile,/create,/silent
+MWRFITS,fntstr,outfile,/silent
 
 stop
 
