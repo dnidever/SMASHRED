@@ -40,7 +40,7 @@ tags = tag_names(arr)
 filter = strlowcase(tags[6])  ; this should be the filter name
 
 ; Initialize the fitting structure
-mfitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,nstars:-1L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
+mfitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,nstars:0L,nrejected:0L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
                      colterm:999.0,coltermerr:999.0,amterm:0.0,amtermerr:999.0,colamterm:0.0,colamtermerr:999.0,$
                      rms:999.0,sig:999.0,chisq:999.0,nbrt:0L,brtrms:999.0,brtsig:999.0,brtchisq:999.0,status:-1,$
                      relzpterm:99.99,chiprelzpterm:99.99,chiprelcolterm:99.99,$
@@ -229,15 +229,24 @@ WHILE (endflag eq 0) do begin
       ;     (nightly zpterm will be subtracted below if necessary)
       colamresid[ind1] = (arr[ind1].mag-arr[ind1].(6)) - yfit
 
+      ; Reject outliers
+      sig = mad(ydiff)
+      if count gt 0 then begin
+        rejected1 = abs(ydiff-median(ydiff)) gt 5*sig
+        rejected[gdind1] = rejected[gdind1] OR rejected1    ; combine the rejected bits
+if n_elements(rejected1) ne n_elements(ydiff) then stop,'nelements do not match'
+      endif
+
       ; Stick information into chip structure
       mfitstr[i].zpterm = zpterm
       mfitstr[i].zptermerr = zptermerr
       mfitstr[i].colterm = colterm
       mfitstr[i].coltermerr = coltermerr
       mfitstr[i].rms = yerror
-      mfitstr[i].sig = mad(ydiff)
+      mfitstr[i].sig = sig
       mfitstr[i].chisq = chisq
       mfitstr[i].status = status
+      mfitstr[i].nrejected = total(rejected[ind1])
 
       ; RMS of bright stars
       gbright = where(err lt 0.05 and mag lt min(mag)+3,nbright)
@@ -270,7 +279,7 @@ WHILE (endflag eq 0) do begin
     ; reject outliers and refit
     diff0 = y-yfit0
     gd = where(abs(diff0) lt 3*yerror0 and err lt 0.05,ngd)
-    coef = median(y[gd])
+    coef = median([y[gd]])
     yfit = poly(x,coef)
     ydiff = y-yfit
     ; use poly_fit to get uncertainties
@@ -472,13 +481,13 @@ uchips = arr[ui].chip
 nchips = n_elements(uchips)
 
 ; Loop through nights and fit the color and airmass terms
-mstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,nstars:0L,seeing:99.9,rms:99.0,brtrms:99.0,airmass0:0.0,airmass1:0.0,amrange:0.0,$
-                  zpterm:99.0,zptermsig:99.0,colterm:99.0,coltermsig:99.0,amterm:99.0,amtermsig:99.0,colamterm:99.0,colamtermsig:99.0,$
-                  badsoln:-1,photometric:-1},nmjds)
+mstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,nstars:0L,nrejected:0L,seeing:99.9,rms:99.0,brtrms:99.0,$
+                  airmass0:0.0,airmass1:0.0,amrange:0.0,zpterm:99.0,zptermsig:99.0,colterm:99.0,coltermsig:99.0,$
+                  amterm:99.0,amtermsig:99.0,colamterm:99.0,colamtermsig:99.0,badsoln:-1,photometric:-1},nmjds)
 observatory,'ctio',obs
 undefine,fitstr
 if not keyword_set(silent) then $
-  print,'  NUM    MJD     DATE     NSTARS    ZPTERM    COLTERM     AMTERM    AMRANGE   COLAMTERM     RMS       BRTRMS     MEDSIG'
+  print,'  NUM    MJD     DATE     NSTARS   NREJECT  ZPTERM    COLTERM     AMTERM    AMRANGE   COLAMTERM     RMS       BRTRMS     MEDSIG'
 resid = fltarr(narr)+999.9
 rejected = bytarr(narr)
 for i=0,nmjds-1 do begin
@@ -515,8 +524,8 @@ for i=0,nmjds-1 do begin
   ;endfor
 
   ; Measure total RMS and NRMS per night
-  totresid = mfitstr.nstars*mfitstr.rms^2
-  rms = sqrt(mean(total(totresid)/nmatch))  ; rms for all stars of this night
+  totresid = (mfitstr.nstars-mfitstr.nrejected)*mfitstr.rms^2
+  rms = sqrt(mean(total(totresid)/total(mfitstr.nstars-mfitstr.nrejected)))  ; rms for all stars of this night
   totbrtresid = mfitstr.nbrt*mfitstr.brtrms^2
   brtrms = sqrt(mean(total(totbrtresid)/total(mfitstr.nbrt)))
   medsig = median(mfitstr.sig)
@@ -527,6 +536,7 @@ for i=0,nmjds-1 do begin
   mstr[i].nchips = n_elements(ui)
   mstr[i].nightnum = i+1
   mstr[i].nstars = nmatch
+  mstr[i].nrejected = total(mfitstr.nrejected)
   mstr[i].rms = rms
   mstr[i].brtrms = brtrms
   mstr[i].zpterm = median(mfitstr.zpterm)
@@ -548,8 +558,8 @@ for i=0,nmjds-1 do begin
   mstr[i].date = date
 
   ; Print summary info to screen
-  print,i+1,umjds[i],date,nmatch,median(mfitstr.zpterm),median(mfitstr.colterm),$
-        mfitstr[0].amterm,mstr[i].amrange,mfitstr[0].colamterm,rms,brtrms,medsig,format='(I5,I8,A10,I8,8F11.4)'
+  print,i+1,umjds[i],date,nmatch,mstr[i].nrejected,median(mfitstr.zpterm),median(mfitstr.colterm),$
+        mfitstr[0].amterm,mstr[i].amrange,mfitstr[0].colamterm,rms,brtrms,medsig,format='(I5,I8,A10,I8,I8,8F11.4)'
   ; Save structure
   push,fitstr,mfitstr
 
@@ -563,7 +573,7 @@ end
 
 ;----------------------
 
-pro solve_transphot,file,fitcolam=fitcolam,errlim=errlim,arr=arr,mstr_fixcolzp=mstr_fixcolzp,resid_fixcolzp=resid_fixcolzp
+pro solve_transphot,file,fitcolam=fitcolam,errlim=errlim,arr=arr,mstr=mstr_fixcolzpam,resid=resid_fixcolzpam,stp=stp
 
 ; Check the STDRED data to see if we need separate color terms
 ; for each chip
@@ -1118,11 +1128,13 @@ endfor
 
 ; Make final residual figures
 print,'Making final residual plots'
+undefine,residfigs
 for i=0,nmjds-1 do begin
 
   MATCH,arr.mjd,mstr_fixcolzpam[i].mjd,ind1,ind2,count=nmatch,/sort
   gd = where(rejected_fixcolzp[ind1] eq 0,ngd)
-  ind = ind1[gd]
+  if ngd gt 0 then ind = ind1[gd] else ind=-1
+  nind = ngd
 
   ; Make resid plots, one per night
   ;  resid vs. color, resid vs. airmass, resid vs. chip number
@@ -1136,12 +1148,12 @@ for i=0,nmjds-1 do begin
   ;yr = minmax(resid_fixcolzpam[ind])
   yr = [-1,1]*(3.5*sig > 0.2)
   yr = [yr[0] > (-1.0), yr[1] < 1.0]
-  if nmatch lt 1000 then psym=1 else psym = 3
+  if nind lt 1000 then psym=1 else psym = 3
   symsize = 0.5
   ; Resid vs. color
   xr = minmax(arr[ind].(8))
   xr = [-0.5,2.0 < (xr[1]+0.05) > 3.5]
-  plotc,arr[ind].(8),resid_fixcolzpam[ind],arr[ind].err,ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
+  plotc,[arr[ind].(8),resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
         pos=[x0,y0,x1,dy],colpos=[x0,0.97,x1,0.99],xticklen=0.04
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'<COLTERM> = '+stringize(mstr_fixcolzpam[i].colterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].coltermsig,ndec=4),align=0,charsize=1.3
@@ -1149,7 +1161,7 @@ for i=0,nmjds-1 do begin
   ; Resid vs. airmass
   xr = minmax(arr[ind].airmass)
   xr = [0.9,(xr[1]+0.05) > 2.0]
-  plotc,arr[ind].airmass,resid_fixcolzpam[ind],arr[ind].err,ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Airmass',ytit='Residuals',$
+  plotc,[arr[ind].airmass],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Airmass',ytit='Residuals',$
         pos=[x0,y0+dy,x1,2*dy],/nocolorbar,xticklen=0.04,/noerase
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'AMTERM = '+stringize(mstr_fixcolzpam[i].amterm,ndec=4)+'+/'+$
          stringize(ntstr_fixcolzp[i].amtermsig,ndec=4),align=0,charsize=1.3
@@ -1158,9 +1170,9 @@ for i=0,nmjds-1 do begin
   xyouts,xr[1]-0.03*range(xr),yr[1]-0.12*range(yr),photcom,align=1,charsize=1.3,color=col
   oplot,xr,[0,0],linestyle=2
   ; Resid vs. chip number
-  rnd = randomu(seed,nmatch)*0.6-0.3
+  if nind gt 0 then rnd = randomu(seed,nind)*0.6-0.3 else rnd=0.0
   xr = [0,63]
-  plotc,arr[ind].chip+rnd,resid_fixcolzpam[ind],arr[ind].err,ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Chip',ytit='Residuals',/noerase,$
+  plotc,[arr[ind].chip+rnd],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Chip',ytit='Residuals',/noerase,$
         xticklen=0.04,tit=strtrim(mstr_fixcolzpam[i].mjd,2)+' - Residuals vs. color/airmass/chip (color-coded by ERR)',pos=[x0,y0+2*dy,x1,3*dy],/nocolorbar
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'ZPTERM = '+stringize(mstr_fixcolzpam[i].zpterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].zptermsig,ndec=4),align=0,charsize=1.3
@@ -1169,11 +1181,26 @@ for i=0,nmjds-1 do begin
 
   ps_close
   ps2png,file+'.eps',/eps
+  push,residfigs,file
 
   ;stop
 
 endfor
 
+; Convert png to pdf and combine
+print,'Converting residual plots to PDF'
+cd,current=curdir
+cd,plotsdir
+for i=0,n_elements(residfigs)-1 do begin
+  residfigs1 = file_basename(residfigs[i])
+  spawn,['convert',residfigs1+'.png',residfigs1+'.pdf'],/noshell
+endfor
+; Combine
+print,'Writing combined residual plots to transphot_'+filter+'_resid_all.pdf'
+cmd = 'gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=transphot_'+filter+'_resid_all.pdf '
+cmd += strjoin(file_basename(residfigs)+'.pdf',' ')
+spawn,cmd,out,errout
+cd,curdir
 
 
 ; 8.) Making final chip and night-level structures
@@ -1225,6 +1252,6 @@ sxaddhist,'HDU2: night-level information (amterm, nightly zeropoint)',head
 MWRFITS,fchipstr,outfile,/create,/silent
 MWRFITS,fntstr,outfile,/silent
 
-stop
+if keyword_set(stp) then stop
 
 end
