@@ -528,7 +528,7 @@ for i=0,nmjds-1 do begin
   rms = sqrt(mean(total(totresid)/total(mfitstr.nstars-mfitstr.nrejected)))  ; rms for all stars of this night
   totbrtresid = mfitstr.nbrt*mfitstr.brtrms^2
   brtrms = sqrt(mean(total(totbrtresid)/total(mfitstr.nbrt)))
-  medsig = median(mfitstr.sig)
+  medsig = median([mfitstr.sig])
 
   ; Save information to MJD structure
   mstr[i].mjd = umjds[i]
@@ -539,9 +539,9 @@ for i=0,nmjds-1 do begin
   mstr[i].nrejected = total(mfitstr.nrejected)
   mstr[i].rms = rms
   mstr[i].brtrms = brtrms
-  mstr[i].zpterm = median(mfitstr.zpterm)
+  mstr[i].zpterm = median([mfitstr.zpterm])
   mstr[i].zptermsig = mad(mfitstr.zpterm)
-  mstr[i].colterm = median(mfitstr.colterm)
+  mstr[i].colterm = median([mfitstr.colterm])
   mstr[i].coltermsig = mad(mfitstr.colterm)
   mstr[i].amterm = mfitstr[0].amterm
   mstr[i].amtermsig = mfitstr[0].amtermerr
@@ -558,7 +558,7 @@ for i=0,nmjds-1 do begin
   mstr[i].date = date
 
   ; Print summary info to screen
-  print,i+1,umjds[i],date,nmatch,mstr[i].nrejected,median(mfitstr.zpterm),median(mfitstr.colterm),$
+  print,i+1,umjds[i],date,nmatch,mstr[i].nrejected,median([mfitstr.zpterm]),median([mfitstr.colterm]),$
         mfitstr[0].amterm,mstr[i].amrange,mfitstr[0].colamterm,rms,brtrms,medsig,format='(I5,I8,A10,I8,I8,8F11.4)'
   ; Save structure
   push,fitstr,mfitstr
@@ -637,9 +637,25 @@ arr = arr[gd]
 narr = n_elements(arr)
 
 ; u-band, removing very blue and very red stars
+;  and removing the quadratic color shape
 if filter eq 'u' then begin
   print,'Removing very blue/red stars'
-  gd = where(arr.(8) ge 0.73 and arr.u_g lt 2.5,ngd)  ; u-g
+  gd = where(arr.(8) ge 1.00 and arr.u_g lt 2.5,ngd)  ; u-g
+  ;gd = where(arr.(8) ge 0.73 and arr.u_g lt 2.5,ngd)  ; u-g
+  ;gd = where(arr.(8) ge 1.3 and arr.u_g lt 2.5,ngd)  ; u-g
+  arr = arr[gd]
+  narr = n_elements(arr)
+
+  ; Removing quadratic color shape
+  print,'Removing quadratic color shape'
+  ucoef = [ -0.19919922d0, 0.27770109d0, -0.088840717d0]
+  arr.mag -= poly(arr.(8),ucoef)
+endif
+
+; r-band, removing very red stars
+if filter eq 'r' then begin
+  print,'Removing very red stars'
+  gd = where(arr.(8) lt 1.20,ngd) ; g-r
   arr = arr[gd]
   narr = n_elements(arr)
 endif
@@ -707,13 +723,20 @@ bdsig = where(mjdzpsig lt 1e-8,nbdsig,comp=gdsig)
 zpsig = median(mjdzpsig[gdsig])
 if nbdsig gt 0 then mjdzpsig[bdsig] = zpsig
 ; Measure deviation in Nsigma
+;  constrain the sigma to [0.7,1.5]*median(sigma)
 for i=0,nmjd-1 do begin
   ind = where(expstr.mjd eq umjd[i],nind)
-  expstr[ind].residzeroptnsig = abs(expstr[ind].residzeropt) / mjdzpsig[i]
+  expstr[ind].residzeroptnsig = abs(expstr[ind].residzeropt) / (0.7*zpsig > mjdzpsig[i] < zpsig*1.5)
 endfor
 ; Find bad exposures
 bdexp = where(expstr.residzeroptnsig gt 5,nbdexp)
-if nbdexp gt 0 then print,'Removing ',strtrim(nbdexp,2),' bad exposures: ',expstr[bdexp].expnum
+if nbdexp gt 0 then begin
+  for i=0,nmjd-1 do begin
+    match,umjd[i],expstr[bdexp].mjd,ind1,ind2,/sort,count=nmatch1
+    if nmatch1 gt 0 then print,strtrim(umjd[i],2),'  ',strtrim(nmatch1,2),' outlier exposures: ',expstr[bdexp[ind2]].expnum
+  endfor
+  ;print,'Removing ',strtrim(nbdexp,2),' bad exposures: ',expstr[bdexp].expnum
+endif
 undefine,bdind
 for i=0,nbdexp-1 do begin
   ind = expsi[explo[bdexp[i]]:exphi[bdexp[i]]]
@@ -745,7 +768,7 @@ print,'' & print,'2.) Run on all the nights fitting everything individually'
 SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,rejected=rejected0,/bootstrap  ;,/save
 nmjds = n_elements(mstr0)
 uimjd = uniq(mstr0.mjd,sort(mstr0.mjd))
-umjd = mstr0[uimjd]
+umjd = mstr0[uimjd].mjd
 nfitstr = n_elements(fitstr0)
 
 
@@ -823,8 +846,8 @@ print,'Making some figures'
 setdisp,/silent
 !p.font = 0
 ; Relative ZPTERM vs. chip
-file = plotsdir+'transphot_'+filter+'_zpterm_chip'
-ps_open,file,/color,thick=4,/encap
+psfile = plotsdir+'transphot_'+filter+'_zpterm_chip'
+ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
 yr = [-0.1,0.1]
@@ -838,10 +861,10 @@ plotc,fitstr0[gd].chip+rnd[gd],fitstr0[gd].relzpterm,fitstr0[gd].zptermerr,ps=8,
 oplot,chipstr.chip,chipstr.zpterm,ps=-1
 xyouts,2,yr[1]-0.08*range(yr),'RMS = '+stringize(mad(fitstr0[gd].chiprelzpterm),ndec=4),align=0,charsize=1.1,charthick=4
 ps_close
-ps2png,file+'.eps',/eps
+ps2png,psfile+'.eps',/eps
 ; COLTERM vs. chip
-file = plotsdir+'transphot_'+filter+'_colterm_chip'
-ps_open,file,/color,thick=4,/encap
+psfile = plotsdir+'transphot_'+filter+'_colterm_chip'
+ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
 ;yr = [-0.3,0.3]
@@ -855,10 +878,10 @@ plotc,fitstr0[gd].chip+rnd[gd],fitstr0[gd].colterm,fitstr0[gd].coltermerr,ps=8,s
 oplot,chipstr.chip,chipstr.colterm,ps=-1
 xyouts,2,yr[1]-0.08*range(yr),'RMS = '+stringize(mad(fitstr0[gd].chiprelcolterm),ndec=4),align=0,charsize=1.1,charthick=4
 ps_close
-ps2png,file+'.eps',/eps
+ps2png,psfile+'.eps',/eps
 ; CHIPRELZPTERM vs. NIGHTNUM
-file = plotsdir+'transphot_'+filter+'_chiprelzpterm_nightnum'
-ps_open,file,/color,thick=4,/encap
+psfile = plotsdir+'transphot_'+filter+'_chiprelzpterm_nightnum'
+ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
 gg = where(abs(fitstr0.chiprelzpterm) lt 2)
@@ -869,10 +892,10 @@ plotc,fitstr0.nightnum+rnd,fitstr0.chiprelzpterm,fitstr0.chip,ps=8,sym=0.5,xr=[0
 plotc,fitstr0.nightnum+rnd,fitstr0.chiprelzpterm,fitstr0.zptermerr,ps=8,sym=0.5,xr=[0,53],yr=yr,xs=1,ys=1,max=0.01,xtit='Night Number',ytit='Relative ZPTERM',$
       tit=filter+'-band relative zero-point term   (color-coded by ZPTERMERR)',pos=[0.08,0.58,0.98,0.90],colpos=[0.08,0.97,0.98,0.98],/noerase
 ps_close
-ps2png,file+'.eps',/eps
+ps2png,psfile+'.eps',/eps
 ; CHIPRELCOLTERM vs. NIGHTNUM
-file = plotsdir+'transphot_'+filter+'_chiprelcolterm_nightnum'
-ps_open,file,/color,thick=4,/encap
+psfile = plotsdir+'transphot_'+filter+'_chiprelcolterm_nightnum'
+ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
 gg = where(abs(fitstr0.chiprelcolterm) lt 2)
@@ -883,7 +906,7 @@ plotc,fitstr0.nightnum+rnd,fitstr0.chiprelcolterm,fitstr0.chip,ps=8,sym=0.5,xr=[
 plotc,fitstr0.nightnum+rnd,fitstr0.chiprelcolterm,fitstr0.coltermerr,ps=8,sym=0.5,xr=[0,53],yr=yr,xs=1,ys=1,max=0.01,xtit='Night Number',ytit='Relative COLTERM',$
       tit=filter+'-band relative color term   (color-coded by COLTERMERR)',pos=[0.08,0.58,0.98,0.90],colpos=[0.08,0.97,0.98,0.98],/noerase
 ps_close
-ps2png,file+'.eps',/eps
+ps2png,psfile+'.eps',/eps
 
 
 
@@ -998,7 +1021,7 @@ ntstr_fixcolzp = mstr_fixcolzp
 add_tag,ntstr_fixcolzp,'amavgflag',0,ntstr_fixcolzp  ; amterm averaged
 add_tag,ntstr_fixcolzp,'namavg',0,ntstr_fixcolzp  ; amterm averaged
 print,'  NUM   MJD    AMTERM   AMTERMSIG FLAG  NAVG   COMMENT'
-for i=0,nmjd-1 do begin
+for i=0,nmjds-1 do begin
   ; Only look at photometric nights
   if mstr_fixcolzp[i].photometric eq 1 then begin
     ; Low airmass range or bad solution
@@ -1083,8 +1106,8 @@ endfor
 
 
 ; Make a figure of AMTERM
-file = plotsdir+'transphot_'+filter+'_amterm'
-ps_open,file,/color,thick=4,/encap
+psfile = plotsdir+'transphot_'+filter+'_amterm'
+ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 gphot = where(ntstr_fixcolzp.photometric eq 1,ngphot)
 xr = minmax(ntstr_fixcolzp[gphot].mjd)
@@ -1099,12 +1122,12 @@ plotc,ntstr_fixcolzp[gphot].nightnum,ntstr_fixcolzp[gphot].amterm,ntstr_fixcolzp
       xr=xr2,xs=1,yerr=ntstr_fixcolzp[gphot].amtermsig,xtit='Night Number',ytit='AMTERM'
 oplot,mstr_fixcolzp[gphot].nightnum,mstr_fixcolzp[gphot].amterm,ps=1
 ps_close
-ps2png,file+'.eps',/eps
+ps2png,psfile+'.eps',/eps
 
 
-; 7.) Redetermine NIGHTLY zpterm holding everything else fixed
+; 8.) Redetermine NIGHTLY zpterm holding everything else fixed
 ;--------------------------------------------------------------
-print,'' & print,'7.) Redetermine NIGHTLY zpterm holding everything else fixed'
+print,'' & print,'8.) Redetermine NIGHTLY zpterm holding everything else fixed'
 SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,$
                         fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap
 
@@ -1139,8 +1162,9 @@ for i=0,nmjds-1 do begin
   ; Make resid plots, one per night
   ;  resid vs. color, resid vs. airmass, resid vs. chip number
 
-  file = plotsdir+'transphot_'+filter+'_'+strtrim(mstr_fixcolzpam[i].mjd,2)+'_resid'
-  ps_open,file,/color,thick=4,/encap
+  setdisp,/silent
+  psfile = plotsdir+'transphot_'+filter+'_'+strtrim(mstr_fixcolzpam[i].mjd,2)+'_resid'
+  ps_open,psfile,/color,thick=4,/encap
   device,/inches,xsize=9.5,ysize=9.5
   x0 = 0.08 & x1=0.97
   y0 = 0.05 & dy = 0.30
@@ -1148,13 +1172,22 @@ for i=0,nmjds-1 do begin
   ;yr = minmax(resid_fixcolzpam[ind])
   yr = [-1,1]*(3.5*sig > 0.2)
   yr = [yr[0] > (-1.0), yr[1] < 1.0]
-  if nind lt 1000 then psym=1 else psym = 3
-  symsize = 0.5
+  zr = [0.0, max(arr.err)] 
+  psym = 3
+  symsize = 1.0
+  if nind lt 10000 then begin
+    psym = 8
+    symsize = 0.1
+  endif
+  if nind lt 1000 then begin
+    psym = 8
+    symsize = 0.4
+  endif
   ; Resid vs. color
   xr = minmax(arr[ind].(8))
   xr = [-0.5,2.0 < (xr[1]+0.05) > 3.5]
-  plotc,[arr[ind].(8),resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
-        pos=[x0,y0,x1,dy],colpos=[x0,0.97,x1,0.99],xticklen=0.04
+  plotc,[arr[ind].(8)],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
+        pos=[x0,y0,x1,dy],colpos=[x0,0.97,x1,0.99],xticklen=0.04,min=zr[0],max=zr[1]
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'<COLTERM> = '+stringize(mstr_fixcolzpam[i].colterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].coltermsig,ndec=4),align=0,charsize=1.3
   oplot,xr,[0,0],linestyle=2
@@ -1162,7 +1195,7 @@ for i=0,nmjds-1 do begin
   xr = minmax(arr[ind].airmass)
   xr = [0.9,(xr[1]+0.05) > 2.0]
   plotc,[arr[ind].airmass],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Airmass',ytit='Residuals',$
-        pos=[x0,y0+dy,x1,2*dy],/nocolorbar,xticklen=0.04,/noerase
+        pos=[x0,y0+dy,x1,2*dy],/nocolorbar,xticklen=0.04,/noerase,min=zr[0],max=zr[1]
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'AMTERM = '+stringize(mstr_fixcolzpam[i].amterm,ndec=4)+'+/'+$
          stringize(ntstr_fixcolzp[i].amtermsig,ndec=4),align=0,charsize=1.3
   if mstr_fixcolzpam[i].photometric eq 1 then photcom='PHOTOMETRIC' else photcom='NON-PHOTOMETRIC'
@@ -1173,15 +1206,16 @@ for i=0,nmjds-1 do begin
   if nind gt 0 then rnd = randomu(seed,nind)*0.6-0.3 else rnd=0.0
   xr = [0,63]
   plotc,[arr[ind].chip+rnd],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Chip',ytit='Residuals',/noerase,$
-        xticklen=0.04,tit=strtrim(mstr_fixcolzpam[i].mjd,2)+' - Residuals vs. color/airmass/chip (color-coded by ERR)',pos=[x0,y0+2*dy,x1,3*dy],/nocolorbar
+        xticklen=0.04,tit=strtrim(mstr_fixcolzpam[i].mjd,2)+' - Residuals vs. color/airmass/chip (color-coded by ERR)',pos=[x0,y0+2*dy,x1,3*dy],$
+        min=zr[0],max=zr[1],/nocolorbar
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'ZPTERM = '+stringize(mstr_fixcolzpam[i].zpterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].zptermsig,ndec=4),align=0,charsize=1.3
   xyouts,xr[1]-0.03*range(xr),yr[1]-0.12*range(yr),'RMS = '+stringize(mstr_fixcolzpam[i].rms,ndec=4),align=1,charsize=1.3
   oplot,xr,[0,0],linestyle=2
 
   ps_close
-  ps2png,file+'.eps',/eps
-  push,residfigs,file
+  ps2png,psfile+'.eps',/eps
+  push,residfigs,psfile
 
   ;stop
 
@@ -1203,9 +1237,9 @@ spawn,cmd,out,errout
 cd,curdir
 
 
-; 8.) Making final chip and night-level structures
+; 9.) Making final chip and night-level structures
 ;-------------------------------------------------
-print,'' & print,'8.) Making final chip and night-level transformation equation structures'
+print,'' & print,'9.) Making final chip and night-level transformation equation structures'
 
 
 ; Chip-level color and zero-point terms
@@ -1251,6 +1285,8 @@ sxaddhist,'HDU2: chip-level information (colterm, relative zeropoint)',head
 sxaddhist,'HDU2: night-level information (amterm, nightly zeropoint)',head
 MWRFITS,fchipstr,outfile,/create,/silent
 MWRFITS,fntstr,outfile,/silent
+
+save,arr,mstr_fixcolzpam,resid_fixcolzpam,rejected_fixcolzpam,file='solve_transphot_'+filter+'_resid.dat'
 
 if keyword_set(stp) then stop
 
