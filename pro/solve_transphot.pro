@@ -1,6 +1,6 @@
 pro solve_transphot_night,arr,mfitstr,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam,fixcolam=fixcolam,$
                         fixchipzp=fixchipzp,resid=resid,expstr=expstr,verbose=verbose,silent=silent,pl=pl,$
-                        save=save,bootstrap=bootstrap,stp=stp,rejected=rejected
+                        save=save,bootstrap=bootstrap,stp=stp,rejected=rejected,noreject=noreject
 
 ; Fit color and zpterm for each night+chip and airmass term
 ; per night. itertate until convergence
@@ -17,6 +17,7 @@ pro solve_transphot_night,arr,mfitstr,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fi
 ;  /fitcolam   Fit the color*airmass term.  The default it so leave at
 ;                 0.0 and not fit this.
 ; /bootstrap   Use bootstrap analysis to determine coefficient uncertainties.
+; /noreject    Don't do any rejection
 ;
 ; OUTPUTS:
 ;  mfitstr     The structure of fitted values, one element for each
@@ -231,10 +232,9 @@ WHILE (endflag eq 0) do begin
 
       ; Reject outliers
       sig = mad(ydiff)
-      if count gt 0 then begin
+      if count gt 0 and not keyword_set(noreject) then begin
         rejected1 = abs(ydiff-median(ydiff)) gt 5*sig
         rejected[gdind1] = rejected[gdind1] OR rejected1    ; combine the rejected bits
-if n_elements(rejected1) ne n_elements(ydiff) then stop,'nelements do not match'
       endif
 
       ; Stick information into chip structure
@@ -393,7 +393,7 @@ if n_elements(rejected1) ne n_elements(ydiff) then stop,'nelements do not match'
   ; Remove any outlier exposures
   ;  can't do it on the first iteration because zpterm
   ;  is messed up due to the contribution of amterm/colamterm
-  if count gt 0 then begin
+  if count gt 0 and not keyword_set(noreject) then begin
     sigexp = mad([expstr.medresid])
     bdexp = where(abs(expstr.medresid) gt (3*sigexp>0.1),nbdexp)
     if nbdexp gt 0 then begin
@@ -463,7 +463,7 @@ end
 
 pro solve_transphot_allnights,arr,mstr,fitstr,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam,fixcolam=fixcolam,$
                         fixchipzp=fixchipzp,resid=resid,expstr=expstr,verbose=verbose,silent=silent,pl=pl,save=save,$
-                        bootstrap=bootstrap,rejected=rejected
+                        bootstrap=bootstrap,rejected=rejected,noreject=noreject
 
 
 tags = tag_names(arr)
@@ -504,7 +504,8 @@ for i=0,nmjds-1 do begin
 
   SOLVE_TRANSPHOT_NIGHT,arr1,mfitstr,/silent,fitcolam=fitcolam,fixcolr=fixcolr,fixam=fixam1,$
                       fixchipzp=fixchipzp,fixcolam=fixcolam,resid=resid1,expstr=expstr1,$
-                      verbose=verbose,pl=pl,save=save,bootstrap=bootstrap,rejected=rejected1
+                      verbose=verbose,pl=pl,save=save,bootstrap=bootstrap,rejected=rejected1,$
+                      noreject=noreject
   mfitstr.nightnum = i+1
 
   rejected[ind1] = rejected1
@@ -573,7 +574,8 @@ end
 
 ;----------------------
 
-pro solve_transphot,file,fitcolam=fitcolam,errlim=errlim,arr=arr,mstr=mstr_fixcolzpam,resid=resid_fixcolzpam,stp=stp
+pro solve_transphot,file,fitcolam=fitcolam,errlim=errlim,arr=arr,mstr=mstr_fixcolzpam,resid=resid_fixcolzpam,$
+                         rejected=rejected_fixcolzpam,noreject=noreject,stp=stp
 
 ; Check the STDRED data to see if we need separate color terms
 ; for each chip
@@ -596,27 +598,20 @@ endif
 ;  -set photometric tag
 ;  -flag bad solutions with not enough stars
 ; 3.) Determine median zpterm and colterm per chip
-; 4.) Fixing colterm. Redetermining zpterm and amter
+; 4.) Fixing colterm. Redetermining zpterm and amterm
 ;  -set photometric tag
 ;  -flag bad solutions with not enough stars
-; 5.) Redetermining median zpterm per chip
+; 5.) Redetermine median zpterm per chip
 ; 6.) Fixing chip-level relative zpterm and colterm.  Retermining
-;       nightly zpterm
+;       nightly zpterm and amterm
+; 7.) Averaging airmass terms
+; 8.) Redetermine nightly zpterm holding everything else fixed
+; 9.) Making final chip and night-level structures and write output files
 
 ; chip-level color terms
 ; chip-level zpterm
 ; nightly zpterm
 ; nightly airmass term
-
-; -fit everything (colterm, zpterm, amterm)
-; -determine chip-level color terms across everything
-; -fix chip-level color terms, redetermine everything else
-; -determine chip-level zpterm  + AMTERM???
-; -fix chip-level color and zpterm, redetermine nightly zpterm and
-;    airmass term
-; -determine nightly airmass terms
-; -fix color-level color and zpterm and nightly airmass term, redetermine
-;    nightly zpterm 
 
 reduxdir = '/data/smash/cp/red/photred/'
 plotsdir = reduxdir+'stdred/plots/'
@@ -627,6 +622,11 @@ narr = n_elements(arr)
 
 tags = tag_names(arr)
 filter = strlowcase(tags[6])  ; this should be the filter name
+colorname = repstr(strlowcase(tags[8]),'_','-')
+
+; Suffix tag for plots
+pstag = ''
+if keyword_set(noreject) then pstag='_norej'
 
 ; Trim stars
 if n_elements(errlim) eq 0 then errlim = 0.05
@@ -742,7 +742,7 @@ for i=0,nbdexp-1 do begin
   ind = expsi[explo[bdexp[i]]:exphi[bdexp[i]]]
   push,bdind,ind
 endfor
-REMOVE,bdind,arr
+if not keyword_set(noreject) then REMOVE,bdind,arr else print,'/NOREJECT.  Not rejecting any exposures.'
 narr = n_elements(arr)
 
 ; 57097  huge airmass dependence, maybe only use low-airmass exps to
@@ -755,7 +755,7 @@ badexp = ['00187877','00187878',$  ; there are ~10 chips that have problems, nig
 nbadexp = n_elements(badexp)
 for i=0,nbadexp-1 do begin
   MATCH,arr.expnum,badexp[i],ind1,ind2,/sort,count=nmatch
-  if nmatch gt 0 then begin
+  if nmatch gt 0 and not keyword_set(noreject) then begin
     remove,ind1,arr
     print,'Removing bad exposure: ',badexp[i]
   endif
@@ -765,7 +765,7 @@ endfor
 ; 2.) Run on all the nights fitting everything individually
 ;------------------------------------------------------------
 print,'' & print,'2.) Run on all the nights fitting everything individually'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,rejected=rejected0,/bootstrap  ;,/save
+SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,rejected=rejected0,/bootstrap,noreject=noreject
 nmjds = n_elements(mstr0)
 uimjd = uniq(mstr0.mjd,sort(mstr0.mjd))
 umjd = mstr0[uimjd].mjd
@@ -846,7 +846,7 @@ print,'Making some figures'
 setdisp,/silent
 !p.font = 0
 ; Relative ZPTERM vs. chip
-psfile = plotsdir+'transphot_'+filter+'_zpterm_chip'
+psfile = plotsdir+'transphot_'+filter+'_zpterm_chip'+pstag
 ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -863,7 +863,7 @@ xyouts,2,yr[1]-0.08*range(yr),'RMS = '+stringize(mad(fitstr0[gd].chiprelzpterm),
 ps_close
 ps2png,psfile+'.eps',/eps
 ; COLTERM vs. chip
-psfile = plotsdir+'transphot_'+filter+'_colterm_chip'
+psfile = plotsdir+'transphot_'+filter+'_colterm_chip'+pstag
 ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -880,7 +880,7 @@ xyouts,2,yr[1]-0.08*range(yr),'RMS = '+stringize(mad(fitstr0[gd].chiprelcolterm)
 ps_close
 ps2png,psfile+'.eps',/eps
 ; CHIPRELZPTERM vs. NIGHTNUM
-psfile = plotsdir+'transphot_'+filter+'_chiprelzpterm_nightnum'
+psfile = plotsdir+'transphot_'+filter+'_chiprelzpterm_nightnum'+pstag
 ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -894,7 +894,7 @@ plotc,fitstr0.nightnum+rnd,fitstr0.chiprelzpterm,fitstr0.zptermerr,ps=8,sym=0.5,
 ps_close
 ps2png,psfile+'.eps',/eps
 ; CHIPRELCOLTERM vs. NIGHTNUM
-psfile = plotsdir+'transphot_'+filter+'_chiprelcolterm_nightnum'
+psfile = plotsdir+'transphot_'+filter+'_chiprelcolterm_nightnum'+pstag
 ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 rnd = randomu(seed,nfitstr)*0.6-0.3
@@ -913,7 +913,8 @@ ps2png,psfile+'.eps',/eps
 ; 4.) Fixing colterm, Redetermine zpterm and airmass term
 ;---------------------------------------------------------
 print,'' & print,'4.) Fixing colterm.  Redetermining zpterm and amterm'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolr,fitstr_fixcolr,fixcolr=chipstr,resid=resid_fixcolr,rejected=rejected_fixcolr,/bootstrap
+SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolr,fitstr_fixcolr,fixcolr=chipstr,resid=resid_fixcolr,rejected=rejected_fixcolr,$
+                          /bootstrap,noreject=noreject
 
 ; Set PHOTOMETRIC tag
 MATCH,mstr_fixcolr.mjd,conditions.mjd,ind1,ind2
@@ -976,7 +977,7 @@ endfor
 ;---------------------------------------------------------------------------
 print,'' & print,'6.) Fixing chip-level relative zpterm and colterm.  Redetermining NIGHTLY zpterm and amterm'
 SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,resid=resid_fixcolzp,$
-                          rejected=rejected_fixcolzp,/bootstrap
+                          rejected=rejected_fixcolzp,/bootstrap,noreject=noreject
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzp.mjd,conditions.mjd,ind1,ind2
@@ -1106,7 +1107,7 @@ endfor
 
 
 ; Make a figure of AMTERM
-psfile = plotsdir+'transphot_'+filter+'_amterm'
+psfile = plotsdir+'transphot_'+filter+'_amterm'+pstag
 ps_open,psfile,/color,thick=4,/encap
 device,/inches,xsize=9.5,ysize=9.5
 gphot = where(ntstr_fixcolzp.photometric eq 1,ngphot)
@@ -1129,7 +1130,7 @@ ps2png,psfile+'.eps',/eps
 ;--------------------------------------------------------------
 print,'' & print,'8.) Redetermine NIGHTLY zpterm holding everything else fixed'
 SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,$
-                        fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap
+                        fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap,noreject=noreject
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzpam.mjd,conditions.mjd,ind1,ind2
@@ -1163,7 +1164,7 @@ for i=0,nmjds-1 do begin
   ;  resid vs. color, resid vs. airmass, resid vs. chip number
 
   setdisp,/silent
-  psfile = plotsdir+'transphot_'+filter+'_'+strtrim(mstr_fixcolzpam[i].mjd,2)+'_resid'
+  psfile = plotsdir+'transphot_'+filter+'_'+strtrim(mstr_fixcolzpam[i].mjd,2)+'_resid'+pstag
   ps_open,psfile,/color,thick=4,/encap
   device,/inches,xsize=9.5,ysize=9.5
   x0 = 0.08 & x1=0.97
@@ -1186,7 +1187,7 @@ for i=0,nmjds-1 do begin
   ; Resid vs. color
   xr = minmax(arr[ind].(8))
   xr = [-0.5,2.0 < (xr[1]+0.05) > 3.5]
-  plotc,[arr[ind].(8)],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit='Color',ytit='Residuals',$
+  plotc,[arr[ind].(8)],[resid_fixcolzpam[ind]],[arr[ind].err],ps=psym,symsize=symsize,xr=xr,yr=yr,xs=1,ys=1,xtit=colorname,ytit='Residuals',$
         pos=[x0,y0,x1,dy],colpos=[x0,0.97,x1,0.99],xticklen=0.04,min=zr[0],max=zr[1]
   xyouts,xr[0]+0.03*range(xr),yr[1]-0.12*range(yr),'<COLTERM> = '+stringize(mstr_fixcolzpam[i].colterm,ndec=4)+'+/-'+$
          stringize(mstr_fixcolzpam[i].coltermsig,ndec=4),align=0,charsize=1.3
@@ -1230,12 +1231,13 @@ for i=0,n_elements(residfigs)-1 do begin
   spawn,['convert',residfigs1+'.png',residfigs1+'.pdf'],/noshell
 endfor
 ; Combine
-print,'Writing combined residual plots to transphot_'+filter+'_resid_all.pdf'
-cmd = 'gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=transphot_'+filter+'_resid_all.pdf '
+print,'Writing combined residual plots to transphot_'+filter+'_resid_all'+pstag+'.pdf'
+cmd = 'gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=transphot_'+filter+'_resid_all'+pstag+'.pdf '
 cmd += strjoin(file_basename(residfigs)+'.pdf',' ')
 spawn,cmd,out,errout
 cd,curdir
 
+stop
 
 ; 9.) Making final chip and night-level structures
 ;-------------------------------------------------
