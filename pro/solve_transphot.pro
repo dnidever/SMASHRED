@@ -1237,7 +1237,61 @@ cmd += strjoin(file_basename(residfigs)+'.pdf',' ')
 spawn,cmd,out,errout
 cd,curdir
 
-stop
+; --- Creating summary statistics for each exposure ---
+ui = uniq(arr.expnum,sort(arr.expnum))
+uexp = arr[ui].expnum
+nexp = n_elements(uexp)
+expstr = replicate({expnum:'',mjd:0L,nightnum:0L,exptime:0.0,airmass:0.0,seeing:0.0,$
+                    stdfield:'',nsources:0L,nrejected:0L,medresid:0.0,sigresid:0.0},nexp)
+; Get indices for each group
+expsi = sort(arr.expnum)
+expbrk = where(shift(arr[expsi].expnum,1) ne arr[expsi].expnum,nexpbrk)
+explo = expbrk
+exphi = [expbrk[1:nexpbrk-1]-1,n_elements(arr)-1]
+for i=0,nexp-1 do begin
+  ind = expsi[explo[i]:exphi[i]]
+  nind = exphi[i]-explo[i]+1
+  expstr[i].expnum = uexp[i]
+  expstr[i].mjd = arr[ind[0]].mjd
+  MATCH,mstr0.mjd,expstr[i].mjd,ind1,ind2,/sort
+  expstr[i].nightnum = mstr0[ind1[0]].nightnum
+  expstr[i].exptime = arr[ind[0]].exptime
+  expstr[i].airmass = median([arr[ind].airmass])
+  expstr[i].seeing = median([arr[ind].seeing])
+  expstr[i].stdfield = arr[ind[0]].stdfield
+  expstr[i].nsources = nind
+  expstr[i].nrejected = total(rejected_fixcolzpam[ind])
+  expstr[i].medresid = median(resid_fixcolzpam[ind])
+  expstr[i].sigresid = mad(resid_fixcolzpam[ind])
+endfor
+
+; --- Creating summary statistics for each standard star field ---
+ui = uniq(arr.stdfield,sort(arr.stdfield))
+ustdfield = arr[ui].stdfield
+nstdfield = n_elements(ustdfield)
+fieldstr = replicate({stdfield:'',sdss:0,nexp:0L,nmjd:0L,nsources:0L,nrejected:0L,medresid:0.0,sigresid:0.0},nstdfield)
+; Get indices for each group
+stdsi = sort(arr.stdfield)
+stdbrk = where(shift(arr[stdsi].stdfield,1) ne arr[stdsi].stdfield,nstdbrk)
+stdlo = stdbrk
+stdhi = [stdbrk[1:nstdbrk-1]-1,n_elements(arr)-1]
+for i=0,nstdfield-1 do begin
+  ind = stdsi[stdlo[i]:stdhi[i]]
+  nind = stdhi[i]-stdlo[i]+1
+  if strmid(strupcase(ustdfield[i]),0,4) eq 'SDSS' then fieldstr[i].sdss=1
+  uiexp = uniq(arr[ind].expnum,sort(arr[ind].expnum))
+  uimjd = uniq(arr[ind].mjd,sort(arr[ind].mjd))
+  fieldstr[i].stdfield = ustdfield[i]
+  fieldstr[i].nexp = n_elements(uiexp)
+  fieldstr[i].nmjd = n_elements(uimjd)
+  ;fieldstr[i].night = arr[ind[0]].night
+  fieldstr[i].nsources = nind
+  fieldstr[i].nrejected = total(rejected_fixcolzpam[ind])
+  fieldstr[i].medresid = median(resid_fixcolzpam[ind])
+  fieldstr[i].sigresid = mad(resid_fixcolzpam[ind])
+endfor
+
+;stop
 
 ; 9.) Making final chip and night-level structures
 ;-------------------------------------------------
@@ -1265,6 +1319,11 @@ fntstr.amtermsig = ntstr_fixcolzp.amtermsig
 fntstr.amavgflag = ntstr_fixcolzp.amavgflag
 fntstr.namavg = ntstr_fixcolzp.namavg
 
+; NEED TO ADD IN INFO FOR NIGHTS WITH NO STANDARD STAR DATA!!!
+;  or do we?  how should we handle these??
+; 20140105, could take nightly zero-point and amterm from neighboring
+; nights, average them.
+
 
 ; DO I NEED A LINE FOR EVERY NIGHT+CHIP???
 
@@ -1288,7 +1347,8 @@ sxaddhist,'HDU2: night-level information (amterm, nightly zeropoint)',head
 MWRFITS,fchipstr,outfile,/create,/silent
 MWRFITS,fntstr,outfile,/silent
 
-save,arr,mstr_fixcolzpam,resid_fixcolzpam,rejected_fixcolzpam,file='solve_transphot_'+filter+'_resid.dat'
+save,arr,mstr_fixcolzpam,resid_fixcolzpam,rejected_fixcolzpam,$
+     expstr,fieldstr,file='solve_transphot_'+filter+'_resid.dat'
 
 if keyword_set(stp) then stop
 
