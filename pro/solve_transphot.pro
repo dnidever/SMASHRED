@@ -43,7 +43,7 @@ filter = strlowcase(tags[6])  ; this should be the filter name
 ; Initialize the fitting structure
 mfitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,nstars:0L,nrejected:0L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
                      colterm:999.0,coltermerr:999.0,amterm:0.0,amtermerr:999.0,colamterm:0.0,colamtermerr:999.0,$
-                     rms:999.0,sig:999.0,chisq:999.0,nbrt:0L,brtrms:999.0,brtsig:999.0,brtchisq:999.0,status:-1,$
+                     rms:999.0,sig:999.0,chisq:999.0,medresid:999.0,nbrt:0L,brtrms:999.0,brtsig:999.0,brtchisq:999.0,status:-1,$
                      relzpterm:99.99,chiprelzpterm:99.99,chiprelcolterm:99.99,$
                      badsoln:-1,photometric:-1},nchips)
 
@@ -79,6 +79,7 @@ endflag = 0
 count = 0L
 lastmfitstr = mfitstr
 rejected = bytarr(narr)
+ntzpterm = 0.0
 WHILE (endflag eq 0) do begin
 
   ; Fit color term and zpterm for each chip separately
@@ -111,6 +112,11 @@ WHILE (endflag eq 0) do begin
       MATCH,fixchipzp.chip,uchips[i],fixchipzpind,dum,count=nfixchipzp,/sort
       zpterm = fixchipzp[fixchipzpind[0]].zpterm
       zptermerr = fixchipzp[fixchipzpind[0]].zptermerr
+      ; chip-level relative zpterm has temporal dependence
+      if tag_exist(fixchipzp,'zpmjdterm') then begin
+        zpterm += imjd * fixchipzp[fixchipzpind[0]].zpmjdterm
+        zptermerr = sqrt(zptermerr^2 + ( imjd * fixchipzp[fixchipzpind[0]].zpmjdtermerr )^2 )
+      endif
       mfitstr[i].zpterm = zpterm          ; these two will get appended with the nightly zpterm/err below
       mfitstr[i].zptermerr = zptermerr
     endif
@@ -208,12 +214,14 @@ WHILE (endflag eq 0) do begin
         zpterm = mfitstr[i].zpterm      ; this is the input chip-level zpterm from above
         zptermerr = mfitstr[i].zptermerr
         ydiff = y-zpterm
-        yerror = sqrt(mean((ydiff-median(ydiff))^2))  ; subtract out nightly offset
+        ;yerror = sqrt(mean((ydiff-median(ydiff))^2))  ; subtract out nightly offset
+        yerror = sqrt(mean((ydiff-ntzpterm)^2))  ; subtract out nightly offset
         status = 1
       endif
 
       chisq = mean((ydiff/err)^2)
-      if n_elements(fixchipzp) gt 0 then chisq = mean(((ydiff-median(ydiff))/err)^2)  ; subtract nightly zpterm
+      ;if n_elements(fixchipzp) gt 0 then chisq = mean(((ydiff-median(ydiff))/err)^2)  ; subtract nightly zpterm
+      if n_elements(fixchipzp) gt 0 then chisq = mean(((ydiff-ntzpterm)/err)^2)  ; subtract nightly zpterm
 
       ; Residuals
       yfit = arr[ind1].(8)*colterm + zpterm
@@ -237,6 +245,9 @@ WHILE (endflag eq 0) do begin
         rejected[gdind1] = rejected[gdind1] OR rejected1    ; combine the rejected bits
       endif
 
+      ; Median residuals
+      if n_elements(fixchipzp) gt 0 then medresid=median([ydiff-ntzpterm]) else medresid=median([ydiff])
+
       ; Stick information into chip structure
       mfitstr[i].zpterm = zpterm
       mfitstr[i].zptermerr = zptermerr
@@ -245,6 +256,7 @@ WHILE (endflag eq 0) do begin
       mfitstr[i].rms = yerror
       mfitstr[i].sig = sig
       mfitstr[i].chisq = chisq
+      mfitstr[i].medresid = medresid
       mfitstr[i].status = status
       mfitstr[i].nrejected = total(rejected[ind1])
 
@@ -252,8 +264,12 @@ WHILE (endflag eq 0) do begin
       gbright = where(err lt 0.05 and mag lt min(mag)+3,nbright)
       mfitstr[i].nbrt = nbright
       if nbright gt 1 then begin
-        brtrms = sqrt(mean((ydiff[gbright]-median(ydiff))^2))  ; subtract out nightly offset
-        brtchisq = mean(((ydiff[gbright]-median(ydiff))/err[gbright])^2)
+        ;brtrms = sqrt(mean((ydiff[gbright]-median(ydiff))^2))  ; subtract out nightly offset
+        ;brtchisq = mean(((ydiff[gbright]-median(ydiff))/err[gbright])^2)
+        if n_elements(fixchipzp) gt 0 then brtrms = sqrt(mean((ydiff[gbright]-ntzpterm)^2)) else $  ; subtract out nightly offset
+          brtrms = sqrt(mean(ydiff[gbright]^2))
+        if n_elements(fixchipzp) gt 0 then brtchisq = mean(((ydiff[gbright]-ntzpterm)/err[gbright])^2) else $
+          brtchisq = mean(((ydiff[gbright]-ntzpterm)/err[gbright])^2)
         mfitstr[i].brtrms = brtrms
         mfitstr[i].brtsig = mad(ydiff[gbright])
         mfitstr[i].brtchisq = brtchisq
@@ -428,6 +444,8 @@ WHILE (endflag eq 0) do begin
 
 ENDWHILE
 
+;if n_elements(fixchipzp) gt 0 then stop,'fixchipzp'
+
 ; Make a plot of residuals vs. color and residuals vs. airmass
 ; color-coded by the errors
 
@@ -575,7 +593,8 @@ end
 ;----------------------
 
 pro solve_transphot,file,fitcolam=fitcolam,errlim=errlim,arr=arr,mstr=mstr_fixcolzpam,resid=resid_fixcolzpam,$
-                         rejected=rejected_fixcolzpam,noreject=noreject,stp=stp
+                         rejected=rejected_fixcolzpam,noreject=noreject,fitchipzpmjdterm=fitchipzpmjdterm,$
+                         fixchipzpterm=fixchipzpterm,nosmith=nosmith,stp=stp
 
 ; Check the STDRED data to see if we need separate color terms
 ; for each chip
@@ -616,7 +635,20 @@ endif
 reduxdir = '/data/smash/cp/red/photred/'
 plotsdir = reduxdir+'stdred/plots/'
 
+; Defaults
+if n_elements(noreject) eq 0 then noreject=1
+if n_elements(nosmith) eq 0 then nosmith=1
+if n_elements(fixchipzpterm) eq 0 then fixchipzpterm=0
+if n_elements(fitchipzpmjdterm) eq 0 then fitchipzpmjdterm=0
+; Setting
+print,'NOREJECT = ',keyword_set(noreject)
+print,'NOSMITH = ',keyword_set(nosmith)
+print,'FIXCHIPZPTERM = ',keyword_set(fixchipzpterm)
+print,'FITCHIPZPMJDTERM = ',keyword_set(fitchipzpmjdterm)
+
+
 ; Load the data
+print,'Loading the data'
 arr = MRDFITS(file,1)
 narr = n_elements(arr)
 
@@ -626,7 +658,7 @@ colorname = repstr(strlowcase(tags[8]),'_','-')
 
 ; Suffix tag for plots
 pstag = ''
-if keyword_set(noreject) then pstag='_norej'
+;if keyword_set(noreject) then pstag='_norej'
 
 ; Trim stars
 if n_elements(errlim) eq 0 then errlim = 0.05
@@ -635,6 +667,16 @@ print,'Imposing error cut, ERR<=',strtrim(errlim,2),' mag'
 gd = where(arr.err lt errlim,ngd)
 arr = arr[gd]
 narr = n_elements(arr)
+
+; Remove the Smith data
+if keyword_set(nosmith) then begin
+  print,'#############################'
+  print,'REMOVING SMITH DATA!!!!!'
+  print,'#############################'
+  bd = where(strmid(strtrim(arr.id,2),0,5) eq 'ugriz',nbd)
+  if nbd gt 0 then remove,bd,arr
+  narr = n_elements(arr)
+endif
 
 ; u-band, removing very blue and very red stars
 ;  and removing the quadratic color shape
@@ -811,7 +853,12 @@ ui = uniq(fitstr0.chip,sort(fitstr0.chip))  ; unique chips
 uchips = fitstr0[ui].chip
 nuchips = n_elements(uchips)
 ; Measure median and RMS per chip
-chipstr = replicate({chip:0L,zpterm:99.0,zptermsig:99.0,zptermerr:99.0,colterm:99.0,coltermsig:99.0,coltermerr:99.0,rms:99.0,medrms:99.0},nuchips)
+if keyword_set(fitchipzpmjdterm) then begin
+  chipstr = replicate({chip:0L,zpterm:99.0,zptermerr:99.0,zpmjdterm:99.0,zpmjdtermerr:99.0,zptermsig:99.0,colterm:99.0,coltermerr:99.0,$
+                       coltermsig:99.0,rms:99.0,medrms:99.0},nuchips)
+endif else begin
+  chipstr = replicate({chip:0L,zpterm:99.0,zptermerr:99.0,zptermsig:99.0,colterm:99.0,coltermerr:99.0,coltermsig:99.0,rms:99.0,medrms:99.0},nuchips)
+endelse
 fitstr0.relzpterm = fitstr0.zpterm        ; initialize with zpterm
 print,' CHIP   ZPTERM   ZPTERMERR  COLTERM  COLTERMER    RMS'
 for i=0,nuchips-1 do begin
@@ -823,9 +870,28 @@ for i=0,nuchips-1 do begin
     fitstr0[ind[ind2]].relzpterm -= mstr0[ind1].zpterm  ; remove the nightly median zeropoint
     ; Only use "good" value to estimate median and scatter
     gdphot = where(fitstr0[ind].photometric eq 1 and fitstr0[ind].badsoln eq 0,ngdphot)
-    chipstr[i].zpterm = median(fitstr0[ind[gdphot]].relzpterm)
-    chipstr[i].zptermsig = mad(fitstr0[ind[gdphot]].relzpterm)
-    chipstr[i].zptermerr = chipstr[i].zptermsig / sqrt(ngdphot)
+    ; Fit linear temporal variations in chip relative zeropoint term
+    if keyword_set(fitchipzpmjdterm) then begin
+      zpmjdcoef1 = robust_poly_fitq(fitstr0[ind[gdphot]].mjd,fitstr0[ind[gdphot]].relzpterm,1)
+      ydiff1 = fitstr0[ind[gdphot]].relzpterm-poly(fitstr0[ind[gdphot]].mjd,zpmjdcoef1)
+      relzptermsig1 = mad(ydiff1)
+      gd2 = where(abs(ydiff1) lt 5*relzptermsig1,ngd2)
+      zpmjdcoef = dln_poly_fit(fitstr0[ind[gdphot[gd2]]].mjd,fitstr0[ind[gdphot[gd2]]].relzpterm,1,$
+                               measure_errors=fitstr0[ind[gdphot[gd2]]].zptermerr,sigma=zpmjdcoeferr,yerror=yerror,status=status,yfit=yfit1,/bootstrap)
+      ydiff = fitstr0[ind[gdphot]].relzpterm-poly(fitstr0[ind[gdphot]].mjd,zpmjdcoef)
+      relzptermsig = mad(ydiff)
+      chipstr[i].zpterm = zpmjdcoef[0]
+      chipstr[i].zptermerr = zpmjdcoeferr[0]
+      chipstr[i].zpmjdterm = zpmjdcoef[1]
+      chipstr[i].zpmjdtermerr = zpmjdcoeferr[1]
+      chipstr[i].zptermsig = relzptermsig
+      fitstr0[ind].chiprelzpterm = fitstr0[ind].relzpterm - (chipstr[i].zpterm+fitstr0[ind].mjd*chipstr[i].zpmjdterm) ; relative to night and chip median
+    endif else begin
+      chipstr[i].zpterm = median(fitstr0[ind[gdphot]].relzpterm)
+      chipstr[i].zptermsig = mad(fitstr0[ind[gdphot]].relzpterm)
+      chipstr[i].zptermerr = chipstr[i].zptermsig / sqrt(ngdphot)
+      fitstr0[ind].chiprelzpterm = fitstr0[ind].relzpterm - chipstr[i].zpterm   ; relative to night and chip medians
+    endelse
     chipstr[i].colterm = median([fitstr0[ind[gdphot]].colterm])
     chipstr[i].coltermsig = mad([fitstr0[ind[gdphot]].colterm])
     chipstr[i].coltermerr = chipstr[i].coltermsig / sqrt(ngdphot)
@@ -833,7 +899,6 @@ for i=0,nuchips-1 do begin
     rms = sqrt(mean(total(totresid)/total(fitstr0[ind[gdphot]].nbrt)))  ; brt rms
     chipstr[i].rms = rms
     chipstr[i].medrms = median([fitstr0[ind[gdphot]].rms])
-    fitstr0[ind].chiprelzpterm = fitstr0[ind].relzpterm - chipstr[i].zpterm   ; relative MJD and chip medians
     fitstr0[ind].chiprelcolterm = fitstr0[ind].colterm - chipstr[i].colterm
     print,chipstr[i].chip,chipstr[i].zpterm,chipstr[i].zptermerr,chipstr[i].colterm,chipstr[i].coltermerr,chipstr[i].rms,format='(I5,5F10.5)'
   endif
@@ -939,7 +1004,12 @@ endfor
 ;------------------------------------------
 print,'' & print,'5.) Re-determine median zpterm per chip'
 ; Measure median chip zpterm again
-chipstr_fixcolr = replicate({chip:0L,zpterm:99.0,zptermsig:99.0,zptermerr:99.0,colterm:99.0,coltermsig:99.0,coltermerr:99.0,rms:99.0,medrms:99.0},nuchips)
+if keyword_set(fitchipzpmjdterm) then begin
+  chipstr_fixcolr = replicate({chip:0L,zpterm:99.0,zptermerr:99.0,zpmjdterm:99.0,zpmjdtermerr:99.0,zptermsig:99.0,colterm:99.0,coltermerr:99.0,$
+                               coltermsig:99.0,rms:99.0,medrms:99.0},nuchips)
+endif else begin
+  chipstr_fixcolr = replicate({chip:0L,zpterm:99.0,zptermerr:99.0,zptermsig:99.0,colterm:99.0,coltermerr:99.0,coltermsig:99.0,rms:99.0,medrms:99.0},nuchips)
+endelse
 fitstr_fixcolr.relzpterm = fitstr_fixcolr.zpterm        ; initialize with zpterm
 print,' CHIP   ZPTERM   ZPTERMERR  COLTERM  COLTERMER    RMS'
 for i=0,nuchips-1 do begin
@@ -951,9 +1021,28 @@ for i=0,nuchips-1 do begin
     fitstr_fixcolr[ind[ind2]].relzpterm -= mstr_fixcolr[ind1].zpterm  ; remove the nightly median zeropoint
     ; Only use "good" value to estimate median and scatter
     gdphot = where(fitstr_fixcolr[ind].photometric eq 1 and fitstr_fixcolr[ind].badsoln eq 0,ngdphot)
-    chipstr_fixcolr[i].zpterm = median(fitstr_fixcolr[ind[gdphot]].relzpterm)
-    chipstr_fixcolr[i].zptermsig = mad(fitstr_fixcolr[ind[gdphot]].relzpterm)
-    chipstr_fixcolr[i].zptermerr = chipstr_fixcolr[i].zptermsig / sqrt(ngdphot)
+    ; Fit linear temporal variations in chip relative zeropoint term
+    if keyword_set(fitchipzpmjdterm) then begin
+      zpmjdcoef1 = robust_poly_fitq(fitstr_fixcolr[ind[gdphot]].mjd,fitstr_fixcolr[ind[gdphot]].relzpterm,1)
+      ydiff1 = fitstr_fixcolr[ind[gdphot]].relzpterm-poly(fitstr_fixcolr[ind[gdphot]].mjd,zpmjdcoef1)
+      relzptermsig1 = mad(ydiff1)
+      gd2 = where(abs(ydiff1) lt 5*relzptermsig1,ngd2)
+      zpmjdcoef = dln_poly_fit(fitstr_fixcolr[ind[gdphot[gd2]]].mjd,fitstr_fixcolr[ind[gdphot[gd2]]].relzpterm,1,$
+                               measure_errors=fitstr_fixcolr[ind[gdphot[gd2]]].zptermerr,sigma=zpmjdcoeferr,yerror=yerror,status=status,yfit=yfit1,/bootstrap)
+      ydiff = fitstr_fixcolr[ind[gdphot]].relzpterm-poly(fitstr_fixcolr[ind[gdphot]].mjd,zpmjdcoef)
+      relzptermsig = mad(ydiff)
+      chipstr_fixcolr[i].zpterm = zpmjdcoef[0]
+      chipstr_fixcolr[i].zptermerr = zpmjdcoeferr[0]
+      chipstr_fixcolr[i].zpmjdterm = zpmjdcoef[1]
+      chipstr_fixcolr[i].zpmjdtermerr = zpmjdcoeferr[1]
+      chipstr_fixcolr[i].zptermsig = relzptermsig
+      fitstr_fixcolr[ind].chiprelzpterm = fitstr_fixcolr[ind].relzpterm - (chipstr_fixcolr[i].zpterm+fitstr_fixcolr[ind].mjd*chipstr_fixcolr[i].zpmjdterm) ; relative to night and chip median
+    endif else begin
+      chipstr_fixcolr[i].zpterm = median(fitstr_fixcolr[ind[gdphot]].relzpterm)
+      chipstr_fixcolr[i].zptermsig = mad(fitstr_fixcolr[ind[gdphot]].relzpterm)
+      chipstr_fixcolr[i].zptermerr = chipstr_fixcolr[i].zptermsig / sqrt(ngdphot)
+      fitstr_fixcolr[ind].chiprelzpterm = fitstr_fixcolr[ind].relzpterm - chipstr_fixcolr[i].zpterm   ; relative to night and chip medians
+    endelse
     chipstr_fixcolr[i].colterm = median([fitstr_fixcolr[ind[gdphot]].colterm])
     chipstr_fixcolr[i].coltermsig = mad([fitstr_fixcolr[ind[gdphot]].colterm])
     chipstr_fixcolr[i].coltermerr = chipstr_fixcolr[i].coltermsig / sqrt(ngdphot)
@@ -961,23 +1050,37 @@ for i=0,nuchips-1 do begin
     rms = sqrt(mean(total(totresid)/total(fitstr_fixcolr[ind[gdphot]].nbrt)))  ; brt rms
     chipstr_fixcolr[i].rms = rms
     chipstr_fixcolr[i].medrms = median([fitstr_fixcolr[ind[gdphot]].rms])
-    fitstr_fixcolr[ind].chiprelzpterm = fitstr_fixcolr[ind].relzpterm - chipstr_fixcolr[i].zpterm   ; relative MJD and chip medians
     fitstr_fixcolr[ind].chiprelcolterm = fitstr_fixcolr[ind].colterm - chipstr_fixcolr[i].colterm
     print,chipstr_fixcolr[i].chip,chipstr_fixcolr[i].zpterm,chipstr_fixcolr[i].zptermerr,chipstr_fixcolr[i].colterm,$
           chipstr_fixcolr[i].coltermerr,chipstr_fixcolr[i].rms,format='(I5,5F10.5)'
+    ;; Checking for temporal trends in relative zpterm
+    ;zpcoef = robust_poly_fitq(fitstr_fixcolr[ind[gdphot]].mjd,fitstr_fixcolr[ind[gdphot]].chiprelzpterm,1)
+    ;plotc,fitstr_fixcolr[ind[gdphot]].mjd,fitstr_fixcolr[ind[gdphot]].chiprelzpterm,ps=8,yerr=fitstr_fixcolr[ind[gdphot]].zptermerr,xs=1,tit='chip = '+strtrim(uchips[i],2)
+    ;xx = scale_vector(findgen(100),min(umjd),max(umjd))
+    ;oplot,xx,poly(xx,zpcoef),co=250
+    ;print,i+1,zpcoef[1],zpcoef[1]*range(umjd)
+    ;wait,1
   endif
 endfor
 ; COLTERMERR = 0.0 because it was fixed
 
-
+;stop
 
 
 ; 6.) Redetermine NIGHTLY zpterm and amterm with chip-level relative zpterm 
 ;      and colterm fixed
 ;---------------------------------------------------------------------------
 print,'' & print,'6.) Fixing chip-level relative zpterm and colterm.  Redetermining NIGHTLY zpterm and amterm'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,resid=resid_fixcolzp,$
-                          rejected=rejected_fixcolzp,/bootstrap,noreject=noreject
+if keyword_set(fixchipzpterm) then begin
+  SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzp,fitstr_fixcolzp,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,resid=resid_fixcolzp,$
+                            rejected=rejected_fixcolzp,/bootstrap,noreject=noreject
+endif else begin
+  print,'NOT FIXING CHIP-LEVEL ZERO-POINT TERMS'
+  mstr_fixcolzp = mstr_fixcolr
+  fitstr_fixcolzp = fitstr_fixcolr
+  resid_fixcolzp = resid_fixcolr
+  rejected_fixcolzp = rejected_fixcolr
+endelse
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzp.mjd,conditions.mjd,ind1,ind2
@@ -1129,8 +1232,14 @@ ps2png,psfile+'.eps',/eps
 ; 8.) Redetermine NIGHTLY zpterm holding everything else fixed
 ;--------------------------------------------------------------
 print,'' & print,'8.) Redetermine NIGHTLY zpterm holding everything else fixed'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,$
-                        fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap,noreject=noreject
+if keyword_set(fixchipzpterm) then begin
+  SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,fixchipzp=chipstr_fixcolr,$
+                          fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap,noreject=noreject
+endif else begin
+  print,'NOT FIXING CHIP-LEVEL ZERO-POINT TERMS'
+  SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolzpam,fitstr_fixcolzpam,fixcolr=chipstr,$
+                          fixam=ntstr_fixcolzp,resid=resid_fixcolzpam,rejected=rejected_fixcolzpam,/bootstrap,noreject=noreject
+endelse
 
 ; Reset PHOTOMETRIC tag
 MATCH,mstr_fixcolzpam.mjd,conditions.mjd,ind1,ind2
@@ -1237,12 +1346,42 @@ cmd += strjoin(file_basename(residfigs)+'.pdf',' ')
 spawn,cmd,out,errout
 cd,curdir
 
+; --- Creating summary statistics for each standard star field ---
+ui = uniq(arr.stdfield,sort(arr.stdfield))
+ustdfield = arr[ui].stdfield
+nstdfield = n_elements(ustdfield)
+fieldstr = replicate({stdfield:'',stdnum:0L,ra:0.0d0,dec:0.0d0,sdss:0,nexp:0L,nmjd:0L,$
+                      nsources:0L,nrejected:0L,medresid:0.0,sigresid:0.0},nstdfield)
+; Get indices for each group
+stdsi = sort(arr.stdfield)
+stdbrk = where(shift(arr[stdsi].stdfield,1) ne arr[stdsi].stdfield,nstdbrk)
+stdlo = stdbrk
+stdhi = [stdbrk[1:nstdbrk-1]-1,n_elements(arr)-1]
+for i=0,nstdfield-1 do begin
+  ind = stdsi[stdlo[i]:stdhi[i]]
+  nind = stdhi[i]-stdlo[i]+1
+  if strmid(strupcase(ustdfield[i]),0,4) eq 'SDSS' or strmid(strupcase(ustdfield[i]),0,2) eq 'SA' then fieldstr[i].sdss=1
+  uiexp = uniq(arr[ind].expnum,sort(arr[ind].expnum))
+  uimjd = uniq(arr[ind].mjd,sort(arr[ind].mjd))
+  fieldstr[i].stdfield = ustdfield[i]
+  fieldstr[i].stdnum = i+1
+  fieldstr[i].ra = median([arr[ind].ra])
+  fieldstr[i].dec = median([arr[ind].dec])
+  fieldstr[i].nexp = n_elements(uiexp)
+  fieldstr[i].nmjd = n_elements(uimjd)
+  fieldstr[i].nsources = nind
+  fieldstr[i].nrejected = total(rejected_fixcolzpam[ind])
+  fieldstr[i].medresid = median(resid_fixcolzpam[ind])
+  fieldstr[i].sigresid = mad(resid_fixcolzpam[ind])
+endfor
+
+
 ; --- Creating summary statistics for each exposure ---
 ui = uniq(arr.expnum,sort(arr.expnum))
 uexp = arr[ui].expnum
 nexp = n_elements(uexp)
-expstr = replicate({expnum:'',mjd:0L,nightnum:0L,exptime:0.0,airmass:0.0,seeing:0.0,$
-                    stdfield:'',nsources:0L,nrejected:0L,medresid:0.0,sigresid:0.0},nexp)
+expstr = replicate({expnum:'',mjd:0L,nightnum:0L,exptime:0.0,airmass:0.0,seeing:0.0,ra:0.0d0,dec:0.0d0,$
+                    stdfield:'',stdnum:0L,sdss:0,nsources:0L,nrejected:0L,medresid:0.0,sigresid:0.0},nexp)
 ; Get indices for each group
 expsi = sort(arr.expnum)
 expbrk = where(shift(arr[expsi].expnum,1) ne arr[expsi].expnum,nexpbrk)
@@ -1258,49 +1397,45 @@ for i=0,nexp-1 do begin
   expstr[i].exptime = arr[ind[0]].exptime
   expstr[i].airmass = median([arr[ind].airmass])
   expstr[i].seeing = median([arr[ind].seeing])
+  expstr[i].ra = median([arr[ind].ra])
+  expstr[i].dec = median([arr[ind].dec])
   expstr[i].stdfield = arr[ind[0]].stdfield
+  if strmid(strupcase(expstr[i].stdfield),0,4) eq 'SDSS' or strmid(strupcase(expstr[i].stdfield),0,2) eq 'SA'  then expstr[i].sdss=1
+  MATCH,fieldstr.stdfield,arr[ind[0]].stdfield,ind1,ind2,/sort
+  expstr[i].stdnum = fieldstr[ind1[0]].stdnum
   expstr[i].nsources = nind
   expstr[i].nrejected = total(rejected_fixcolzpam[ind])
   expstr[i].medresid = median(resid_fixcolzpam[ind])
   expstr[i].sigresid = mad(resid_fixcolzpam[ind])
 endfor
 
-; --- Creating summary statistics for each standard star field ---
-ui = uniq(arr.stdfield,sort(arr.stdfield))
-ustdfield = arr[ui].stdfield
-nstdfield = n_elements(ustdfield)
-fieldstr = replicate({stdfield:'',sdss:0,nexp:0L,nmjd:0L,nsources:0L,nrejected:0L,medresid:0.0,sigresid:0.0},nstdfield)
-; Get indices for each group
-stdsi = sort(arr.stdfield)
-stdbrk = where(shift(arr[stdsi].stdfield,1) ne arr[stdsi].stdfield,nstdbrk)
-stdlo = stdbrk
-stdhi = [stdbrk[1:nstdbrk-1]-1,n_elements(arr)-1]
-for i=0,nstdfield-1 do begin
-  ind = stdsi[stdlo[i]:stdhi[i]]
-  nind = stdhi[i]-stdlo[i]+1
-  if strmid(strupcase(ustdfield[i]),0,4) eq 'SDSS' then fieldstr[i].sdss=1
-  uiexp = uniq(arr[ind].expnum,sort(arr[ind].expnum))
-  uimjd = uniq(arr[ind].mjd,sort(arr[ind].mjd))
-  fieldstr[i].stdfield = ustdfield[i]
-  fieldstr[i].nexp = n_elements(uiexp)
-  fieldstr[i].nmjd = n_elements(uimjd)
-  ;fieldstr[i].night = arr[ind[0]].night
-  fieldstr[i].nsources = nind
-  fieldstr[i].nrejected = total(rejected_fixcolzpam[ind])
-  fieldstr[i].medresid = median(resid_fixcolzpam[ind])
-  fieldstr[i].sigresid = mad(resid_fixcolzpam[ind])
-endfor
-
 ;stop
 
-; 9.) Making final chip and night-level structures
-;-------------------------------------------------
-print,'' & print,'9.) Making final chip and night-level transformation equation structures'
 
+; 9.) Making final output transformation equation structures
+;------------------------------------------------------------
+print,'' & print,'9.) Making final transformation equation structures'
+
+; Information for each chip+night combination
+; most of the info is in FITSTR_FIXCOLZPAM
+fitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,filter:'',nstars:0L,nrejected:0L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
+                     colterm:999.0,coltermerr:999.0,amterm:0.0,amtermerr:999.0,colamterm:0.0,colamtermerr:999.0,$
+                     rms:999.0,sig:999.0,chisq:999.0,medresid:999.0,nbrt:0L,brtrms:999.0,brtsig:999.0,brtchisq:999.0,$
+                     badsoln:-1,photometric:-1,amavgflag:0,namavg:0},n_elements(fitstr_fixcolzpam))
+struct_assign,fitstr_fixcolzpam,fitstr
+fitstr.filter = filter
+fitstr.colamtermerr = 0.0
+; Copy amtermerr over
+for i=0,nmjds-1 do begin
+  MATCH,fitstr.mjd,ntstr_fixcolzp[i].mjd,ind1,ind2,/sort,count=nmatch
+  fitstr[ind1].amtermerr = ntstr_fixcolzp[ind2[0]].amtermsig
+  fitstr[ind1].amavgflag = ntstr_fixcolzp[ind2[0]].amavgflag
+  fitstr[ind1].namavg = ntstr_fixcolzp[ind2[0]].namavg
+endfor
 
 ; Chip-level color and zero-point terms
 ;   CHIPSTR has the fixed color terms
-;   CHIPSTR_FIXCOLR has the 
+;   CHIPSTR_FIXCOLR has the relative zeropoint terms
 fchipstr = chipstr_fixcolr
 fchipstr.colterm = chipstr.colterm
 fchipstr.coltermsig = chipstr.coltermsig
@@ -1337,17 +1472,25 @@ fntstr.namavg = ntstr_fixcolzp.namavg
 ;     amterm (+err) and photometric flag
 outfile = 'transphot_'+filter+'_eqns.fits'
 print,'Writing final photometric transformation equations to ',outfile
-print,'HDU1: chip-level information'
-print,'HDU2: night-level information'
+print,'HDU1: chip+night information'
+print,'HDU2: unique chip-level information'
+print,'HDU3: unique night-level information'
 MKHDR,head,0
-sxaddpar,head,'filter',filter
 sxaddhist,'SMASH photometric transformation equuations for filter='+filter,head
-sxaddhist,'HDU2: chip-level information (colterm, relative zeropoint)',head
-sxaddhist,'HDU2: night-level information (amterm, nightly zeropoint)',head
-MWRFITS,fchipstr,outfile,/create,/silent
+sxaddhist,'HDU1: chip+night information (colterm, zeropoint)',head
+sxaddhist,'HDU2: unique chip-level information (colterm, relative zeropoint)',head
+sxaddhist,'HDU3: unique night-level information (amterm, nightly zeropoint)',head
+sxaddpar,head,'filter',filter
+sxaddhist,'NOREJECT = '+strtrim(keyword_set(noreject),2),head
+sxaddhist,'NOSMITH = '+strtrim(keyword_set(nosmith),2),head
+sxaddhist,'FITCHIPZPMJDTERM = '+strtrim(keyword_set(fitchipzpmjdterm),2),head
+sxaddhist,'FIXCHIPZPTERM = '+strtrim(keyword_set(fixchipzpterm),2),head
+MWRFITS,fstr,outfile,/create,/silent
+MWRFITS,fchipstr,outfile,/silent
 MWRFITS,fntstr,outfile,/silent
 
-save,arr,mstr_fixcolzpam,resid_fixcolzpam,rejected_fixcolzpam,$
+save,arr,fitstr0,fitstr_fixcolr,fitstr_fixcolzp,fitstr_fixcolzpam,$
+     mstr_fixcolzpam,resid_fixcolzpam,rejected_fixcolzpam,$
      expstr,fieldstr,file='solve_transphot_'+filter+'_resid.dat'
 
 if keyword_set(stp) then stop
