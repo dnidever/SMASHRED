@@ -7,6 +7,7 @@
 ;
 ; INPUTS:
 ;  field      The field name, e.g. "Field24"
+;  =transfile The file with the photometric transformation equations.
 ;  =reduxdir  The base directory for the PHOTRED reductions.  The
 ;               default is "/data/smash/cp/red/photred/"
 ;  =outputdir The output directory for the catalogs.
@@ -29,8 +30,8 @@
 ; By D.Nidever March 2016
 ;-
 
-pro smashred_calibrate_field,field,reduxdir=reduxdir,outputdir=outputdir,redo=redo,$
-                             compress=compress,silent=silent,error=error
+pro smashred_calibrate_field,field,transfile=transfile,reduxdir=reduxdir,outputdir=outputdir,$
+                             redo=redo,compress=compress,silent=silent,error=error
 
 undefine,error
 
@@ -54,6 +55,7 @@ if file_test(outputdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
   FILE_MKDIR,outputdir
 endif
+if n_elements(transfile) eq 0 then transfile='/data/smash/cp/red/photred/stdred/smashred_transphot_eqns.fits'
 ; Temporary directory
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
@@ -114,7 +116,11 @@ print,'Running SMASHRED_CALIBRATE_FIELD on ',field
 print,strtrim(ninfo,2),' PHOTRED catalogs found'
 print,info.file
 
-;goto,crossmatch
+
+; Check for temporarily saved crossmatch file
+crossmatchfile = tmpdir+field+'_crossmatch.dat'
+if file_test(crossmatchfile) eq 1 and not keyword_set(redo) then goto,crossmatch  ; skip loading
+
 
 ; Loop through the catalogs
 print,'--------------------------------------------------'
@@ -147,7 +153,7 @@ print,'---------------------------------------------------------------------'
 print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
 print,'====================================================================='
 crossmatch:
-SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj
+SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj,reduxdir=reduxdir,redo=redo
 ;;save,fstr,chstr,allsrc,allobj,file=tmpdir+field+'_crossmatch.dat'
 ;print,'restoring temporary allsrc/allobj file'
 ;restore,tmpdir+field+'_crossmatch.dat'
@@ -156,7 +162,7 @@ SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
-SMASHRED_PHOTCALIB,fstr,chstr,allsrc,allobj
+SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,reduxdir=reduxdir
 
 
 ; Compute average morphology values
@@ -187,6 +193,6 @@ endif
 
 ; Print processing time
 
-stop
+;stop
 
 end
