@@ -632,6 +632,8 @@ endif
 ; nightly zpterm
 ; nightly airmass term
 
+print,'RUNNING SOLVE_TRANSPHOT ON  >> ',file,' <<'
+
 reduxdir = '/data/smash/cp/red/photred/'
 plotsdir = reduxdir+'stdred/plots/'
 
@@ -1228,6 +1230,23 @@ oplot,mstr_fixcolzp[gphot].nightnum,mstr_fixcolzp[gphot].amterm,ps=1
 ps_close
 ps2png,psfile+'.eps',/eps
 
+; Combine filter-level summary plots
+; transphot_g_zpterm_chip.png
+; transphot_g_colterm_chip.png
+; transphot_g_chiprelzpterm_nightnum.png
+; transphot_g_chiprelcolterm_nightnum.png
+; transphot_g_amterm.png
+cd,current=curdir
+cd,plotsdir
+figfiles = 'transphot_'+filter+'_'+['zpterm_chip','colterm_chip','chiprelzpterm_nightnum','chiprelcolterm_nightnum','amterm']
+for i=0,n_elements(figfiles)-1 do spawn,['epstopdf',figfiles[i]+'.eps'],/noshell
+; Combine
+print,'Writing combined filter-level summary plots to transphot_'+filter+'_comb'+pstag+'.pdf'
+cmd = 'gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=transphot_'+filter+'_comb'+pstag+'.pdf '
+cmd += strjoin(figfiles+'.pdf',' ')
+spawn,cmd,out,errout
+cd,curdir
+
 
 ; 8.) Redetermine NIGHTLY zpterm holding everything else fixed
 ;--------------------------------------------------------------
@@ -1249,7 +1268,7 @@ for i=0,n_elements(conditions)-1 do begin
   if nmatch gt 0 then fitstr_fixcolzpam[ind1].photometric=conditions[i].photometric
 endfor
 
-; Flag "bad" solution with not Not enough stars
+; Flag "bad" solution with Not enough stars
 bdmjd = where(mstr_fixcolzpam.nstars lt 100,nbdmjd,comp=gdmjd,ncomp=ngdmjd)
 if nbdmjd gt 0 then mstr_fixcolzpam[bdmjd].badsoln = 1    ; not enough stars
 if ngdmjd gt 0 then mstr_fixcolzpam[gdmjd].badsoln = 0    ; enough stars
@@ -1258,6 +1277,8 @@ for i=0,nbdmjd-1 do begin
   MATCH,fitstr_fixcolzpam.mjd,mstr_fixcolzpam[bdmjd[i]].mjd,ind1,ind2,count=nmatch,/sort
   fitstr_fixcolzpam[ind1].badsoln = 1
 endfor
+bdfitstr = where(fitstr_fixcolzpam.nstars lt 3 and fitstr_fixcolzpam.zpterm gt 100,nbdfitstr)
+if nbdfitstr gt 0 then fitstr_fixcolzpam[bdfitstr].badsoln = 1
 
 ; Make final residual figures
 print,'Making final residual plots'
@@ -1418,7 +1439,7 @@ print,'' & print,'9.) Making final transformation equation structures'
 
 ; Information for each chip+night combination
 ; most of the info is in FITSTR_FIXCOLZPAM
-fitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,filter:'',nstars:0L,nrejected:0L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
+fitstr = replicate({mjd:-1L,chip:-1L,nightnum:0,filter:'',color:'',colband:'',colsign:0,nstars:0L,nrejected:0L,seeing:99.9,zpterm:999.0,zptermerr:999.0,$
                      colterm:999.0,coltermerr:999.0,amterm:0.0,amtermerr:999.0,colamterm:0.0,colamtermerr:999.0,$
                      rms:999.0,sig:999.0,chisq:999.0,medresid:999.0,nbrt:0L,brtrms:999.0,brtsig:999.0,brtchisq:999.0,$
                      badsoln:-1,photometric:-1,amavgflag:0,namavg:0},n_elements(fitstr_fixcolzpam))
@@ -1432,6 +1453,17 @@ for i=0,nmjds-1 do begin
   fitstr[ind1].amavgflag = ntstr_fixcolzp[ind2[0]].amavgflag
   fitstr[ind1].namavg = ntstr_fixcolzp[ind2[0]].namavg
 endfor
+fitstr.color = colorname
+dum = strsplit(colorname,'-',/extract)
+if dum[0] eq filter then begin  ; filter - colband
+  colband = dum[1]
+  colsign = 1
+endif else begin                ; colband - filter
+  colband = dum[0]
+  colsign = -1
+endelse
+fitstr.colband = colband
+fitstr.colsign = colsign
 
 ; Chip-level color and zero-point terms
 ;   CHIPSTR has the fixed color terms
@@ -1440,19 +1472,27 @@ fchipstr = chipstr_fixcolr
 fchipstr.colterm = chipstr.colterm
 fchipstr.coltermsig = chipstr.coltermsig
 fchipstr.coltermerr = chipstr.coltermerr
+add_tag,fchipstr,'filter',filter,fchipstr
+add_tag,fchipstr,'color',colorname,fchipstr
+add_tag,fchipstr,'colband',colband,fchipstr
+add_tag,fchipstr,'colsign',colsign,fchipstr
 
 ; Nightly zeropoint and airmass terms
 ;  NTSTR_FIXCOLZP has the fixed airmass terms
 ;  MSTR_FIXCOLZPAM has the nightly zero-point terms
-fntstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,nstars:0L,seeing:99.9,rms:99.0,brtrms:99.0,airmass0:0.0,airmass1:0.0,amrange:0.0,$
+fntstr = replicate({mjd:0L,nightnum:0,date:'',nchips:0L,filter:'',nstars:0L,seeing:99.9,rms:99.0,brtrms:99.0,airmass0:0.0,airmass1:0.0,amrange:0.0,$
                     zpterm:99.0,zptermsig:99.0,amterm:99.0,amtermsig:99.0,colamterm:99.0,colamtermsig:99.0,$
                     badsoln:-1,photometric:-1,amavgflag:0,namavg:0},nmjds)
 struct_assign,mstr_fixcolzpam,fntstr
+fntstr.filter = filter
 ; Copy the AMTERM info from NTSTR_FIXCOLZP
 fntstr.amterm = ntstr_fixcolzp.amterm
 fntstr.amtermsig = ntstr_fixcolzp.amtermsig
 fntstr.amavgflag = ntstr_fixcolzp.amavgflag
 fntstr.namavg = ntstr_fixcolzp.namavg
+add_tag,fntstr,'color',colorname,fntstr
+add_tag,fntstr,'colband',colband,fntstr
+add_tag,fntstr,'colsign',colsign,fntstr
 
 ; NEED TO ADD IN INFO FOR NIGHTS WITH NO STANDARD STAR DATA!!!
 ;  or do we?  how should we handle these??
@@ -1485,7 +1525,8 @@ sxaddhist,'NOREJECT = '+strtrim(keyword_set(noreject),2),head
 sxaddhist,'NOSMITH = '+strtrim(keyword_set(nosmith),2),head
 sxaddhist,'FITCHIPZPMJDTERM = '+strtrim(keyword_set(fitchipzpmjdterm),2),head
 sxaddhist,'FIXCHIPZPTERM = '+strtrim(keyword_set(fixchipzpterm),2),head
-MWRFITS,fstr,outfile,/create,/silent
+FITS_WRITE,outfile,0,head
+MWRFITS,fitstr,outfile,/silent
 MWRFITS,fchipstr,outfile,/silent
 MWRFITS,fntstr,outfile,/silent
 
