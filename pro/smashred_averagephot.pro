@@ -34,6 +34,7 @@ if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or
 endif
 
 lallobjtags = strlowcase(tag_names(allobj))
+nallobj = n_elements(allobj)
 
 ; Get unique filters
 ui = uniq(fstr.filter,sort(fstr.filter))
@@ -64,6 +65,7 @@ for i=0,n_elements(ufilter)-1 do begin
   ; Indices for the magnitude and errors in ALLOBJ
   magind = where(lallobjtags eq ufilter[i])
   errind = where(lallobjtags eq ufilter[i]+'err')
+  scatind = where(lallobjtags eq ufilter[i]+'catter')
 
   ; Only one exposure for this filter, copy
   if nfiltind eq 1 then begin
@@ -71,6 +73,7 @@ for i=0,n_elements(ufilter)-1 do begin
     ; All bad to start
     allobj.(magind) = 99.99
     allobj.(errind) = 9.99
+    allobj.(scatind) = 99.99
 
     ; Now copy in the values, ALLSRC only had "good" detections
     for k=0,nchind-1 do begin
@@ -88,8 +91,8 @@ for i=0,n_elements(ufilter)-1 do begin
   endif else begin
 
     ; Loop through all of the chips and add up the flux, totalwt, etc.
-    totalwt = dblarr(n_elements(allobj))
-    totalfluxwt = dblarr(n_elements(allobj))
+    totalwt = dblarr(nallobj)
+    totalfluxwt = dblarr(nallobj)
     for k=0,nchind-1 do begin
       ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
       if keyword_set(usecalib) then begin  ; calibrated phot
@@ -109,8 +112,25 @@ for i=0,n_elements(ufilter)-1 do begin
       newerr[bd] = 9.99
     endif
 
+    ; Measure scatter, RMS
+    ;  sqrt(mean(diff^2))
+    totaldiff = dblarr(nallobj)
+    numobs = lonarr(nallobj)
+    for k=0,nchind-1 do begin
+      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].sepallindx
+      totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].mag)^2
+      numobs[allsrc[ind].cmbindx]++
+    endfor
+    newscatter = sqrt( totaldiff/(numobs>1) )
+    if nbdmag gt 0 then newscatter[bdmag]=99.99
+
+    ; Set scatter=99.99 for numobs=1
+    oneobs = where(numobs eq 1,noneobs)
+    if noneobs gt 0 then newscatter[oneobs]=99.99
+
     allobj.(magind) = newmag
     allobj.(errind) = newerr
+    allobj.(scatind) = newscatter
 
   endelse  ; combine multiple exposures for this filter
 endfor ; unique filter loop
