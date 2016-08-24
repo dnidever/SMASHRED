@@ -33,10 +33,10 @@ endif
 
 ; Get average chi, sharp, flag, prob
 nallobj = n_elements(allobj)
-totchi = fltarr(nallobj) & numchi = fltarr(nallobj)
-totsharp = fltarr(nallobj) & numsharp = fltarr(nallobj)
-totprob = fltarr(nallobj) & numprob = fltarr(nallobj)
-flag = intarr(nallobj)-1
+totchi = fltarr(nallobj) & numchi = lon64arr(nallobj)
+totsharp = fltarr(nallobj) & numsharp = lon64arr(nallobj)
+totprob = fltarr(nallobj) & numprob = lon64arr(nallobj)
+flag = intarr(nallobj) & numflag = lon64arr(nallobj)
 nfstr = n_elements(fstr)
 for i=0,nfstr-1 do begin
   gd = where(allobj.srcfindx[i] ge 0,ngd)
@@ -68,8 +68,11 @@ for i=0,nfstr-1 do begin
   ;    0s are essentially ignored
   flag1 = intarr(nallobj)-1
   flag1[gd] = allsrc[allobj[gd].srcfindx[i]].flag
-  gdflag = where(finite(flag1) eq 1 and flag1 ge 0,ngdflag)
-  if ngdflag gt 0 then flag[gdflag] OR= flag1[gdflag]
+  gdflag = where(flag1 ne -1,ngdflag)
+  if ngdflag gt 0 then begin
+    flag[gdflag] OR= flag1[gdflag]
+    numflag[gdflag]++
+  endif
 endfor
 ; Make average CHI
 gdchi = where(numchi gt 0,ngdchi)
@@ -87,6 +90,8 @@ avgprob = fltarr(nallobj)+99.99
 if ngdprob gt 0 then avgprob[gdprob]=totprob[gdprob]/numprob[gdprob]
 allobj.prob = avgprob
 ; Stuff FLAG in
+bdflag = where(numflag eq 0,nbdflag)
+if nbdflag gt 0 then flag[bdflag]=-1
 allobj.flag = flag
 
 ;stop
