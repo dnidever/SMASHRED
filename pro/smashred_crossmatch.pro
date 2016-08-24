@@ -32,16 +32,13 @@ pro smashred_crossmatch,field,fstr,chstr,allsrc,allobj,dcr=dcr,error=error,redux
 undefine,allobj
 
 ; Not enough inputs
-if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 then begin
+if n_elements(field) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_crossmatch,field,fstr,chstr,allsrc,allobj'
+  print,'Syntax - smashred_crossmatch,field'
   return
 endif
 
-nfstr = n_elements(fstr)
-nchstr = n_elements(chstr)
-
-; Defaults                                                                                                                                                                          
+; Defaults
 if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
 if file_test(reduxdir,/directory) eq 0 then begin
   error = reduxdir+' NOT FOUND'
@@ -53,19 +50,29 @@ if file_test(outputdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
   FILE_MKDIR,outputdir
 endif
-; Temporary directory                                                                                                                                                               
+; Temporary directory
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 ; Default matching radius
 if n_elements(dcr) eq 0 then dcr=0.5  ; 0.7
 
 
-; Output filename                                                                                                                                                                   
+; Output filename
 outfile = tmpdir+field+'_crossmatch.dat'
 
 
 ; Crossmatch the sources
 If file_test(outfile) eq 0 or keyword_set(redo) then begin
+
+  ; Not enough inputs if running for the first time
+  if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 then begin
+    error = 'Not enough inputs if running for the first time'
+    print,'Need FSTR, CHSTR, ALLSRC if running for the first time.'
+    return
+  endif
+  nfstr = n_elements(fstr)
+  nchstr = n_elements(chstr)
+
 
   ; Unique exposures from CHSTR
   uiexp = uniq(chstr.expnum,sort(chstr.expnum))
@@ -94,7 +101,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
 
   ; Make the ALLOBJ structure schema
   fdum = {id:'',ra:0.0d0,dec:0.0d0,ndet:0L,depthflag:0B,srcindx:lonarr(nuexp)-1,srcfindx:lonarr(nuexp)-1,$
-          u:99.99,uerr:9.99,g:99.99,gerr:9.99,r:99.99,rerr:9.99,i:99.99,ierr:9.99,z:99.99,zerr:9.99,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
+          u:99.99,uerr:9.99,uscatter:99.99,g:99.99,gerr:9.99,gscatter:99.99,r:99.99,rerr:9.99,rscatter:99.9,$
+          i:99.99,ierr:9.99,iscatter:99.99,z:99.99,zerr:9.99,zscatter:99.99,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
   cur_allsrc_indx = 0LL         ; next one starts from HERE
   nallsrc = n_elements(allsrc)  ; current number of total Allsrc elements, NOT all filled
   ; SRCINDX has NDET indices at the front of the array
