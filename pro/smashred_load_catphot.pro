@@ -8,7 +8,7 @@
 ;  info        The structure with the relevant input information needed
 ;                to load the data.
 ;  /useast     Use the .ast files, by default the .phot files are used.
-;  /usrorig    Use the original als/alf files.
+;  /useorig    Use the original als/alf files.
 ;  =reduxdir   The reduction directory, the default is "/data/smash/cp/red/photred/"
 ;  /redo       Reget the photometry even if the temporary output file
 ;                already exists.
@@ -50,7 +50,7 @@ if file_test(outputdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
   FILE_MKDIR,outputdir
 endif
-; Temporary directory                                                                                                                                                                                                               
+; Temporary directory
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 
@@ -107,6 +107,12 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
     dum = first_el(strsplit(phbase,'-',/extract),/last)
     refexpnum = first_el(strsplit(dum,'_',/extract))
 
+    ; Load the MCH file, that gives the ordering of the exposures
+    mchfile = file_dirname(photfiles[i])+'/'+file_basename(photfiles[i],ext)+'.mch'
+    if file_test(mchfile) eq 0 then stop,mchfile,' NOT FOUND'
+    LOADMCH,mchfile,mchfilelist
+    mchfilelist = file_basename(mchfilelist,'.als')  ; remove .als ending
+
     chind = where(chstr.chip eq ichip,nchind)
     ; Loop through all of the exposures
     for j=0,nchind-1 do begin
@@ -115,7 +121,10 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
         mind = where(tags eq strtrim(chstr[chind[j]].calib_magname,2),nmind)
       ; ast files
       endif else begin
-        mind = where(tags eq 'MAG'+strtrim(j+1,2),nmind)
+        ; figure out it's order in the MCH file
+        mchfilelist_index = where(mchfilelist eq chstr[chind[j]].base,nmchfilelist_index)
+        if nmchfilelist_index eq 0 then stop,chstr[chind[j]].base+' NOT FOUND in '+mchfile
+        mind = where(tags eq 'MAG'+strtrim(mchfilelist_index[0]+1,2),nmind)
       endelse
       gd = where(phot.(mind[0]) lt 50,ngd)
 
@@ -124,6 +133,62 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       if file_test(fitsfile) eq 0 then stop,fitsfile,' NOT FOUND'
       head = headfits(fitsfile)
 
+      mjd = PHOTRED_GETMJD(fitsfile,'ctio')
+
+      ; Remove bad data for DECam chip 31
+      if (ichip eq 31) and (mjd gt 56660) then begin
+        print,'Removing bad data for DECam chip 31'
+
+        ; Determine if als/alf if prob/flag is there
+        ; Load ALS files
+        if tag_exist(phot,'PROB') then origphotexten='alf' else origphotexten='als'
+        origphotfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
+        if file_test(origphotfile) eq 0 then stop,origphotfile,' NOT FOUND'
+
+        ; Load original photometry als/alf file
+        LOADALS,origphotfile,origphot,origphothead,count=norigphot
+
+        ; ALF: The star IDs are unform across the alf files
+        if origphotexten eq 'alf' then begin
+          MATCH,phot[gd].id,origphot.id,ind1,ind2,/sort,count=nmatch
+          xorig = fltarr(ngd)
+          yorig = fltarr(ngd)
+          xorig[ind1] = origphot[ind2].x
+          yorig[ind1] = origphot[ind2].y
+        ; ALS: Need to use the TFR file to get indices for the als file
+        endif else begin
+          tfrfile = reduxdir+night+'/'+chstr[0].field+'/'+phbase+'.tfr'
+          if file_test(tfrfile) eq 0 then stop,tfrfile+' NOT FOUND'
+          LOADTFR,tfrfile,tfrlist,tfrstr
+          ; What number is it in the frame list
+          tfrlist_index = where(tfrlist eq file_basename(origphotfile),ntfrlist_index)          
+          if ntfrlist_index eq 0 then stop,file_basename(origphotfile)+' NOT in '+tfrfile
+          ; Get indices for the original ALS file, 0-based
+          ;   # of stars in TFR file should be same as RAW/AST
+          alsindex = reform( tfrstr[gd].index[tfrlist_index]-1 )
+          xorig = origphot[alsindex].x
+          yorig = origphot[alsindex].y
+        endelse
+
+        ; Remove bad measurements
+        ; X: 1-1024 okay
+        ; X: 1025-2049 bad
+        bdind = where(xorig gt 1024,nbdind,comp=gdind,ncomp=ngdind)
+        if nbdind gt 0 then begin   ; some bad ones found
+          if ngdind eq 0 then begin   ; all bad
+            print,'NO useful measurements in ',fitsfile
+            undefine,gd
+            ngd = 0
+          endif else begin
+            print,'Removing '+strtrim(nbdind,2)+' bad measurements, '+strtrim(ngdind,2)+' left.'
+            REMOVE,bdind,gd
+            ngd = n_elements(gd)
+          endelse
+       endif  ; some bad ones to remove
+      endif  ; chip 31
+
+
+
       ; Load the original values from ALS or ALF files
       ;  X, Y, CHI, SHARP, RA, DEC
       if keyword_set(useorig) then begin
@@ -131,9 +196,9 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ; FOR NOW DON'T DO THIS!
       ; USING THE SAME X/Y/RA/DEC IS EASIER FOR MATCHING
 
-        ; determine if als/alf if prob/flag is there
+        ; Determine if als/alf if prob/flag is there
         ; Load ALS files
-        if alf eq 1 then origphotexten='alf' else origphotexten='als' 
+        if tag_exist(phot,'PROB') then origphotexten='alf' else origphotexten='als'
         origphotfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
         if file_test(origphotfile) eq 0 then stop,origphotfile,' NOT FOUND'
 
@@ -143,9 +208,6 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
         ; MATCH THEM UP
 
         ; ID, X, Y, MAG, ERR, SKY, ITER, CHI, SHARP
-
-        ; Get RA/DEC from the FITS header
-        ;HEAD_XYAD,head,
 
         ; Converting to IDL X/Y convention, starting at (0,0)
         ; DAOPHOT has X/Y start at (1,1)
@@ -163,13 +225,15 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ;  cmbindx   index into ALLOBJ, added later on in smashred_crossmatch.pro
       ;  fix       final ID, added later on in smashred_crossmatch.pro
       ;  cmag/cerr are for calibrated photometry that will be added later
-      temp = replicate({cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,$
-                        cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
-      ;temp = replicate({id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
-      struct_assign,phot[gd],temp,/nozero
-      temp.mag = phot[gd].(mind[0])
-      temp.err = phot[gd].(mind[0]+1)   ; assume error is the next column
-      temp.chipindx = chind[j]
+      if ngd gt 0 then begin
+        temp = replicate({cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,$
+                          cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
+        ;temp = replicate({id:-1L,x:0.0,y:0.0,mag:0.0,err:0.0,cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0},ngd)
+        struct_assign,phot[gd],temp,/nozero
+        temp.mag = phot[gd].(mind[0])
+        temp.err = phot[gd].(mind[0]+1)   ; assume error is the next column
+        temp.chipindx = chind[j]
+      endif
 
       chstr[chind[j]].refexpnum = refexpnum
       chstr[chind[j]].nsrc = ngd
@@ -193,7 +257,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       endif
 
       ; Add to ALLSRC structure
-      allsrc[cur_allsrc_indx:cur_allsrc_indx+ngd-1] = temp
+      if ngd gt 0 then allsrc[cur_allsrc_indx:cur_allsrc_indx+ngd-1] = temp
 
       ; Increment index
       cur_allsrc_indx += ngd
