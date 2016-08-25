@@ -7,14 +7,20 @@
 ; photometric "anchor" data (i.e. 0.9m data).
 ;
 ; INPUTS:
+;  info    The structure with information on the field.
 ;  fstr    The structure with information for each exposure.
 ;  chstr   The structure with information for each chip.
 ;  allsrc  The structure with information for each source detection.
 ;  allobj  The structure with information for each unique object.
+;  =transfile   The file with the photometric transformation equations.
+;  =reduxdir    The reduction directory, the default is "/data/smash/cp/red/photred/"
 ;
 ; OUTPUTS:
-;  ??
-;  ??
+;  chstr       The photometric transformation information is added and
+;                updated via ubercal.  The MJD and CALIBRATED flags
+;                are added.
+;  allsrc      The CMAG calibrated magnitudes are updated / calibrated.
+;  =error      The error message if one occurred.   
 ;
 ; USAGE:
 ;  IDL>smashred_photcalib,fstr,chstr,allsrc,allobj
@@ -22,17 +28,18 @@
 ; D.Nidever  March 2016
 ;-
 
-pro smashred_photcalib,fstr,chstr,allsrc,allobj
+pro smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile,reduxdir=reduxdir,error=error
 
+ninfo = n_elements(info)
 nfstr = n_elements(fstr)
 nchstr = n_elements(chstr)
 nallsrc = n_elements(allsrc)
 nallobj = n_elements(allobj)
 
 ; Not enough inputs
-if nfstr eq 0 or nchstr eq 0 or nallsrc eq 0 or nallobj eq 0 then begin
+if ninfo eq 0 or nfstr eq 0 or nchstr eq 0 or nallsrc eq 0 or nallobj eq 0 or n_elements(transfile) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_photcalib,fstr,chstr,allsrc,allobj'
+  print,'Syntax - smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile'
   return
 endif
 
@@ -43,83 +50,165 @@ endif
 ; afterburner, since this will affect the mean mags which will in turn
 ; affect the color terms.  So needs to be a 
 
+; Defaults
+if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
+if file_test(reduxdir,/directory) eq 0 then begin
+  error = reduxdir+' NOT FOUND'
+  if not keyword_set(silent) then print,error
+  return
+endif
+if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/final/'
+if file_test(outputdir,/directory) eq 0 then begin
+  if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
+  FILE_MKDIR,outputdir
+endif
+; Temporary directory
+tmpdir = outputdir+'/tmp/'
+if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 
-; Initialize the transformation equations
+
+
+; Add MJD to CHSTR
+if tag_exist(chstr,'MJD') eq 0 then begin
+  add_tag,chstr,'MJD',0L,chstr
+  dateobs = chstr.utdate+'T'+chstr.uttime
+  for i=0,nchstr-1 do chstr[i].mjd=PHOTRED_GETMJD('','ctio',dateobs=dateobs[i])
+endif
+; Add CALIBRATED flag to CHSTR
+add_tag,chstr,'calibrated',0B,chstr
+; Add UBERCAL colums to CHSTR 
+add_tag,chstr,'ubercal_magoffset',0.0,chstr
+add_tag,chstr,'ubercal_flag',-1L,chstr
+
+; Load the transformation equations
+trans_fitstr = MRDFITS(transfile,1,/silent)
+trans_chipstr = MRDFITS(transfile,2,/silent)
+trans_ntstr = MRDFITS(transfile,3,/silent)
+
+; --- Add the transformation equation information to CHSTR ---
+
 ; Add the photometric transformation equation columns to CHSTR
 if tag_exist(chstr,'photometric') eq 0 then begin
-  newtags = ['photometric','band','colband','colsign','zpterm','zptermsig','amterm',$
+  newtags = ['photometric','badsoln','band','colband','colsign','zpterm','zptermsig','amterm',$
              'amtermsig','colterm','coltermsig','amcolterm','amcoltermsig','colsqterm','colsqtermsig']
   temp = chstr & undefine,chstr
-  add_tags,temp,newtags,['0B','""','""','-1',replicate('0.0d0',10)],chstr
+  add_tags,temp,newtags,['0B','0B','""','""','-1',replicate('0.0d0',10)],chstr
   undefine,temp
 endif
-print,'STILL NEED TO WRITE CODE TO LOAD TRANSFORMATION EQUATIONS!!!!'
-; Stuff in the transformation equation information
-;  I got these from stdred_201405/n1.trans
-chstr.photometric = 1
 chstr.band = chstr.filter
-nchstr = n_elements(chstr)
+
+; Transfer over the photometric transformation equations
+chstr_mjdchipfilt = strtrim(chstr.mjd,2)+'-'+strtrim(chstr.chip,2)+'-'+strtrim(chstr.filter,2)
+trans_mjdchipfilt = strtrim(trans_fitstr.mjd,2)+'-'+strtrim(trans_fitstr.chip,2)+'-'+strtrim(trans_fitstr.filter,2)
 for i=0,nchstr-1 do begin
-  case chstr[i].filter of
-  'u': begin
-    chstr[i].colband = 'g'
-    chstr[i].colsign = 1
-    chstr[i].zpterm = 1.5137
-    chstr[i].amterm = 0.3787
-    chstr[i].colterm = 0.0094 
+  MATCH,chstr_mjdchipfilt[i],trans_mjdchipfilt,ind1,ind2,/sort,count=nmatch
+  if nmatch gt 0 then begin
+    chstr[i].photometric = trans_fitstr[ind2].photometric
+    chstr[i].badsoln = trans_fitstr[ind2].badsoln
+    chstr[i].band = trans_fitstr[ind2].filter
+    chstr[i].colband = trans_fitstr[ind2].colband
+    chstr[i].colsign = trans_fitstr[ind2].colsign
+    chstr[i].zpterm = trans_fitstr[ind2].zpterm
+    chstr[i].zptermsig = trans_fitstr[ind2].zptermerr
+    chstr[i].amterm = trans_fitstr[ind2].amterm
+    chstr[i].amtermsig = trans_fitstr[ind2].amtermerr
+    chstr[i].colterm = trans_fitstr[ind2].colterm
+    chstr[i].coltermsig = trans_fitstr[ind2].coltermerr
+    chstr[i].amcolterm = trans_fitstr[ind2].colamterm
+    chstr[i].amcoltermsig = trans_fitstr[ind2].colamtermerr
+    ;chstr[i].colsqterm = trans_fitstr[ind2].colsqterm
+    ;chstr[i].colsqtermsig = trans_fitstr[ind2].colsqtermerr
+  endif else begin  ; no match
+    chstr[i].badsoln = 1  ; no solution
+  endelse
+
+  ; BADSOLN or NON-PHOTOMETRIC, zero-out all trans values except for COLTERM
+  if chstr[i].badsoln eq 1 or chstr[i].photometric eq 0 then begin
+    chstr[i].zpterm = 0.0
+    chstr[i].zptermsig = 0.0
+    chstr[i].amterm = 0.0
+    chstr[i].amtermsig = 0.0
     chstr[i].amcolterm = 0.0
+    chstr[i].amcoltermsig = 0.0
     chstr[i].colsqterm = 0.0
-  end
-  'g': begin
-    ;chstr[i].colband = 'u'
-    ;chstr[i].colsign = 2
-    chstr[i].colband = 'r'
-    chstr[i].colsign = 1
-    chstr[i].zpterm = -0.3136
-    chstr[i].amterm = 0.1582
-    chstr[i].colterm = -0.0566
-    chstr[i].amcolterm = 0.0
-    chstr[i].colsqterm = 0.0
-  end
-  'r': begin
-    chstr[i].colband = 'i'
-    chstr[i].colsign = 1
-    chstr[i].zpterm = -0.4785
-    chstr[i].amterm = 0.0758
-    chstr[i].colterm = -0.1484
-    chstr[i].amcolterm = 0.0
-    chstr[i].colsqterm = 0.0
-  end
-  'i': begin
-    chstr[i].colband = 'z'
-    chstr[i].colsign = 1
-    chstr[i].zpterm = -0.3545
-    chstr[i].amterm = 0.0380
-    chstr[i].colterm = -0.2933
-    chstr[i].amcolterm = 0.0
-    chstr[i].colsqterm = 0.0
-  end
-  'z': begin
-    chstr[i].colband = 'i'
-    chstr[i].colsign = 2
-    chstr[i].zpterm = -0.0423
-    chstr[i].amterm = 0.0498
-    chstr[i].colterm = -0.0675
-    chstr[i].amcolterm = 0.0
-    chstr[i].colsqterm = 0.0
-  end
-  else: stop
-  endcase
+    chstr[i].colsqtermsig = 0.0
+  endif
 endfor
-chstr.zptermsig = 0.001
-chstr.amtermsig = 0.001
-chstr.coltermsig = 0.001
-chstr.amcoltermsig = 0.0
-chstr.colsqtermsig = 0.0
+
+
+; Double-check that every CHSTR element has the essentials
+;  COLBAND, COLSIGN, COLTERM COLTERMSIG
+bdchstr = where(chstr.colband eq '',nbdchstr)
+chstr_chipfilt = strtrim(chstr.chip,2)+'-'+strtrim(chstr.filter,2)
+trans_chipfilt = strtrim(trans_chipstr.chip,2)+'-'+strtrim(trans_chipstr.filter,2)
+for i=0,nbdchstr-1 do begin
+  ; Get this information from the chip-specific
+  ; transformation equation structure
+  MATCH,chstr_chipfilt[bdchstr[i]],trans_chipfilt,ind1,ind2,/sort,count=nmatch
+  chstr[bdchstr[i]].colband = trans_chipstr[ind2[0]].colband
+  chstr[bdchstr[i]].colsign = trans_chipstr[ind2[0]].colsign
+  chstr[bdchstr[i]].colterm = trans_chipstr[ind2[0]].colterm
+  chstr[bdchstr[i]].coltermsig = trans_chipstr[ind2[0]].coltermerr
+endfor
+
+; Copy PHOTOMETRIC and BADSOLN to FSTR
+add_tag,fstr,'photometric',0,fstr
+add_tag,fstr,'badsoln',0,fstr
+for i=0,n_elements(fstr)-1 do begin
+  MATCH,fstr[i].expnum,chstr.expnum,ind1,ind2,/sort,count=nmatch
+  fstr[i].photometric = chstr[ind2[0]].photometric
+  fstr[i].badsoln = chstr[ind2[0]].badsoln
+endfor
+
+
+;; TEMPORARY KLUDGE FOR FIELD18
+;if info[0].field eq 'Field18' then begin
+;  print,'TEMPORARY KLUDGE FOR FIELD18'
+;  chstr.photometric = 0
+;  chstr.badsoln = 1
+;  chstr.zpterm = 0
+;  chstr.zptermsig = 0
+;  chstr.colterm = 0
+;  chstr.coltermsig = 0
+;  chstr.amterm = 0
+;  chstr.amtermsig = 0
+;  stop
+;endif
+
+; Give statistics on how many exposures have calibration information
+; (per band) and photometric data
+allfilters = ['u','g','r','i','z']
+nocalib = intarr(5)
+print,'--------------------------'
+print,'FILTER   NEXP   NGOODEXP'
+print,'=========================='
+for i=0,n_elements(allfilters)-1 do begin
+  MATCH,allfilters[i],fstr.filter,ind1,ind2,/sort,count=nmatch
+  if nmatch gt 0 then begin
+    gdexp = where(fstr[ind2].photometric eq 1 and fstr[ind2].badsoln eq 0,ngdexp)
+  endif else ngdexp=0
+  if nmatch gt 0 and ngdexp eq 0 then nocalib[i]=1    ; can't calibrate!
+  print,allfilters[i],nmatch,ngdexp,format='(A4,I8,I8)'
+endfor
+print,'--------------------------'
+
+; Some band CANNOT be calibrated, give average zeropoint
+bdnocalib = where(nocalib eq 1,nbdnocalib)
+if nbdnocalib gt 0 then begin
+  print,'!!!! CANNOT CALIBRATE ',strtrim(nbdnocalib,2),' FILTER(S): ',strjoin(allfilters[bdnocalib],' '),' !!!!'
+  print,'Giving them average zeropoints for that band'
+  for i=0,nbdnocalib-1 do begin
+    MATCH,trans_ntstr.filter,allfilters[bdnocalib[i]],ind1,ind2,/sort,count=nmatch
+    zpterm = median([trans_ntstr[ind1].zpterm])
+    zptermsig = median([trans_ntstr[ind1].zptermsig])
+    MATCH,chstr.filter,allfilters[bdnocalib[i]],ind1,ind2,/sort,count=nmatch
+    chstr[ind1].zpterm = zpterm
+    chstr[ind1].zptermsig = zptermsig
+  endfor
+endif
 
 ; SHOULD I ALSO COMPUTE EXPOSURE-LEVEL APERTURE CORRECTIONS??
 ; MAYBE FIT A WEAK SPATIAL POLYNOMIAL??
-
 
 
 ; Get unique filters
@@ -133,6 +222,8 @@ lastcmag = allsrc.cmag
 doneflag = 0
 niter = 0
 last_zpterm = chstr.zpterm
+last_maxdiffcmag = 999.9
+last_rmsdiffcmag = 999.9
 WHILE (doneflag eq 0) do begin
 
   print & print,'Global field photometric calibration.  Iteration = ',strtrim(niter+1,2) & print
@@ -153,7 +244,6 @@ WHILE (doneflag eq 0) do begin
   ; this updates CMAG/CERR in ALLSRC
   SMASHRED_APPLY_PHOTTRANSEQN,fstr,chstr,allsrc,allobj
 
-
   ;----------------------------------------------------------
   ; Step 2. Ubercal measurement and offsets to individual
   ;           exposure zeropoints
@@ -166,6 +256,7 @@ WHILE (doneflag eq 0) do begin
   print,'--- Step 2. Ubercal measurement and application ---'
 
   ; Filter loop
+  undefine,overlapstr,ubercalstr
   For f=0,nufilter-1 do begin
     ifilter = ufilter[f]
     chfiltind = where(chstr.filter eq ifilter,nchfiltind)
@@ -185,8 +276,19 @@ WHILE (doneflag eq 0) do begin
     print,'2c. Set absolute zeropoint with photometric data and achor points'
     SMASHRED_SET_ZEROPOINTS,chfiltstr,ubercalstr
 
+    ; Step 2d. Set CALIBRATED bit
+    print,'2d. Set CALIBRATED bit in CHSTR'
+    SMASHRED_SET_CALIBRATED_BIT,chfiltstr,overlapstr
+
     ; Stuff it back in
     chstr[chfiltind] = chfiltstr
+
+    ; Save the overlapstr and ubercalstr structure
+    ;  the ubercalstr mag offset are relative
+    ;  see chstr.ubercal_magoffset for absolute ones
+    outfile = tmpdir+info[0].field+'_'+ufilter[f]+'_photcalib.dat'
+    SAVE,chfiltstr,overlapstr,ubercalstr,file=outfile
+ 
   Endfor  ; filter loop
 
   ; BRIGHTER-FATTER CORRECTION??
@@ -198,14 +300,23 @@ WHILE (doneflag eq 0) do begin
 
   ; Check for convergence
   ;  check changes in ALLSRC CMAG values, changes in CHSTR ZPTERM and iterations
-  maxiter = 50
-  maxdiff_thresh = 0.0001
-  maxzpterm_thresh = 0.0001
+  maxiter = 20   ;50
+  maxdiff_thresh = 0.001    ;0.0001
+  maxzpterm_thresh = 0.001  ;0.0001
   diffcmag = abs(allsrc.cmag-lastcmag)
   diffzpterm = abs(chstr.zpterm-last_zpterm)
-  if (max(diffcmag) lt maxdiff_thresh and max(diffzpterm) lt maxzpterm_thresh) or niter gt maxiter then doneflag=1
+  maxdiffcmag = max(diffcmag)
+  maxdiffzpterm = max(diffzpterm)
+  rmsdiffcmag = stddev(diffcmag)
+  if (niter ge 4 and (maxdiffcmag lt maxdiff_thresh) and (maxdiffzpterm lt maxzpterm_thresh)) or $       ; small differences 
+     (niter ge 4 and (maxdiffcmag gt last_maxdiffcmag) and (rmsdiffcmag gt last_rmsdiffcmag)) or $       ; diffs are getting bigger, plateau
+     (niter ge maxiter) then doneflag=1                                                                  ; max iterations
+;if doneflag eq 1 then stop,'finished'
   last_zpterm = chstr.zpterm  ; save for next time
+  last_maxdiffcmag = maxdiffcmag
+  last_rmsdiffcmag = rmsdiffcmag
   lastcmag = allsrc.cmag
+
 
   print,''
   print,'CMAG diff  ','max=',max(diffcmag),'med=',median(diffcmag),'rms=',stddev(diffcmag),format='(A12,A5,F11.6,A5,F11.6,A5,F11.6)'
@@ -213,10 +324,11 @@ WHILE (doneflag eq 0) do begin
 
   niter++
 
-  ;stop
-
 ENDWHILE
 
-;stop
+; Apply the transformation equations and do average mags one last time
+print,'Applying transformation equations one last time'
+SMASHRED_APPLY_PHOTTRANSEQN,fstr,chstr,allsrc,allobj
+
 
 end
