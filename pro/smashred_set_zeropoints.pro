@@ -30,25 +30,30 @@ if n_elements(chstr) eq 0 or n_elements(ubercalstr) eq 0 then begin
 endif
 
 ; Set absolute zeropoint using photometry and/or anchor data
-gdphot = where(chstr.photometric eq 1,ngdphot)
+gdphot = where(chstr.photometric eq 1 and chstr.badsoln eq 0,ngdphot)
 if ngdphot eq 0 then begin
-  print,'WARNING!!!  No photometric data to anchor the relative magnitude zeropoints'
-  return
+  print,' WARNING!!!  No photometric/good solution data to anchor the relative magnitude zeropoints.  Using ALL points to set zeropoint.'
+  gdphot = lindgen(n_elements(chstr))
+  ;return
 endif
 
 ; Calculate median mag offset for photometric data
 ;  Use median, don't remove outliers, basically want mean of all
 ;  photometric data
 zpmagoff = median(ubercalstr[gdphot].magoff)
-print,'Removing median mag offset for photometric data = ',strtrim(zpmagoff,2),' mag'
+print,' Removing median mag offset for photometric/anchor data = ',strtrim(zpmagoff,2),' mag'
 ubercalstr.magoff -= zpmagoff
 
 ; Apply the new zeropoints to the chip-level transformation equations
 ;  we want to add this offset to the magnitudes
 ;  zpterm is subtracted from instrumental mags, so subtract mag offset
 chstr.zpterm -= ubercalstr.magoff
+chstr.ubercal_magoffset -= ubercalstr.magoff
 
-; DO WE UPDATED THE ZPTERM ERROR??
+; Set the ubercal flag
+chstr.ubercal_flag = ubercalstr.flag
+
+; DO WE UPDATE THE ZPTERM ERROR??
 
 ;stop
 
