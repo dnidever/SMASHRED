@@ -44,7 +44,7 @@ endfor  ; opt file loop
 med_fwhm = median(chstr.fwhm)
 sig_fwhm = mad(chstr.fwhm)
 
-; Now fit the FWHM values
+; Fit linear plane to the FWHM value wrt RA/DEC
 restore,'/data/smash/cp/red/photred/decam_chip_xyoff.dat'
 offstr = replicate({chip:0L,xoff:0.0,yoff:0.0},n_elements(chip))
 offstr.chip = chip
