@@ -1,4 +1,4 @@
-1;2c;+
+;+
 ;
 ; SMASHRED_LOAD_CATPHOT
 ;
@@ -64,18 +64,18 @@ outfile = tmpdir+fbase+'_'+info.night+'_photred.fits'
 
 ; --- Initalize ALLSRC structure ---
 ; ALLSRC structure schema
-;  cmbindx   index into ALLOBJ, added later on in
-;  smashred_crossmatch.pro
-;  fid       final ID, added later on in smashred_crossmatch.pro
-;  id        original ID in ALS/ALF file
-;  idref     ID in PHOT/AST file
-;  cmag/cerr calibrated photometry that will be added later
-;  x/y       original X/Y coordinate in the chip image
-;  ra/dec    ra/dec coordinates using X/Y and chip WCS
-;  xref/yref final X/Y coordinates in the reference frame
-;               NOT the original frame
-;  raref/decref   ra/dec coordinates using xref/yref and ref WCS
-;  chi/sharp original chi/sharp from ALS/ALF file
+;  cmbindx       index into ALLOBJ, added later on in smashred_crossmatch.pro
+;  fid           final ID, added later on in smashred_crossmatch.pro
+;  id            original ID in ALS/ALF file
+;  idref         ID in PHOT/AST file
+;  x/y           original X/Y coordinate in the chip image
+;  xref/yref     final X/Y coordinates in the reference frame
+;                  NOT the original frame
+;  mag/err       instrumental photometry from PHOT/AST
+;  cmag/cerr     calibrated photometry that will be added later
+;  chi/sharp     original chi/sharp from ALS/ALF file
+;  ra/dec        ra/dec coordinates using X/Y and chip WCS
+;  raref/decref  ra/dec coordinates using xref/yref and ref WCS
 allsrc_schema = {cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,idref:-1L,x:0.0,y:0.0,xref:0.0,yref:0.0,mag:0.0,err:0.0,$
                     cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0,$
                     raref:0.0d0,decref:0.0d0}
@@ -90,30 +90,47 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   chstr = MRDFITS(info.file,2,/silent)  ; load the chip structure
   nchstr = n_elements(chstr)
   night = info.night
+  field = chstr[0].field
 
-  ; Get data from the phot/ast files
+  ; KLUDGE! Removing DUPLICATE exposures in short and deep fields
+  if night eq '20150318' and field eq 'F5' then begin  ; Field130sh
+    MATCH,chstr.expnum,'00423440',bdind,dum,/sort,count=nbdind
+    if nbdind gt 0 then begin
+      print,'REMOVING DUPLICATE exposure 00423440 (in short and deep field) from short field'
+      REMOVE,bdind,chstr
+      nchstr = n_elements(chstr)
+    endif
+  endif
+  if night eq '20150330' and field eq 'F7' then begin  ; Field130sh
+    MATCH,chstr.expnum,'00426607',bdind,dum,/sort,count=nbdind
+    if nbdind gt 0 then begin
+      print,'REMOVING DUPLICATE exposure 00423440 (in short and deep field) from short field'
+      REMOVE,bdind,chstr
+      nchstr = n_elements(chstr)
+    endif
+  endif
+
+  ; Add some tags to CHSTR
   add_tag,chstr,'refexpnum','',chstr
   add_tag,chstr,'vertices_ra',dblarr(4),chstr
   add_tag,chstr,'vertices_dec',dblarr(4),chstr
   add_tag,chstr,'nsrc',-1L,chstr
   add_tag,chstr,'allsrcindx',-1LL,chstr
 
+  ; --- Get data from the phot/ast files ----
   ; Use PHOT files
   if not keyword_set(useast) and not keyword_set(useorig) then begin
     ext = '.phot'
-    photfiles = file_search(reduxdir+night+'/'+chstr[0].field+'/'+chstr[0].field+'-*_??'+ext,count=nphotfiles)
-    print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',reduxdir+night+'/'+chstr[0].field+'/'
+    photfiles = file_search(reduxdir+night+'/'+field+'/'+field+'-*_??'+ext,count=nphotfiles)
+    print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',reduxdir+night+'/'+field+'/'
   ; Use AST files
   endif else begin
     ext = '.ast'
-    photfiles = file_search(reduxdir+night+'/'+chstr[0].field+'/'+chstr[0].field+'-*_??'+ext,count=nphotfiles)
-    print,strtrim(nphotfiles,2),' AST files for ',fbase,' in ',reduxdir+night+'/'+chstr[0].field+'/'
+    photfiles = file_search(reduxdir+night+'/'+field+'/'+field+'-*_??'+ext,count=nphotfiles)
+    print,strtrim(nphotfiles,2),' AST files for ',fbase,' in ',reduxdir+night+'/'+field+'/'
   endelse
 
-if night eq '20150318' and chstr[0].field eq 'F5' then stop,'NEED TO REMOVE DUPLICATE exposure 00423440 in short and deep field somehow'
-if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPLICATE exposure 00426607 in short and deep field somehow'
-
-  ; Loop through individual chip AST/PHOT files
+  ; --- Loop through individual chip AST/PHOT files ---
   for i=0,nphotfiles-1 do begin
   
     print,strtrim(i+1,2),' ',photfiles[i]
@@ -158,7 +175,7 @@ if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPL
       STRUCT_ASSIGN,phot1,src,/nozero
       src.idref = phot1.id
       src.xref = phot1.x
-      src.yref = phot1.x
+      src.yref = phot1.y
       src.raref = phot1.ra
       src.decref = phot1.dec
       src.mag = phot1.(mind[0])
@@ -174,7 +191,7 @@ if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPL
       src.sharp = !values.f_nan
 
       ; Load the FITS header of the original chip file
-      fitsfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
+      fitsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
       if file_test(fitsfile) eq 0 then stop,fitsfile,' NOT FOUND'
       head = headfits(fitsfile)
       ; Get the MJD for this exposure
@@ -187,7 +204,7 @@ if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPL
       ; Are we using ALF or ALS files?
       ;   Determine if als/alf if prob/flag is there
       if tag_exist(phot,'PROB') then origphotexten='alf' else origphotexten='als'
-      origphotfile = reduxdir+night+'/'+chstr[0].field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
+      origphotfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
       if file_test(origphotfile) eq 0 then stop,origphotfile,' NOT FOUND'
 
       ; Load original photometry als/alf file
@@ -199,7 +216,7 @@ if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPL
         MATCH,src.idref,origphot.id,ind1,ind2,/sort,count=nmatch
       ; ALS: Need to use the TFR file to get indices for the als file
       endif else begin
-        tfrfile = reduxdir+night+'/'+chstr[0].field+'/'+phbase+'.tfr'
+        tfrfile = reduxdir+night+'/'+field+'/'+phbase+'.tfr'
         ; Check if the there is a .tfr.orig file, this is the DAOMASTER
         ;  tfr file if ALLFRAME was run
         if file_test(tfrfile+'.orig') eq 1 then tfrfile+='.orig'
@@ -210,7 +227,7 @@ if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPL
         if ntfrlist_index eq 0 then stop,file_basename(origphotfile)+' NOT in '+tfrfile
         ; Get indices for the original ALS file, 0-based
         ;   # of stars in TFR file should be same as RAW/AST
-        ind2 = reform( tfrstr[gd].index[tfrlist_index]-1 )
+        ind2 = reform( tfrstr[gdphot].index[tfrlist_index]-1 )
         ind1 = lindgen(nsrc)
       endelse
 
@@ -226,7 +243,6 @@ if night eq '20150330' and chstr[0].field eq 'F7' then stop,'NEED TO REMOVE DUPL
       HEAD_XYAD,head,src.x-1,src.y-1,ra,dec,/degree
       src.ra = ra
       src.dec = dec
-
 
       ; Remove bad data for DECam chip 31
       ;----------------------------------
