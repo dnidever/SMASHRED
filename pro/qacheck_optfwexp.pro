@@ -1,6 +1,7 @@
 pro qacheck_optfwexp,expnum,chstr,par,verbose=verbose,pl=pl,stp=stp,$
                      nsigthresh=nsigthresh,nabsthresh=nabsthresh,offstr=offstr
 
+t00 = systime(1)
 ; Check that all of the FWHM values in the daophot opt
 ; files are okay and consistent
 
@@ -27,14 +28,20 @@ if noptfiles eq 0 then begin
   return
 endif
 
-chstr = replicate({dir:'',file:'',expnum:'',chip:-1L,fwhm:-1.0,va:-1,fitradius_fwhm:-1.0,$
+chstr = replicate({dir:'',field:'',file:'',expnum:'',chip:-1L,filter:'',$
+                   fwhm:-1.0,va:-1,fitradius_fwhm:-1.0,$
                    fitfwhm:-1.0,xoff:0.0,yoff:0.0,bad:0,redo:0},noptfiles)
 for i=0,noptfiles-1 do begin
+  fitsfile = repstr(optfiles[i],'.opt','.fits')
+  head = headfits(fitsfile)
+  filter = sxpar(head,'filter')
+  filt = strmid(strtrim(filter,2),0,1)
   chip = long( (strsplit(file_basename(optfiles[i],'.opt'),'_',/extract))[1] )
   chstr[i].dir = dir
   chstr[i].file = optfiles[i]
   chstr[i].expnum = base
   chstr[i].chip = chip
+  chstr[i].filter = filt
   READCOL,optfiles[i],key,equal,value,format='A,A,F',/silent
   fwind = where(key eq 'FW',nfwind)
   if nfwind gt 0 then begin
@@ -103,8 +110,12 @@ chstr.fitfwhm = fitfwhm
 ; Find outliers
 diff_fwhm = chstr.fwhm-chstr.fitfwhm
 sig_fitfwhm = mad(diff_fwhm)
-bd_fwhm = where( ( abs(diff_fwhm)/sig_fitfwhm gt nsigthresh and abs(diff_fwhm) gt 0.5 ) or $
-                 abs(diff_fwhm) gt nabsthresh,nbd_fwhm)
+;bd_fwhm = where( ( abs(diff_fwhm)/sig_fitfwhm gt nsigthresh and abs(diff_fwhm) gt 0.5 ) or $
+;                 abs(diff_fwhm) gt nabsthresh,nbd_fwhm)
+; Only look for positive outliers.  The only negative outliers are
+; chip 62 and it might be "real".
+bd_fwhm = where( ( diff_fwhm/sig_fitfwhm gt nsigthresh and diff_fwhm gt 0.5 ) or $
+                 diff_fwhm gt nabsthresh,nbd_fwhm)
 if nbd_fwhm gt 0 then begin
   if keyword_set(verbose) then print,' bad chips. ',strjoin(chstr[bd_fwhm].chip,' ')
   bdchstr = chstr[bd_fwhm]
@@ -121,8 +132,10 @@ if keyword_set(pl) then begin
   if nbd_fwhm gt 0 then oplot,[chstr[bd_fwhm].chip],[chstr[bd_fwhm].fwhm],ps=4,co=250,sym=2,thick=3
 endif
 
-if not keyword_set(silent) then print,'   ',expnum,' ',stringize(med_fwhm,ndec=2),' ',stringize(sig_fitfwhm,ndec=3),$
-       '  ',strtrim(nbd_fwhm,2),' bad exposures'
+if not keyword_set(silent) then print,'   ',expnum,' ',chstr[0].filter,' ',stringize(med_fwhm,ndec=2),' ',stringize(sig_fitfwhm,ndec=3),$
+       '  ',strtrim(nbd_fwhm,2),' bad chip files'
+
+;print,systime(1)-t00
 
 if keyword_set(stp) then stop
 
