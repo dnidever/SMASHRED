@@ -7,6 +7,9 @@
 ; INPUTS:
 ;  overlapstr  The structure containing the relative magnitude offsets
 ;                of chip pairs.
+;  =chiptrans  A structure with the chip-level relative magnitude
+;                offsets.  We use this for chips that don't have any
+;                good overlap magnitude offsets.
 ;  /verbose    Print extra information to the screen.
 ;
 ; OUTPUTS:
@@ -19,13 +22,13 @@
 ; By D. Nidever  April 2016
 ;-
 
-pro smashred_solve_ubercal,overlapstr,ubercalstr,verbose=verbose
+pro smashred_solve_ubercal,overlapstr,ubercalstr,chiptrans=chiptrans,verbose=verbose
 
 undefine,ubercalstr
 
 ; Not enough inputs
 if n_elements(overlapstr) eq 0 then begin
-  print,'Syntax - smashred_solve_ubercal,overlapstr,ubercalstr,verbose=verbose'
+  print,'Syntax - smashred_solve_ubercal,overlapstr,ubercalstr,chiptrans=chiptrans,verbose=verbose'
   return
 endif
 
@@ -154,18 +157,37 @@ endfor
 ;   use the median offset for all chips of that exposure
 ;totoverlap = total( (overlapstr.overlap eq 1 and overlapstr.magoff lt 50),1)  ; 1 for chips with good offsets, 0 otherwise
 ;bdind = where(totoverlap eq 0 or (totoverlap gt 0 and ubercalstr.magoff gt 50),nbdind)
+; The relative chip offsets derived above tend to be better
+; than the relative ones derived for the whole survey.
 bdind = where(ubercalstr.flag eq 0,nbdind)
 for k=0,nbdind-1 do begin
   expind = where(uexp eq ubercalstr[bdind[k]].expnum,nexpind)
   chind = where(uchips eq ubercalstr[bdind[k]].chip,nchind)
+  ; Some values for this chip and exosure
   if nexpind gt 0 and nchind gt 0 then begin
     ind = overlapstr.index[overlapstr.ind0[bdind[k]]:overlapstr.ind1[bdind[k]]]   
     ubercalstr[bdind[k]].magoff = expmagoff[expind] + chipdeltamagoff[chind]
     ubercalstr[bdind[k]].magofferr = sqrt( expmagofferr[expind]^2 + chipdeltamagofferr[chind]^2 )  ; add errors in quadrature
-    ;ubercalstr[bdind[k]].noverlap = total(overlapstr[bdind[k],*].overlap eq 1,2)
     ubercalstr[bdind[k]].noverlap = total(overlapstr.data[ind].overlap eq 1)
     ubercalstr[bdind[k]].flag = 2  ; set the flag
-  endif
+  ; Use value from CHIPTRANS
+  ;  Use chiptrans only if necessary
+  endif else begin
+    MATCH,chiptrans.chip,ubercalstr[bdind[k]].chip,ind1,ind2,/sort,count=nmatch
+    if nexpind gt 0 then begin  ; there are other chips in this exp
+      ubercalstr[bdind[k]].magoff = expmagoff[expind] + chiptrans[ind1].zpterm
+      ubercalstr[bdind[k]].magofferr = sqrt( expmagofferr[expind]^2 + chiptrans[ind1].zptermerr^2 )  ; add errors in quadrature
+    endif else begin
+      ubercalstr[bdind[k]].magoff = chiptrans[ind1].zpterm
+      ubercalstr[bdind[k]].magofferr = chiptrans[ind1].zptermerr
+    endelse
+    nind = overlapstr.ind1[bdind[k]]-overlapstr.ind0[bdind[k]]+1
+    if nind gt 0 then begin  ; do we need this?
+      ind = overlapstr.index[overlapstr.ind0[bdind[k]]:overlapstr.ind1[bdind[k]]]   
+      ubercalstr[bdind[k]].noverlap = total(overlapstr.data[ind].overlap eq 1)
+    endif
+    ubercalstr[bdind[k]].flag = 3  ; set the flag
+  endelse
 endfor
 
 ; Some chips have no magnitude offsets
