@@ -9,92 +9,8 @@ if file_test(outdir,/directory) eq 0 then file_mkdir,outdir
 
 fieldstr = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.txt',/header)
 
-fid = fix(strmid(strtrim(ifield,2),5))
+fieldid = fix(strmid(strtrim(ifield,2),5))
 print,ifield
-
-; --- exposures ---
-; expnum, nchips, filter, exptime, utdate, uttime, airmass,
-; wcstype, ra, dec, wcsrms, fwhm, skymode, skysig, dao_nsources,
-; dao_depth, dao_psfchi, alf_nsources, alf_depth, apcor,
-; ebv, magname, photometric, badsoln
-;  -strip out MAGNAME?
-;  -add DATEOBS, JD
-;  -change NANs and 99.99 to something else??
-exp = mrdfits(dir+ifield+'_combined_exposures.fits.gz',1)
-nexp = n_elements(exp)
-schema_exp = {expnum:'',nchips:0L,fid:0,filter:'',exptime:0.0,$
-              dateobs:'',mjd:0.0d0,night_mjd:0L,airmass:0.0,wcstype:'',ra:0.0d0,$
-              dec:0.0d0,wcsrms:0.0,fwhm:0.0,skymode:0.0,skysig:0.0,$
-              dao_nsources:0L,dao_depth:0.0,dao_psfchi:0.0,alf_nsources:0L,$
-              alf_depth:0.0,apcor:0.0,ebv:0.0,photometric:0B,badsoln:0B}
-newexp = replicate(schema_exp,nexp)
-STRUCT_ASSIGN,exp,newexp
-newexp.fid = fid
-newexp.dateobs = exp.utdate+'T'+exp.uttime
-for j=0,nexp-1 do newexp[j].mjd=date2jd(newexp[j].dateobs,/mjd)
-MATCH,newexp.expnum,chips.expnum,ind1,ind2,/sort
-newexp[ind1].night_mjd = chips[ind2].mjd
-MWRFITS,newexp,outdir+ifield+'_exposure.fits',/create
-; Add the units
-head = headfits(outdir+ifield+'_exposure.fits',exten=1)
-sxaddhist,'',head,/comment
-sxaddhist,'  ***  Column units ***',head,/comment
-sxaddhist,'',head,/comment
-sxaddpar,head,'TUNIT1','None'
-sxaddpar,head,'TUNIT2','None'
-sxaddpar,head,'TUNIT3','None'
-sxaddpar,head,'TUNIT4','None'
-sxaddpar,head,'TUNIT5','Seconds'
-sxaddpar,head,'TUNIT6','None'
-sxaddpar,head,'TUNIT7','Days'
-sxaddpar,head,'TUNIT8','Days'
-sxaddpar,head,'TUNIT9','None'
-sxaddpar,head,'TUNIT10','None'
-sxaddpar,head,'TUNIT11','Degrees'
-sxaddpar,head,'TUNIT12','Degrees'
-sxaddpar,head,'TUNIT13','Arcseconds'
-sxaddpar,head,'TUNIT14','Pixels'
-sxaddpar,head,'TUNIT15','Counts'
-sxaddpar,head,'TUNIT16','Counts'
-sxaddpar,head,'TUNIT17','None'
-sxaddpar,head,'TUNIT18','Magnitude'
-sxaddpar,head,'TUNIT19','None'
-sxaddpar,head,'TUNIT20','None'
-sxaddpar,head,'TUNIT21','Magnitude'
-sxaddpar,head,'TUNIT22','Magnitude'
-sxaddpar,head,'TUNIT23','Magnitude'
-sxaddpar,head,'TUNIT24','None'
-sxaddpar,head,'TUNIT25','None'
-MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
-
-;COMMENT  *** Column names ***                                                   
-;COMMENT                                                                         
-;TTYPE1  = 'EXPNUM  '           /                                                
-;TTYPE2  = 'NCHIPS  '           /                                                
-;TTYPE3  = 'FID     '           /                                                
-;TTYPE4  = 'FILTER  '           /                                                
-;TTYPE5  = 'EXPTIME '           /                                                
-;TTYPE6  = 'DATEOBS '           /                                                
-;TTYPE7  = 'MJD     '           /                                                
-;TTYPE8  = 'NIGHT_MJD'          /                                                
-;TTYPE9  = 'AIRMASS '           /                                                
-;TTYPE10 = 'WCSTYPE '           /                                                
-;TTYPE11 = 'RA      '           /                                                
-;TTYPE12 = 'DEC     '           /                                                
-;TTYPE13 = 'WCSRMS  '           /                                                
-;TTYPE14 = 'FWHM    '           /                                                
-;TTYPE15 = 'SKYMODE '           /                                                
-;TTYPE16 = 'SKYSIG  '           /                                                
-;TTYPE17 = 'DAO_NSOURCES'       /                                                
-;TTYPE18 = 'DAO_DEPTH'          /                                                
-;TTYPE19 = 'DAO_PSFCHI'         /                                                
-;TTYPE20 = 'ALF_NSOURCES'       /                                                
-;TTYPE21 = 'ALF_DEPTH'          /                                                
-;TTYPE22 = 'APCOR   '           /                                                
-;TTYPE23 = 'EBV     '           /                                                
-;TTYPE24 = 'PHOTOMETRIC'        /                                                
-;TTYPE25 = 'BADSOLN '           /   
-
 
 
 ; --- chips ---
@@ -116,7 +32,7 @@ MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 ;  -change NANs and 99.99 to something else?? 
 chips = mrdfits(dir+ifield+'_combined_chips.fits.gz',1)
 nchips = n_elements(chips)
-schema_chips = {fid:0,photred_field:'',file:'',expnum:'',chip:0,base:'',$
+schema_chips = {fieldid:0,photred_field:'',file:'',expnum:'',chip:0,base:'',$
                 airmass:0.0,gain:0.0,rdnoise:0.0,nx:0L,ny:0L,wcstype:'',$
                 pixscale:0.0,ra:0.0d0,dec:0.0d0,wcsrms:0.0,fwhm:0.0,$
                 skymode:0.0,skysig:0.0,dao_nsources:0L,dao_depth:0.0,$
@@ -133,7 +49,7 @@ schema_chips = {fid:0,photred_field:'',file:'',expnum:'',chip:0,base:'',$
                 calib_colterm:0.0,calib_coltermsig:0.0}
 newchips = replicate(schema_chips,nchips)
 STRUCT_ASSIGN,chips,newchips
-newchips.fid = fid
+newchips.fieldid = fieldid
 newchips.photred_field = chips.field
 newchips.vertex_ra1 = chips.vertices_ra[0]
 newchips.vertex_ra2 = chips.vertices_ra[1]
@@ -216,7 +132,7 @@ sxaddpar,head,'TUNIT53','None'
 sxaddpar,head,'TUNIT54','None'
 MODFITS,outdir+ifield+'_chip.fits',0,head,exten_no=1
 
-;TTYPE1  = 'FID     '           /                                                
+;TTYPE1  = 'FIELDID '           /                                                
 ;TTYPE2  = 'PHOTRED_FIELD'      /                                                
 ;TTYPE3  = 'FILE    '           /                                                
 ;TTYPE4  = 'EXPNUM  '           /                                                
@@ -272,22 +188,106 @@ MODFITS,outdir+ifield+'_chip.fits',0,head,exten_no=1
 ;TTYPE54 = 'CALIB_COLTERMSIG'   /    
 
 
+; --- exposures ---
+; expnum, nchips, filter, exptime, utdate, uttime, airmass,
+; wcstype, ra, dec, wcsrms, fwhm, skymode, skysig, dao_nsources,
+; dao_depth, dao_psfchi, alf_nsources, alf_depth, apcor,
+; ebv, magname, photometric, badsoln
+;  -strip out MAGNAME?
+;  -add DATEOBS, JD
+;  -change NANs and 99.99 to something else??
+exp = mrdfits(dir+ifield+'_combined_exposures.fits.gz',1)
+nexp = n_elements(exp)
+schema_exp = {expnum:'',nchips:0L,fieldid:0,filter:'',exptime:0.0,$
+              dateobs:'',mjd:0.0d0,night_mjd:0L,airmass:0.0,wcstype:'',ra:0.0d0,$
+              dec:0.0d0,wcsrms:0.0,fwhm:0.0,skymode:0.0,skysig:0.0,$
+              dao_nsources:0L,dao_depth:0.0,dao_psfchi:0.0,alf_nsources:0L,$
+              alf_depth:0.0,apcor:0.0,ebv:0.0,photometric:0B,badsoln:0B}
+newexp = replicate(schema_exp,nexp)
+STRUCT_ASSIGN,exp,newexp
+newexp.fieldid = fieldid
+newexp.dateobs = exp.utdate+'T'+exp.uttime
+for j=0,nexp-1 do newexp[j].mjd=date2jd(newexp[j].dateobs,/mjd)
+MATCH,newexp.expnum,chips.expnum,ind1,ind2,/sort
+newexp[ind1].night_mjd = chips[ind2].mjd
+MWRFITS,newexp,outdir+ifield+'_exposure.fits',/create
+; Add the units
+head = headfits(outdir+ifield+'_exposure.fits',exten=1)
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column units ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TUNIT1','None'
+sxaddpar,head,'TUNIT2','None'
+sxaddpar,head,'TUNIT3','None'
+sxaddpar,head,'TUNIT4','None'
+sxaddpar,head,'TUNIT5','Seconds'
+sxaddpar,head,'TUNIT6','None'
+sxaddpar,head,'TUNIT7','Days'
+sxaddpar,head,'TUNIT8','Days'
+sxaddpar,head,'TUNIT9','None'
+sxaddpar,head,'TUNIT10','None'
+sxaddpar,head,'TUNIT11','Degrees'
+sxaddpar,head,'TUNIT12','Degrees'
+sxaddpar,head,'TUNIT13','Arcseconds'
+sxaddpar,head,'TUNIT14','Pixels'
+sxaddpar,head,'TUNIT15','Counts'
+sxaddpar,head,'TUNIT16','Counts'
+sxaddpar,head,'TUNIT17','None'
+sxaddpar,head,'TUNIT18','Magnitude'
+sxaddpar,head,'TUNIT19','None'
+sxaddpar,head,'TUNIT20','None'
+sxaddpar,head,'TUNIT21','Magnitude'
+sxaddpar,head,'TUNIT22','Magnitude'
+sxaddpar,head,'TUNIT23','Magnitude'
+sxaddpar,head,'TUNIT24','None'
+sxaddpar,head,'TUNIT25','None'
+MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
+
+;COMMENT  *** Column names ***                                                   
+;COMMENT                                                                         
+;TTYPE1  = 'EXPNUM  '           /                                                
+;TTYPE2  = 'NCHIPS  '           /                                                
+;TTYPE3  = 'FIELDID '           /                                                
+;TTYPE4  = 'FILTER  '           /                                                
+;TTYPE5  = 'EXPTIME '           /                                                
+;TTYPE6  = 'DATEOBS '           /                                                
+;TTYPE7  = 'MJD     '           /                                                
+;TTYPE8  = 'NIGHT_MJD'          /                                                
+;TTYPE9  = 'AIRMASS '           /                                                
+;TTYPE10 = 'WCSTYPE '           /                                                
+;TTYPE11 = 'RA      '           /                                                
+;TTYPE12 = 'DEC     '           /                                                
+;TTYPE13 = 'WCSRMS  '           /                                                
+;TTYPE14 = 'FWHM    '           /                                                
+;TTYPE15 = 'SKYMODE '           /                                                
+;TTYPE16 = 'SKYSIG  '           /                                                
+;TTYPE17 = 'DAO_NSOURCES'       /                                                
+;TTYPE18 = 'DAO_DEPTH'          /                                                
+;TTYPE19 = 'DAO_PSFCHI'         /                                                
+;TTYPE20 = 'ALF_NSOURCES'       /                                                
+;TTYPE21 = 'ALF_DEPTH'          /                                                
+;TTYPE22 = 'APCOR   '           /                                                
+;TTYPE23 = 'EBV     '           /                                                
+;TTYPE24 = 'PHOTOMETRIC'        /                                                
+;TTYPE25 = 'BADSOLN '           /   
+
 ; --- allsrc ---
 ; cmbindx, chipindx, fid, id, idref, x, y, xref, yref, mag, err,
 ; cmag, cerr, chip, sharp, flag, prob, ra, dec, raref, decref
 ;  -strip out cmbindx, chipindx
-;  -add MJD, EXPNUM, and unique ID (maybe FID but with 'Field' removed)
+;  -add MJD, EXPNUM, and unique ID (maybe FIELDID but with 'Field' removed)
 ;  -add unique chip information
 ;  -change NANs and 99.99 to something else?
 allsrc = mrdfits(dir+ifield+'_combined_allsrc.fits.gz',1)
 nallsrc = n_elements(allsrc)
-schema_allsrc = {id:'',origid:0L,refid:0L,expnum:'',chip:0,mjd:0.0d0,filter:'',x:0.0,y:0.0,xref:0.0,yref:0.0,$
+schema_allsrc = {id:'',origid:0L,refid:0L,fieldid:0,expnum:'',chip:0,mjd:0.0d0,filter:'',x:0.0,y:0.0,xref:0.0,yref:0.0,$
                  mag:0.0,err:0.0,cmag:0.0,cerr:0.0,chi:0.0,sharp:0.0,$
                  flag:0,prob:0.0,ra:0.0d0,dec:0.0d0,raref:0.0d0,$
                  decref:0.0d0}
 newsrc = replicate(schema_allsrc,nallsrc)
 STRUCT_ASSIGN,allsrc,newsrc
 newsrc.id = strmid(strtrim(allsrc.fid,2),5)  ; strip 'Field' portion
+newsrc.fieldid = fieldid
 newsrc.origid = allsrc.id         ; original allstar/allframe ID
 newsrc.refid = allsrc.idref
 newsrc.expnum = chips[allsrc.chipindx].expnum
@@ -305,49 +305,51 @@ sxaddpar,head,'TUNIT2','None'
 sxaddpar,head,'TUNIT3','None'
 sxaddpar,head,'TUNIT4','None'
 sxaddpar,head,'TUNIT5','None'
-sxaddpar,head,'TUNIT6','Days'
-sxaddpar,head,'TUNIT7','None'
-sxaddpar,head,'TUNIT8','Pixels'
+sxaddpar,head,'TUNIT6','None'
+sxaddpar,head,'TUNIT7','Days'
+sxaddpar,head,'TUNIT8','None'
 sxaddpar,head,'TUNIT9','Pixels'
 sxaddpar,head,'TUNIT10','Pixels'
 sxaddpar,head,'TUNIT11','Pixels'
-sxaddpar,head,'TUNIT12','Magnitude'
+sxaddpar,head,'TUNIT12','Pixels'
 sxaddpar,head,'TUNIT13','Magnitude'
 sxaddpar,head,'TUNIT14','Magnitude'
 sxaddpar,head,'TUNIT15','Magnitude'
-sxaddpar,head,'TUNIT16','None'
+sxaddpar,head,'TUNIT16','Magnitude'
 sxaddpar,head,'TUNIT17','None'
 sxaddpar,head,'TUNIT18','None'
 sxaddpar,head,'TUNIT19','None'
-sxaddpar,head,'TUNIT20','Degrees'
+sxaddpar,head,'TUNIT20','None'
 sxaddpar,head,'TUNIT21','Degrees'
 sxaddpar,head,'TUNIT22','Degrees'
 sxaddpar,head,'TUNIT23','Degrees'
+sxaddpar,head,'TUNIT24','Degrees'
 MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 
 ;TTYPE1  = 'ID      '           /                                                
 ;TTYPE2  = 'ORIGID  '           /                                                
 ;TTYPE3  = 'REFID   '           /                                                
-;TTYPE4  = 'EXPNUM  '           /                                                
-;TTYPE5  = 'CHIP    '           /                                                
-;TTYPE6  = 'MJD     '           /                                                
-;TTYPE7  = 'FILTER  '           /
-;TTYPE8  = 'X       '           /                                                
-;TTYPE9  = 'Y       '           /                                                
-;TTYPE10 = 'XREF    '           /                                                
-;TTYPE11 = 'YREF    '           /                                                
-;TTYPE12 = 'MAG     '           /                                                
-;TTYPE13 = 'ERR     '           /                                                
-;TTYPE14 = 'CMAG    '           /                                                
-;TTYPE15 = 'CERR    '           /                                                
-;TTYPE16 = 'CHI     '           /                                                
-;TTYPE17 = 'SHARP   '           /                                                
-;TTYPE18 = 'FLAG    '           /                                                
-;TTYPE19 = 'PROB    '           /                                                
-;TTYPE20 = 'RA      '           /                                                
-;TTYPE21 = 'DEC     '           /                                                
-;TTYPE22 = 'RAREF   '           /                                                
-;TTYPE23 = 'DECREF  '           /  
+;TTYPE4  = 'FIELDID '           /                                                
+;TTYPE5  = 'EXPNUM  '           /                                                
+;TTYPE6  = 'CHIP    '           /                                                
+;TTYPE7  = 'MJD     '           /                                                
+;TTYPE8  = 'FILTER  '           /                                                
+;TTYPE9  = 'X       '           /                                                
+;TTYPE10 = 'Y       '           /                                                
+;TTYPE11 = 'XREF    '           /                                                
+;TTYPE12 = 'YREF    '           /                                                
+;TTYPE13 = 'MAG     '           /                                                
+;TTYPE14 = 'ERR     '           /                                                
+;TTYPE15 = 'CMAG    '           /                                                
+;TTYPE16 = 'CERR    '           /                                                
+;TTYPE17 = 'CHI     '           /                                                
+;TTYPE18 = 'SHARP   '           /                                                
+;TTYPE19 = 'FLAG    '           /                                                
+;TTYPE20 = 'PROB    '           /                                                
+;TTYPE21 = 'RA      '           /                                                
+;TTYPE22 = 'DEC     '           /                                                
+;TTYPE23 = 'RAREF   '           /                                                
+;TTYPE24 = 'DECREF  '           /       
 
 ; --- allobj ---
 ; id, ra, dec, rascatter, decscatter, ndet, depthflag, srcindx,
@@ -359,20 +361,38 @@ MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 ;  -change NANs and 99.99 to something else?
 allobj = mrdfits(dir+ifield+'_combined_allobj.fits.gz',1)
 nallobj = n_elements(allobj)
-schema_allobj = {id:'',fid:0,ra:0.0d0,dec:0.0d0,rascatter:0.0,decscatter:0.0,$
-                ndet:0L,depthflag:0B,umag:0.0,uerr:0.0,uscatter:0.0,gmag:0.0,$
-                gerr:0.0,gscatter:0.0,rmag:0.0,rerr:0.0,rscatter:0.0,imag:0.0,$
-                ierr:0.0,iscatter:0.0,zmag:0.0,zerr:0.0,zscatter:0.0,u_g:99.99,$
-                g_r:99.99,g_i:99.99,i_z:99.99,chi:0.0,sharp:0.0,flag:0,prob:0.0,ebv:0.0}
+schema_allobj = {id:'',fieldid:0,ra:0.0d0,dec:0.0d0,rascatter:0.0,decscatter:0.0,$
+                ndet:0L,depthflag:0B,umag:0.0,uerr:0.0,uscatter:0.0,ndetu:0,gmag:0.0,$
+                gerr:0.0,gscatter:0.0,ndetg:0,rmag:0.0,rerr:0.0,rscatter:0.0,ndetr:0L,$
+                imag:0.0,ierr:0.0,iscatter:0.0,ndeti:0,zmag:0.0,zerr:0.0,zscatter:0.0,$
+                ndetz:0,u_g:99.99,g_r:99.99,g_i:99.99,i_z:99.99,chi:0.0,sharp:0.0,$
+                flag:0,prob:0.0,ebv:0.0}
 newobj = replicate(schema_allobj,nallobj)
 STRUCT_ASSIGN,allobj,newobj
-newobj.fid = fid   ; field integer ID
+newobj.fieldid = fieldid   ; field integer ID
 newobj.id = strmid(strtrim(allobj.id,2),5)  ; strip 'Field' portion
 newobj.umag = allobj.u
 newobj.gmag = allobj.g
 newobj.rmag = allobj.r
 newobj.imag = allobj.i
 newobj.zmag = allobj.z
+; put in number of detections of each star per filter
+for i=0,nallobj-1 do begin
+  ;if i mod 50000 eq 0 then print,i
+  srcind = allobj[i].srcindx[0:allobj[i].ndet-1]
+  filter = chips[allsrc[srcind].chipindx].filter
+  MATCH,filter,'u',ind1,ind2,/sort,count=nu
+  MATCH,filter,'g',ind1,ind2,/sort,count=ng
+  MATCH,filter,'r',ind1,ind2,/sort,count=nr
+  MATCH,filter,'i',ind1,ind2,/sort,count=ni
+  MATCH,filter,'z',ind1,ind2,/sort,count=nz
+  newobj[i].ndetu = nu
+  newobj[i].ndetg = ng
+  newobj[i].ndetr = nr
+  newobj[i].ndeti = ni
+  newobj[i].ndetz = nz
+endfor
+; colors
 gdug = where(newobj.umag lt 50 and newobj.gmag lt 50,ngdug)
 if ngdug gt 0 then newobj[gdug].u_g = newobj[gdug].umag - newobj[gdug].gmag
 gdgr = where(newobj.gmag lt 50 and newobj.rmag lt 50,ngdgr)
@@ -398,31 +418,36 @@ sxaddpar,head,'TUNIT8','None'
 sxaddpar,head,'TUNIT9','Magnitude'
 sxaddpar,head,'TUNIT10','Magnitude'
 sxaddpar,head,'TUNIT11','Magnitude'
-sxaddpar,head,'TUNIT12','Magnitude'
+sxaddpar,head,'TUNIT12','None'
 sxaddpar,head,'TUNIT13','Magnitude'
 sxaddpar,head,'TUNIT14','Magnitude'
 sxaddpar,head,'TUNIT15','Magnitude'
-sxaddpar,head,'TUNIT16','Magnitude'
+sxaddpar,head,'TUNIT16','None'
 sxaddpar,head,'TUNIT17','Magnitude'
 sxaddpar,head,'TUNIT18','Magnitude'
 sxaddpar,head,'TUNIT19','Magnitude'
-sxaddpar,head,'TUNIT20','Magnitude'
+sxaddpar,head,'TUNIT20','None'
 sxaddpar,head,'TUNIT21','Magnitude'
 sxaddpar,head,'TUNIT22','Magnitude'
 sxaddpar,head,'TUNIT23','Magnitude'
-sxaddpar,head,'TUNIT24','Magnitude'
+sxaddpar,head,'TUNIT24','None'
 sxaddpar,head,'TUNIT25','Magnitude'
 sxaddpar,head,'TUNIT26','Magnitude'
 sxaddpar,head,'TUNIT27','Magnitude'
 sxaddpar,head,'TUNIT28','None'
-sxaddpar,head,'TUNIT29','None'
-sxaddpar,head,'TUNIT30','None'
-sxaddpar,head,'TUNIT31','None'
+sxaddpar,head,'TUNIT29','Magnitude'
+sxaddpar,head,'TUNIT30','Magnitude'
+sxaddpar,head,'TUNIT31','Magnitude'
 sxaddpar,head,'TUNIT32','Magnitude'
+sxaddpar,head,'TUNIT33','None'
+sxaddpar,head,'TUNIT34','None'
+sxaddpar,head,'TUNIT35','None'
+sxaddpar,head,'TUNIT36','None'
+sxaddpar,head,'TUNIT37','Magnitude'
 MODFITS,outdir+ifield+'_object.fits',0,head,exten_no=1
 
 ;TTYPE1  = 'ID      '           /                                                
-;TTYPE2  = 'FID     '           /                                                
+;TTYPE2  = 'FIELDID '           /                                                
 ;TTYPE3  = 'RA      '           /                                                
 ;TTYPE4  = 'DEC     '           /                                                
 ;TTYPE5  = 'RASCATTER'          /                                                
@@ -432,40 +457,56 @@ MODFITS,outdir+ifield+'_object.fits',0,head,exten_no=1
 ;TTYPE9  = 'UMAG    '           /                                                
 ;TTYPE10 = 'UERR    '           /                                                
 ;TTYPE11 = 'USCATTER'           /                                                
-;TTYPE12 = 'GMAG    '           /                                                
-;TTYPE13 = 'GERR    '           /                                                
-;TTYPE14 = 'GSCATTER'           /                                                
-;TTYPE15 = 'RMAG    '           /                                                
-;TTYPE16 = 'RERR    '           /                                                
-;TTYPE17 = 'RSCATTER'           /                                                
-;TTYPE18 = 'IMAG    '           /                                                
-;TTYPE19 = 'IERR    '           /                                                
-;TTYPE20 = 'ISCATTER'           /                                                
-;TTYPE21 = 'ZMAG    '           /                                                
-;TTYPE22 = 'ZERR    '           /                                                
-;TTYPE23 = 'ZSCATTER'           /                                                
-;TTYPE24 = 'U_G     '           /                                                
-;TTYPE25 = 'G_R     '           /                                                
-;TTYPE26 = 'G_I     '           /                                                
-;TTYPE27 = 'I_Z     '           /                                                
-;TTYPE28 = 'CHI     '           /                                                
-;TTYPE29 = 'SHARP   '           /                                                
-;TTYPE30 = 'FLAG    '           /                                                
-;TTYPE31 = 'PROB    '           /                                                
-;TTYPE32 = 'EBV     '           /  
+;TTYPE12 = 'NDETU   '           /                                                
+;TTYPE13 = 'GMAG    '           /                                                
+;TTYPE14 = 'GERR    '           /                                                
+;TTYPE15 = 'GSCATTER'           /                                                
+;TTYPE16 = 'NDETG   '           /                                                
+;TTYPE17 = 'RMAG    '           /                                                
+;TTYPE18 = 'RERR    '           /                                                
+;TTYPE19 = 'RSCATTER'           /                                                
+;TTYPE20 = 'NDETR   '           /                                                
+;TTYPE21 = 'IMAG    '           /                                                
+;TTYPE22 = 'IERR    '           /                                                
+;TTYPE23 = 'ISCATTER'           /                                                
+;TTYPE24 = 'NDETI   '           /                                                
+;TTYPE25 = 'ZMAG    '           /                                                
+;TTYPE26 = 'ZERR    '           /                                                
+;TTYPE27 = 'ZSCATTER'           /                                                
+;TTYPE28 = 'NDETZ   '           /                                                
+;TTYPE29 = 'U_G     '           /                                                
+;TTYPE30 = 'G_R     '           /                                                
+;TTYPE31 = 'G_I     '           /                                                
+;TTYPE32 = 'I_Z     '           /                                                
+;TTYPE33 = 'CHI     '           /                                                
+;TTYPE34 = 'SHARP   '           /                                                
+;TTYPE35 = 'FLAG    '           /                                                
+;TTYPE36 = 'PROB    '           /                                                
+;TTYPE37 = 'EBV     '           /               
 
 ; --- fields ---
 ;   which bands are calibrated
 ;   name, central RA/DEC, nexposures
-field = {fid:0,name:'',ra:0.0d0,dec:0.0d0,glon:0.0d0,glat:0.0d0,$
-         mslon:0.0d0,mslat:0.0d0,nexp:0L,nchips:0L,nsrc:0LL,nobj:0LL,ucalib:0B,gcalib:0B,$
+field = {fieldid:0,name:'',ra:0.0d0,dec:0.0d0,glon:0.0d0,glat:0.0d0,$
+         mslon:0.0d0,mslat:0.0d0,nexp:0L,nexp_u:0L,nexp_g:0L,nexp_r:0L,$
+         nexp_i:0L,nexp_z:0L,nchips:0L,nsrc:0LL,nobj:0LL,ucalib:0B,gcalib:0B,$
          rcalib:0B,icalib:0B,zcalib:0B}
-field.fid = fid
+field.fieldid = fieldid
 field.name = ifield
 field.nexp = n_elements(exp)
 field.nchips = n_elements(chips)
 field.nsrc = nallsrc
 field.nobj = nallobj
+uexp = where(newexp.filter eq 'u',nuexp)
+field.nexp_u = nuexp
+gexp = where(newexp.filter eq 'g',ngexp)
+field.nexp_g = ngexp
+rexp = where(newexp.filter eq 'r',nrexp)
+field.nexp_r = nrexp
+iexp = where(newexp.filter eq 'i',niexp)
+field.nexp_i = niexp
+zexp = where(newexp.filter eq 'z',nzexp)
+field.nexp_z = nzexp
 ; which bands are calibrated
 uchip = where(chips.filter eq 'u',nuchips)
 ucalib = where(chips.filter eq 'u' and chips.calibrated eq 1,nucalib)
@@ -519,9 +560,14 @@ sxaddpar,head,'TUNIT14','None'
 sxaddpar,head,'TUNIT15','None'
 sxaddpar,head,'TUNIT16','None'
 sxaddpar,head,'TUNIT17','None'
+sxaddpar,head,'TUNIT18','None'
+sxaddpar,head,'TUNIT19','None'
+sxaddpar,head,'TUNIT20','None'
+sxaddpar,head,'TUNIT21','None'
+sxaddpar,head,'TUNIT22','None'
 MODFITS,outdir+ifield+'_field.fits',0,head,exten_no=1
 
-;TTYPE1  = 'FID     '           /                                                
+;TTYPE1  = 'FIELDID '           /                                                
 ;TTYPE2  = 'NAME    '           /                                                
 ;TTYPE3  = 'RA      '           /                                                
 ;TTYPE4  = 'DEC     '           /                                                
@@ -530,15 +576,20 @@ MODFITS,outdir+ifield+'_field.fits',0,head,exten_no=1
 ;TTYPE7  = 'MSLON   '           /                                                
 ;TTYPE8  = 'MSLAT   '           /                                                
 ;TTYPE9  = 'NEXP    '           /                                                
-;TTYPE10 = 'NCHIPS  '           /                                                
-;TTYPE11 = 'NSRC    '           /                                                
-;TTYPE12 = 'NOBJ    '           /                                                
-;TTYPE13 = 'UCALIB  '           /                                                
-;TTYPE14 = 'GCALIB  '           /                                                
-;TTYPE15 = 'RCALIB  '           /                                                
-;TTYPE16 = 'ICALIB  '           /                                                
-;TTYPE17 = 'ZCALIB  '           / 
+;TTYPE10 = 'NEXP_U  '           /                                                
+;TTYPE11 = 'NEXP_G  '           /                                                
+;TTYPE12 = 'NEXP_R  '           /                                                
+;TTYPE13 = 'NEXP_I  '           /                                                
+;TTYPE14 = 'NEXP_Z  '           /                                                
+;TTYPE15 = 'NCHIPS  '           /                                                
+;TTYPE16 = 'NSRC    '           /                                                
+;TTYPE17 = 'NOBJ    '           /                                                
+;TTYPE18 = 'UCALIB  '           /                                                
+;TTYPE19 = 'GCALIB  '           /                                                
+;TTYPE20 = 'RCALIB  '           /                                                
+;TTYPE21 = 'ICALIB  '           /                                                
+;TTYPE22 = 'ZCALIB  '           / 
 
-stop
+;stop
 
 end
