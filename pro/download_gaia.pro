@@ -1,6 +1,11 @@
-pro download_gaia,field
+pro download_gaia,field,redo=redo
 
 outdir = '/data/smash/cp/red/photred/gaia/'
+outfile = outdir+field+'_gaia.fits'
+if file_test(outfile) eq 1 and not keyword_set(redo) then begin
+  print,outfile,' EXISTS and /redo not set'
+  return
+endif
 
 smashred_getredinfo,info,/silent
 ind = where(info.field eq field,nind)
@@ -18,7 +23,6 @@ rar = range(chips.ra)*cos(cendec/!radeg)*1.1 > 2.3
 decr = range(chips.dec)*1.1 > 2.3
 print,field,' ',cenra,cendec,rar,decr
 gaia = queryvizier('GAIA/GAIA',[cenra,cendec],[rar*60,decr*60],/canada,/all)
-outfile = outdir+field+'_gaia.fits'
 print,strtrim(n_elements(gaia),2),' GAIA sources found'
 
 MWRFITS,gaia,outfile,/create
