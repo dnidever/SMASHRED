@@ -34,6 +34,7 @@ pro smashred_calibrate_field,field,transfile=transfile,reduxdir=reduxdir,outputd
                              redo=redo,compress=compress,silent=silent,error=error
 
 undefine,error
+t0 = systime(1)
 
 ; Not enough inputs
 if n_elements(field) eq 0 then begin
@@ -143,7 +144,13 @@ For c=0,ninfo-1 do begin
   push,allchstr,chstr1
   push,allsrc,allsrc1
 Endfor ; catalog loop
-
+; Kludge!  Remove duplicate exposures in short/deep for Field130
+if field eq 'Field130' then begin
+  print,'KLUDGE! Removing duplicate exposures in short/deep for Field130'
+  bd = where((allfstr.expnum eq '00423440' and allfstr.alf_nsources lt 0) or $
+             (allfstr.expnum eq '00426607' and allfstr.alf_nsources lt 0),nbd)
+  REMOVE,bd,allfstr
+endif
 ; Rename
 fstr = allfstr
 chstr = allchstr
@@ -154,9 +161,6 @@ print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
 print,'====================================================================='
 crossmatch:
 SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj,reduxdir=reduxdir,redo=redo
-;;save,fstr,chstr,allsrc,allobj,file=tmpdir+field+'_crossmatch.dat'
-;print,'restoring temporary allsrc/allobj file'
-;restore,tmpdir+field+'_crossmatch.dat'
 
 
 print,'-----------------------------------------------'
@@ -165,9 +169,15 @@ print,'==============================================='
 SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,reduxdir=reduxdir
 
 
-; Compute average morphology values
-print,'Calculating average morphology parameters'
-SMASHRED_AVERAGEMORPH,fstr,chstr,allsrc,allobj
+; Compute average morphology and coordinate values
+print,'Calculating average morphology and coordinate parameters'
+SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
+
+; Compute exposure map
+SMASHRED_COMPUTE_EXPMAP,field,chstr,redo=redo
+
+; Set non-detections based on the exposure map
+SMASHRED_SET_NONDETECTIONS,field,allobj
 
 ; Calculate extinction
 print,'Getting SFD E(B-V) extinctions'
@@ -192,6 +202,8 @@ if keyword_set(compress) then begin
 endif
 
 ; Print processing time
+dt = systime(1)-t0
+print,'' & print,'Processing time = ',strtrim(string(dt/60.0,format='(F20.3)'),2),' min.'
 
 ;stop
 
