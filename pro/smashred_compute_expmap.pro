@@ -1,10 +1,35 @@
-pro smashred_compute_expmap,field,chstr,redo=redo
-
+;+
+;
+; SMASHRED_COMPUTE_EXPMAP
+;
 ; Compute the exposure map for this field in each band
+;
+; INPUTS:
+;  field    The SMASH field name, e.g. "Field100".
+;  chstr    The chip structure
+;  =outputdir  The output directory for the exposure map.
+;
+; OUTPUTS:
+;  The exposure map is saved to OUTPUTDIR with the name
+;  FIELD_combined_expmap.fits.gz'.
+;
+; USAGE:
+;  IDL>smashred_compute_exmap,'Field100',chstr
+;
+; By D.Nidever Sep. 2016
+;-
+
+pro smashred_compute_expmap,field,chstr,redo=redo,outputdir=outputdir
+
+; Not enough inputs
+if n_elements(field) eq 0 or n_elements(chstr) eq 0 then begin
+  print,'Syntax - smashred_compute_expmap,field,chstr,redo=redo,outputdir=outputdir'
+  return
+endif
 
 reduxdir = '/data/smash/cp/red/photred/'
-dir = '/data/smash/cp/red/photred/catalogs/final/'
-outfile = dir+field+'_combined_expmap.fits'
+if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/fina/'
+outfile = outputdir+field+'_combined_expmap.fits'
 
 ; Output file already exists
 if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin

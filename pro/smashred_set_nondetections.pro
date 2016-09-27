@@ -1,6 +1,27 @@
-pro smashred_set_nondetections,field,allobj
+;+
+;
+; SMASHRED_SET_NONDETECTIONS
+;
+; Set the magnitudes for non-detections to 99.99 and to NAN
+; for bad/missing/no data.
+;
+; INPUTS:
+;  field   The SMASH field name, e.g. "Field100".
+;  allobj  The structure with the average values per object.
+;  =dir    The directory for the exposure map.
+;
+; OUTPUTS:
+;  allobj  The magnitude columns are updated for non-detections.
+;
+; USAGE:
+;  IDL>smashred_set_nondetections,field,allobj
+;
+; By D. Nidever  Sep. 2016
+;-
 
-dir = '/data/smash/cp/red/photred/catalogs/final/'
+pro smashred_set_nondetections,field,allobj,dir=dir
+
+if n_elements(dir) eq 0 then dir = '/data/smash/cp/red/photred/catalogs/final/'
 
 ; Not enough inputs
 if n_elements(field) eq 0 or n_elements(allobj) eq 0 then begin

@@ -10,6 +10,7 @@
 ;  /useast     Use the .ast files, by default the .phot files are used.
 ;  /useorig    Use the original als/alf files.
 ;  =reduxdir   The reduction directory, the default is "/data/smash/cp/red/photred/"
+;  =outputdir  The output directory, the default is reduxdir+"catalogs/final/"
 ;  /redo       Reget the photometry even if the temporary output file
 ;                already exists.
 ;
@@ -25,7 +26,8 @@
 ; By D.Nidever April 2016
 ;-
 
-pro smashred_load_catphot,info,chstr,allsrc,useast=useast,useorig=useorig,reduxdir=reduxdir,redo=redo,error=error
+pro smashred_load_catphot,info,chstr,allsrc,useast=useast,useorig=useorig,reduxdir=reduxdir,redo=redo,error=error,$
+                          outputdir=outputdir
 
 undefine,error
 undefine,chstr
@@ -74,11 +76,14 @@ outfile = tmpdir+fbase+'_'+info.night+'_photred.fits'
 ;  mag/err       instrumental photometry from PHOT/AST
 ;  cmag/cerr     calibrated photometry that will be added later
 ;  chi/sharp     original chi/sharp from ALS/ALF file
-;  ra/dec        ra/dec coordinates using X/Y and chip WCS
-;  raref/decref  ra/dec coordinates using xref/yref and ref WCS
+;  ra/dec        ra/dec coordinates using X/Y and chip WCS with GAIA references
+;  raindiv/decindiv  ra/dec coordinates using X/Y and chip WCS with
+;                        USNO-B1/2MASS as reference
+;  raref/decref  ra/dec coordinates using xref/yref and ref image WCS
+;                        with USNO-B1/2MASS as reference
 allsrc_schema = {cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,idref:-1L,x:0.0,y:0.0,xref:0.0,yref:0.0,mag:0.0,err:0.0,$
                     cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0,$
-                    raref:0.0d0,decref:0.0d0}
+                    raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,decref:0.0d0}
 allsrc = replicate(allsrc_schema,5000000L)
 nallsrc = n_elements(allsrc)
 cur_allsrc_indx = 0LL
@@ -96,7 +101,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   if night eq '20150318' and field eq 'F5' then begin  ; Field130sh
     MATCH,chstr.expnum,'00423440',bdind,dum,/sort,count=nbdind
     if nbdind gt 0 then begin
-      print,'REMOVING DUPLICATE exposure 00423440 (in short and deep field) from short field'
+      print,'KLUDGE! Removing DUPLICATE exposure 00423440 (in short and deep field) from short field'
       REMOVE,bdind,chstr
       nchstr = n_elements(chstr)
     endif
@@ -104,13 +109,17 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   if night eq '20150330' and field eq 'F7' then begin  ; Field130sh
     MATCH,chstr.expnum,'00426607',bdind,dum,/sort,count=nbdind
     if nbdind gt 0 then begin
-      print,'REMOVING DUPLICATE exposure 00423440 (in short and deep field) from short field'
+      print,'KLUDGE! Removing DUPLICATE exposure 00423440 (in short and deep field) from short field'
       REMOVE,bdind,chstr
       nchstr = n_elements(chstr)
     endif
   endif
 
   ; Add some tags to CHSTR
+  add_tag,chstr,'night','',chstr
+  chstr.night = night
+  add_tag,chstr,'gaiarms',0.0,chstr
+  add_tag,chstr,'gaianmatch',0L,chstr
   add_tag,chstr,'refexpnum','',chstr
   add_tag,chstr,'vertices_ra',dblarr(4),chstr
   add_tag,chstr,'vertices_dec',dblarr(4),chstr
@@ -241,8 +250,31 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ; Get RA/DEC coordinates for X/Y
       ;  use IDL X/Y convention, starting at (0,)
       HEAD_XYAD,head,src.x-1,src.y-1,ra,dec,/degree
-      src.ra = ra
-      src.dec = dec
+      src.raindiv = ra
+      src.decindiv = dec
+
+      ; Get GAIA-calibrated coordinates
+      ;--------------------------------
+      gaiawcsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.gaiawcs.head'
+      if file_test(gaiawcsfile) eq 0 then stop,gaiawcsfile+' NOT FOUND'
+      READLINE,gaiawcsfile,gaiahead
+      HEAD_XYAD,gaiahead,src.x-1,src.y-1,gra,gdec,/degree
+      src.ra = gra
+      src.dec = gdec
+      ; Get GAIA RMS and NMATCH
+      ;  HISTORY WCSFIT: RMS=0.027 arcsec on Mon Sep 26 03:09:50 2016                    
+      rmsind = first_el(where(stregex(gaiahead,'WCSFIT: RMS',/boolean) eq 1,nrmsind),/last)  ; last one
+      wcsline = gaiahead[rmsind[0]]
+      lo = strpos(wcsline,'RMS=')
+      tmp = strmid(wcsline,lo+4)
+      gaiarms = float( first_el(strsplit(tmp,' ',/extract)) )
+      ;  HISTORY WCSFIT: NMATCH=269 
+      nmatchind = first_el(where(stregex(gaiahead,'WCSFIT: NMATCH',/boolean) eq 1,n_nmatchind),/last)
+      wcsline = gaiahead[nmatchind[0]]
+      lo = strpos(wcsline,'NMATCH=')
+      tmp = strmid(wcsline,lo+7)
+      gaianmatch = long( first_el(strsplit(tmp,' ',/extract)) )
+
 
       ; Remove bad data for DECam chip 31
       ;----------------------------------
@@ -269,13 +301,15 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       NOGOODSRC:
 
       ; Stuff some information in the chip structure
+      chstr[chind[j]].gaiarms = gaiarms
+      chstr[chind[j]].gaianmatch = gaianmatch
       chstr[chind[j]].refexpnum = refexpnum
       chstr[chind[j]].nsrc = nsrc
       chstr[chind[j]].allsrcindx = cur_allsrc_indx
       ; Get astrometric vertices from header
       nx = sxpar(head,'NAXIS1')
       ny = sxpar(head,'NAXIS2')
-      HEAD_XYAD,head,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
+      HEAD_XYAD,gaiahead,[0,nx-1,nx-1,0],[0,0,ny-1,ny-1],vra,vdec,/degree
       chstr[chind[j]].vertices_ra = vra
       chstr[chind[j]].vertices_dec = vdec
 

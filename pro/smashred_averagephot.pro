@@ -65,7 +65,8 @@ for i=0,n_elements(ufilter)-1 do begin
   ; Indices for the magnitude and errors in ALLOBJ
   magind = where(lallobjtags eq ufilter[i])
   errind = where(lallobjtags eq ufilter[i]+'err')
-  scatind = where(lallobjtags eq ufilter[i]+'catter')
+  scatind = where(lallobjtags eq ufilter[i]+'scatter')
+  nobsind = where(lallobjtags eq 'ndet'+ufilter[i])
 
   ; Only one exposure for this filter, copy
   if nfiltind eq 1 then begin
@@ -106,10 +107,10 @@ for i=0,n_elements(ufilter)-1 do begin
     newflux = totalfluxwt/totalwt
     newmag = 2.50*alog10(newflux)
     newerr = sqrt(1.0/totalwt)
-    bd = where(finite(newmag) eq 0,nbd)
-    if nbd gt 0 then begin
-      newmag[bd] = 99.99
-      newerr[bd] = 9.99
+    bdmag = where(finite(newmag) eq 0,nbdmag)
+    if nbdmag gt 0 then begin
+      newmag[bdmag] = 99.99
+      newerr[bdmag] = 9.99
     endif
 
     ; Measure scatter, RMS
@@ -117,8 +118,12 @@ for i=0,n_elements(ufilter)-1 do begin
     totaldiff = dblarr(nallobj)
     numobs = lonarr(nallobj)
     for k=0,nchind-1 do begin
-      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].sepallindx
-      totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].mag)^2
+      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
+      if keyword_set(usecalib) then begin
+        totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].cmag)^2
+      endif else begin
+        totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].mag)^2
+      endelse
       numobs[allsrc[ind].cmbindx]++
     endfor
     newscatter = sqrt( totaldiff/(numobs>1) )
@@ -131,6 +136,7 @@ for i=0,n_elements(ufilter)-1 do begin
     allobj.(magind) = newmag
     allobj.(errind) = newerr
     allobj.(scatind) = newscatter
+    allobj.(nobsind) = numobs
 
   endelse  ; combine multiple exposures for this filter
 endfor ; unique filter loop

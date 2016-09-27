@@ -133,7 +133,7 @@ For c=0,ninfo-1 do begin
   info1 = info[c]
   print,strtrim(c+1,2),'/',strtrim(ninfo,2),' ',info1.file
   undefine,chstr1,allsrc1
-  SMASHRED_LOAD_CATPHOT,info1,chstr1,allsrc1,/useast,reduxdir=reduxdir,redo=redo
+  SMASHRED_LOAD_CATPHOT,info1,chstr1,allsrc1,/useast,reduxdir=reduxdir,redo=redo,outputdir=outputdir
 
   ; offset indices
   chstr1.allsrcindx += n_elements(allsrc)
@@ -160,7 +160,7 @@ print,'---------------------------------------------------------------------'
 print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
 print,'====================================================================='
 crossmatch:
-SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj,reduxdir=reduxdir,redo=redo
+SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj,reduxdir=reduxdir,redo=redo,outputdir=outputdir
 
 
 print,'-----------------------------------------------'
@@ -174,10 +174,10 @@ print,'Calculating average morphology and coordinate parameters'
 SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
 
 ; Compute exposure map
-SMASHRED_COMPUTE_EXPMAP,field,chstr,redo=redo
+SMASHRED_COMPUTE_EXPMAP,field,chstr,redo=redo,outputdir=outputdir
 
 ; Set non-detections based on the exposure map
-SMASHRED_SET_NONDETECTIONS,field,allobj
+SMASHRED_SET_NONDETECTIONS,field,allobj,dir=outputdir
 
 ; Calculate extinction
 print,'Getting SFD E(B-V) extinctions'

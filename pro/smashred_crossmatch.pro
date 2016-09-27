@@ -12,6 +12,7 @@
 ;  allsrc     The structure with information for each source detection.
 ;  =dcr       The matching radius in arcsec.  The default is 0.5 arcsec.
 ;  =reduxdir  The reduction directory, the default is "/data/smash/cp/red/photred/"
+;  =outputdir  The output directory, the default is reduxdir+"catalogs/final/"
 ;  /redo      Reget the photometry even if the temporary output file                                                                                                               
 ;                already exists.  
 ;  /silent    Don't print anything to the screen.
@@ -27,7 +28,8 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_crossmatch,field,fstr,chstr,allsrc,allobj,dcr=dcr,error=error,reduxdir=reduxdir,redo=redo,silent=silent
+pro smashred_crossmatch,field,fstr,chstr,allsrc,allobj,dcr=dcr,error=error,reduxdir=reduxdir,$
+                        redo=redo,silent=silent,outputdir=outputdir
 
 undefine,allobj
 
@@ -100,15 +102,16 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   dnan = !values.d_nan
 
   ; Make the ALLOBJ structure schema
-  fdum = {id:'',ra:0.0d0,dec:0.0d0,ndet:0L,depthflag:0B,srcindx:lonarr(nuexp)-1,srcfindx:lonarr(nuexp)-1,$
-          u:99.99,uerr:9.99,uscatter:99.99,g:99.99,gerr:9.99,gscatter:99.99,r:99.99,rerr:9.99,rscatter:99.9,$
-          i:99.99,ierr:9.99,iscatter:99.99,z:99.99,zerr:9.99,zscatter:99.99,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
+  allobj_schema = {id:'',ra:0.0d0,dec:0.0d0,rascatter:99.99,decscatter:99.99,ndet:0,depthflag:0B,srcindx:lonarr(nuexp)-1,$
+                   srcfindx:lonarr(nuexp)-1,u:99.99,uerr:9.99,uscatter:99.99,ndetu:0,g:99.99,gerr:9.99,gscatter:99.99,ndetg:0,$
+                   r:99.99,rerr:9.99,rscatter:99.9,ndetr:0,i:99.99,ierr:9.99,iscatter:99.99,ndeti:0,z:99.99,zerr:9.99,$
+                   zscatter:99.99,ndetz:0,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
   cur_allsrc_indx = 0LL         ; next one starts from HERE
   nallsrc = n_elements(allsrc)  ; current number of total Allsrc elements, NOT all filled
   ; SRCINDX has NDET indices at the front of the array
   ; SRCFINDX has them in the element that matches the frame they were
   ; detected in
-  allobjtags = tag_names(fdum)
+  allobjtags = tag_names(allobj_schema)
   lallobjtags = strlowcase(allobjtags)
   ; Loop through the exposures
   for i=0,nfstr-1 do begin
@@ -133,7 +136,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
     ;------------------------------
     ; Copy to new structure type
     If i eq 0 then begin
-      allobj = replicate(fdum,n_elements(expnew))
+      allobj = replicate(allobj_schema,n_elements(expnew))
       allobj.id = field+'.'+strtrim(lindgen(n_elements(expnew))+1,2)
       allobj.ra = expnew.ra
       allobj.dec = expnew.dec
@@ -174,7 +177,7 @@ t0 = systime(1)
       ; Some left, add records for these sources
       if n_elements(expnew) gt 0 then begin
         print,' ',strtrim(n_elements(expnew),2),' sources left to add'
-        newallobj = replicate(fdum,n_elements(expnew))
+        newallobj = replicate(allobj_schema,n_elements(expnew))
         newallobj.id = field+'.'+strtrim(lindgen(n_elements(expnew))+1+n_elements(allobj),2)
         newallobj.ra = expnew.ra
         newallobj.dec = expnew.dec
@@ -188,7 +191,7 @@ t0 = systime(1)
 ;t0 = systime(1)
         nold = n_elements(allobj)
         nnew = n_elements(newallobj)
-        new = replicate(fdum,nold+nnew)
+        new = replicate(allobj_schema,nold+nnew)
         new[0:nold-1] = allobj
         new[nold:*] = newallobj
         allobj = new

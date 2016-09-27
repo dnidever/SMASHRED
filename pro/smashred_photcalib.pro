@@ -65,7 +65,8 @@ endif
 ; Temporary directory
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
-
+; Gaia directory
+gaiadir = '/data/smash/cp/red/photred/gaia/'
 
 
 ; Add MJD to CHSTR
@@ -160,21 +161,6 @@ for i=0,n_elements(fstr)-1 do begin
   fstr[i].badsoln = chstr[ind2[0]].badsoln
 endfor
 
-
-;; TEMPORARY KLUDGE FOR FIELD18
-;if info[0].field eq 'Field18' then begin
-;  print,'TEMPORARY KLUDGE FOR FIELD18'
-;  chstr.photometric = 0
-;  chstr.badsoln = 1
-;  chstr.zpterm = 0
-;  chstr.zptermsig = 0
-;  chstr.colterm = 0
-;  chstr.coltermsig = 0
-;  chstr.amterm = 0
-;  chstr.amtermsig = 0
-;  stop
-;endif
-
 ; Give statistics on how many exposures have calibration information
 ; (per band) and photometric data
 allfilters = ['u','g','r','i','z']
@@ -210,6 +196,17 @@ endif
 ; SHOULD I ALSO COMPUTE EXPOSURE-LEVEL APERTURE CORRECTIONS??
 ; MAYBE FIT A WEAK SPATIAL POLYNOMIAL??
 
+; ----  LOAD the GAIA catalog for this field ----
+gaiafile = gaiadir+info[0].field+'_gaia.fits'
+if file_test(gaiafile) eq 0 then stop,gaiafile,' NOT FOUND'
+print,'Loading GAIA file'
+gaia = MRDFITS(gaiafile,1,/silent)
+print,strtrim(n_elements(gaia),2),' GAIA sources loaded'
+
+; ---- LOAD the GAIA-SMASH color terms information ----
+gaiacolfile = gaiadir+'gaiasmash_colorterms.fits'
+if file_test(gaiacolfile) eq 0 then stop,gaiacolfile,' NOT FOUND'
+gaiacolstr = MRDFITS(gaiacolfile,1,/silent)
 
 ; Get unique filters
 ui = uniq(fstr.filter,sort(fstr.filter))
@@ -269,7 +266,9 @@ WHILE (doneflag eq 0) do begin
 
     ; Step 2b. Determine relative magnitude offsets per chip using ubercal 
     print,'2b. Determine relative magnitude offsets per chip using ubercal'
-    SMASHRED_SOLVE_UBERCAL,overlapstr,ubercalstr
+    MATCH,trans_chipstr.filter,ifilter,ind1,ind2,/sort
+    chiptrans = trans_chipstr[ind1]
+    SMASHRED_SOLVE_UBERCAL,overlapstr,ubercalstr,chiptrans=chiptrans
 
     ; Step 2c. Set absolute zeropoint of magnitute offsets with
     ;            photometric data and/or anchor points
