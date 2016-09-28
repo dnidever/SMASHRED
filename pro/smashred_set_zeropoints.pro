@@ -43,26 +43,38 @@ endif
 
 filter = chstr[0].filter
 
-; Set absolute zeropoint using photometry and/or anchor data
-gdphot = where(chstr.photometric eq 1 and chstr.badsoln eq 0,ngdphot)
-if ngdphot eq 0 then begin
-  print,' WARNING!!!  No photometric/good solution data to anchor the relative magnitude zeropoints.  Using ALL points to set zeropoint.'
-  gdphot = lindgen(n_elements(chstr))
-  ;return
-endif
-
-; Calculate median mag offset for photometric data
-;  Use median, don't remove outliers, basically want mean of all
-;  photometric data
-zpmagoff = median(ubercalstr[gdphot].magoff)
-print,' Removing median mag offset for photometric/anchor data = ',strtrim(zpmagoff,2),' mag'
-ubercalstr.magoff -= zpmagoff
-
 ; Get magnitude offset from GAIA
-if keyword_set(usegaia) then begin
-  SMASHRED_MEASURE_GAIA_OFFSET,gaia,allobj,filter,gaiacolstr,gaiamagoff,gaiamagofferr
-  stop
-endif
+If keyword_set(usegaia) then begin
+
+  ; Find the offset relative to GAIA
+  SMASHRED_MEASURE_GAIA_OFFSET,gaia,allobj,filter,gaiacolstr,gaiamagoff,gaiamagofferr,/silent
+
+  ; Apply the offset to the individual chip MAGOFF values
+  print,' Removing mag offset from GAIA photometry = ',strtrim(gaiamagoff,2),' mag'
+  ubercalstr.magoff -= gaiamagoff
+  ; Save the GAIA values in the CHSTR structure
+  chstr.gaiacal_magoffset -= gaiamagoff
+  chstr.gaiacal_magofferr = gaiamagofferr
+
+; Not using GAIA
+Endif else begin
+
+  ; Set absolute zeropoint using photometry and/or anchor data
+  gdphot = where(chstr.photometric eq 1 and chstr.badsoln eq 0,ngdphot)
+  if ngdphot eq 0 then begin
+    print,' WARNING!!!  No photometric/good solution data to anchor the relative magnitude zeropoints.  Using ALL points to set zeropoint.'
+    gdphot = lindgen(n_elements(chstr))
+    ;return
+  endif
+
+  ; Calculate median mag offset for photometric data
+  ;  Use median, don't remove outliers, basically want mean of all
+  ;  photometric data
+  zpmagoff = median(ubercalstr[gdphot].magoff)
+  print,' Removing median mag offset for photometric/anchor data = ',strtrim(zpmagoff,2),' mag'
+  ubercalstr.magoff -= zpmagoff
+
+Endelse
 
 ; Apply the new zeropoints to the chip-level transformation equations
 ;  we want to add this offset to the magnitudes

@@ -79,9 +79,12 @@ if tag_exist(chstr,'MJD') eq 0 then begin
 endif
 ; Add CALIBRATED flag to CHSTR
 add_tag,chstr,'calibrated',0B,chstr
-; Add UBERCAL colums to CHSTR 
+; Add UBERCAL columns to CHSTR 
 add_tag,chstr,'ubercal_magoffset',0.0,chstr
 add_tag,chstr,'ubercal_flag',-1L,chstr
+; Add GAIACAL columns to CHSTR
+add_tag,chstr,'gaiacal_magoffset',0.0,chstr
+add_tag,chstr,'gaiacal_magofferr',99.99,chstr
 
 ; Load the transformation equations
 trans_fitstr = MRDFITS(transfile,1,/silent)
@@ -203,7 +206,7 @@ gaiafile = gaiadir+info[0].field+'_gaia.fits'
 if file_test(gaiafile) eq 0 then stop,gaiafile,' NOT FOUND'
 print,'Loading GAIA file'
 gaia = MRDFITS(gaiafile,1,/silent)
-print,strtrim(n_elements(gaia),2),' GAIA sources loaded'
+print,strtrim(n_elements(gaia),2),' GAIA sources'
 
 ; ---- LOAD the GAIA-SMASH color terms information ----
 gaiacolfile = gaiadir+'gaiasmash_colorterms.fits'
@@ -322,6 +325,8 @@ WHILE (doneflag eq 0) do begin
   print,''
   print,'CMAG diff  ','max=',max(diffcmag),'med=',median(diffcmag),'rms=',stddev(diffcmag),format='(A12,A5,F11.6,A5,F11.6,A5,F11.6)'
   print,'ZPTERM diff','max=',max(diffzpterm),'med=',median(diffzpterm),'rms=',stddev(diffzpterm),format='(A12,A5,F11.6,A5,F11.6,A5,F11.6)'
+
+stop
 
   niter++
 
