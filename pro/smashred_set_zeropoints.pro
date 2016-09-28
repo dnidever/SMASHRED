@@ -11,23 +11,37 @@
 ;                 the PHOTOMETRIC column and transformation equations.
 ;  ubercalstr   The structure with information on the ubercal-solved
 ;                  offsets for each chip.
+;  gaia         The structure of GAIA sources. Only needed if /usegaia
+;                   is set.
+;  allobj       The structure of average SMASH source values.  Only
+;                   needed if /usegaia is set.
+;  gaiacolstr   The structure of GAIA-SMASH color terms.  Only needed
+;                   if /usegaia is set.
+;  /usegaia     Use GAIA photometry for overall calibration.
 ;
 ; OUTPUTS:
 ;  The values in the ZPTERM column in CHSTR are updated.
 ;
 ; USAGE:
-;  IDL>smashred_set_zeropoints,chstr,ubercalstr
+;  IDL>smashred_set_zeropoints,chstr,ubercalstr,gaia,allobj,gaiacolstr,/usegaia
 ;
 ; By D. Nidever  April 2016
 ;-
 
-pro smashred_set_zeropoints,chstr,ubercalstr
+pro smashred_set_zeropoints,chstr,ubercalstr,gaia,allobj,gaiacolstr,usegaia=usegaia
 
 ; Not enough inputs
 if n_elements(chstr) eq 0 or n_elements(ubercalstr) eq 0 then begin
-  print,'Syntax - smashred_set_zeropoints,chstr,ubercalstr'
+  print,'Syntax - smashred_set_zeropoints,chstr,ubercalstr,gaia,allobj,gaiacolstr,usegaia=usegaia'
   return
 endif
+; Not enough information to use GAIA
+if keyword_set(usegaia) and (n_elements(gaia) eq 0 or n_elements(allobj) eq 0 or n_elements(gaiacolstr) eq 0) then begin
+  print,'Need GAIA, ALLOBJ, GAIACOLSTR structures to use GAIA photometry for calibration'
+  return
+endif
+
+filter = chstr[0].filter
 
 ; Set absolute zeropoint using photometry and/or anchor data
 gdphot = where(chstr.photometric eq 1 and chstr.badsoln eq 0,ngdphot)
@@ -43,6 +57,12 @@ endif
 zpmagoff = median(ubercalstr[gdphot].magoff)
 print,' Removing median mag offset for photometric/anchor data = ',strtrim(zpmagoff,2),' mag'
 ubercalstr.magoff -= zpmagoff
+
+; Get magnitude offset from GAIA
+if keyword_set(usegaia) then begin
+  SMASHRED_MEASURE_GAIA_OFFSET,gaia,allobj,filter,gaiacolstr,gaiamagoff,gaiamagofferr
+  stop
+endif
 
 ; Apply the new zeropoints to the chip-level transformation equations
 ;  we want to add this offset to the magnitudes

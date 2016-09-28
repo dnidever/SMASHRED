@@ -11,6 +11,8 @@
 ;  =reduxdir  The base directory for the PHOTRED reductions.  The
 ;               default is "/data/smash/cp/red/photred/"
 ;  =outputdir The output directory for the catalogs.
+;  /usegaia   Use GAIA photometry to set the photometric zeropoint.
+;               This is the default
 ;  /compress  Gzip compress the output FITS files.  This is the default.
 ;  /redo      Redo a field that was already calibrated.
 ;  /silent    Don't print anything to the screen.
@@ -31,7 +33,7 @@
 ;-
 
 pro smashred_calibrate_field,field,transfile=transfile,reduxdir=reduxdir,outputdir=outputdir,$
-                             redo=redo,compress=compress,silent=silent,error=error
+                             usegaia=usegaia,redo=redo,compress=compress,silent=silent,error=error
 
 undefine,error
 t0 = systime(1)
@@ -40,7 +42,7 @@ t0 = systime(1)
 if n_elements(field) eq 0 then begin
   error = 'Not enough inputs'
   print,'Syntax - smashred_calibrate_field,field,reduxdir=reduxdir,outputdir=outputdir,redo=redo,'
-  print,'                                  compress=compress,error=error'
+  print,'                                  usegaia=usegaia,compress=compress,error=error'
   return
 endif
 
@@ -62,6 +64,8 @@ tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 ; Compression
 if n_elements(compress) eq 0 then compress=1
+; GAIA photometry
+if n_elements(usegaia) eq 0 then usegaia=1
 
 ; Check if the final files already exists
 outfile = outputdir+field+'_combined'
@@ -166,7 +170,7 @@ SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj,reduxdir=reduxdir,redo=redo,o
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
-SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,reduxdir=reduxdir
+SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir
 
 
 ; Compute average morphology and coordinate values

@@ -14,6 +14,7 @@
 ;  allobj  The structure with information for each unique object.
 ;  =transfile   The file with the photometric transformation equations.
 ;  =reduxdir    The reduction directory, the default is "/data/smash/cp/red/photred/"
+;  /usegaia  Use GAIA photometry for overall photometric calibration.
 ;
 ; OUTPUTS:
 ;  chstr       The photometric transformation information is added and
@@ -23,12 +24,13 @@
 ;  =error      The error message if one occurred.   
 ;
 ; USAGE:
-;  IDL>smashred_photcalib,fstr,chstr,allsrc,allobj
+;  IDL>smashred_photcalib,fstr,chstr,allsrc,allobj,/usegaia
 ;
 ; D.Nidever  March 2016
 ;-
 
-pro smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile,reduxdir=reduxdir,error=error
+pro smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,$
+                       reduxdir=reduxdir,error=error
 
 ninfo = n_elements(info)
 nfstr = n_elements(fstr)
@@ -39,7 +41,7 @@ nallobj = n_elements(allobj)
 ; Not enough inputs
 if ninfo eq 0 or nfstr eq 0 or nchstr eq 0 or nallsrc eq 0 or nallobj eq 0 or n_elements(transfile) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile'
+  print,'Syntax - smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia'
   return
 endif
 
@@ -273,7 +275,7 @@ WHILE (doneflag eq 0) do begin
     ; Step 2c. Set absolute zeropoint of magnitute offsets with
     ;            photometric data and/or anchor points
     print,'2c. Set absolute zeropoint with photometric data and achor points'
-    SMASHRED_SET_ZEROPOINTS,chfiltstr,ubercalstr
+    SMASHRED_SET_ZEROPOINTS,chfiltstr,ubercalstr,gaia,allobj,gaiacolstr,usegaia=usegaia
 
     ; Step 2d. Set CALIBRATED bit
     print,'2d. Set CALIBRATED bit in CHSTR'
@@ -299,7 +301,7 @@ WHILE (doneflag eq 0) do begin
 
   ; Check for convergence
   ;  check changes in ALLSRC CMAG values, changes in CHSTR ZPTERM and iterations
-  maxiter = 20   ;50
+  maxiter = 10   ;20  ;50
   maxdiff_thresh = 0.001    ;0.0001
   maxzpterm_thresh = 0.001  ;0.0001
   diffcmag = abs(allsrc.cmag-lastcmag)
