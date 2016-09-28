@@ -106,6 +106,7 @@ ftags = tag_names(fieldstr)
 filters = ['u','g','r','i','z']
 colr = mobj.g-mobj.i
 x = scale_vector(findgen(100),0.0,3.0)
+nfields = n_elements(fieldstr)
 
 gaiastr = replicate({filter:'',bestcoef:dblarr(4),bestgirange:fltarr(2),decentcoef:dblarr(5),decentgirange:fltarr(2)},5)
 gaiastr.filter = filters
@@ -216,6 +217,32 @@ for i=0,4 do begin
     ps_close
     ps2png,file+'.eps',/eps
   endif
+
+  ; Now test it on the binned values per field
+  xbin = findgen(31)*0.1+0.05  ; midpoint
+  binind = where(tag_names(fieldstr) eq strupcase(filt)+'BIN',nbinind)
+  medarr = fltarr(nfields)
+  binarr = fltarr(31,nfields)
+  for j=0,nfields-1 do begin
+    ymodel = poly(xbin,gaiastr[i].bestcoef)   ; model for all points
+    ybin = fieldstr[j].(binind)
+    gdind = where(xbin ge gaiastr[i].bestgirange[0] and xbin le gaiastr[i].bestgirange[1] and $
+                  finite(ybin) eq 1,ngdind)
+
+    med = median(ybin[gdind]-ymodel[gdind])
+    binarr[*,j] = ybin-med
+    medarr[j] = med
+  endfor
+  rms = mad(binarr,dim=2)
+  orms = mad(fieldstr.(binind),dim=2)
+  plot,xbin,rms,ps=-1,yr=[0,0.1]
+  oplot,xbin,orms,ps=-1,co=250
+  ; u-band, best RMS point is now 0.013 when before it was 0.033
+  ;   but overall the RMS is not great
+  ; g-band, best RMS is now 0.002 while before it was 0.01
+  ; r-band, best RMS is now 0.002 while before it was 0.01
+  ; i-band, best RMS is now 0.002 while before it was 0.01
+  ; z-band, best RMS is now 0.004 while before it was 0.015
 
   ;stop
 
