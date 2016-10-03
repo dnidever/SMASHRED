@@ -60,8 +60,8 @@ mallobj = allobj[ind1]
 mgaia = gaia[ind2]
 if not keyword_set(silent) then print,'  ',strtrim(nmatch,2),' matches to GAIA'
 
-; Get the good mags and sharp/chi
-magmask = (mallobj.(magind[0]) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4)
+; Get the good mags
+magmask = (mallobj.(magind[0]) lt 50)
 ngdmag = long(total(magmask))
 if ngdmag eq 0 then begin
   print,'No good magnitudes in ',filter
