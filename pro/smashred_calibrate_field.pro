@@ -53,7 +53,8 @@ if file_test(reduxdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,error
   return
 endif
-if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/final/'
+;if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/final/'
+if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/gaiacal/'
 if file_test(outputdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
   FILE_MKDIR,outputdir
@@ -203,7 +204,11 @@ if keyword_set(compress) then begin
   spawn,['gzip','-f',outfile+'_chips.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_allsrc.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_allobj.fits'],out,errout,/noshell
+  spawn,['gzip','-f',outfile+'_expmap.fits'],out,errout,/noshell
 endif
+
+; Make bright allobj catalog
+SMASHRED_MAKE_BRIGHTCAT,field,redo=redo,dir=outputdir
 
 ; Print processing time
 dt = systime(1)-t0
