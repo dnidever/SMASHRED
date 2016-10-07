@@ -12,6 +12,8 @@
 ;  filter      The filter name.
 ;  gaiacolstr  The structure of GAIA-SMASH color terms.
 ;  /silent     Don't print anything to the screen.
+;  /matched    The input GAIA and ALLOBJ catalogs have 
+;                already been matched.
 ;
 ; OUTPUTS:
 ;  magoff      The magnitude offset.  This value should be
@@ -24,7 +26,7 @@
 ; D. Nidever  Sep. 2016
 ;-
 
-pro smashred_measure_gaia_offset,gaia,allobj,filter,gaiacolstr,magoff,magofferr,silent=silent
+pro smashred_measure_gaia_offset,gaia,allobj,filter,gaiacolstr,magoff,magofferr,matched=matched,silent=silent
 
 undefine,magoff
 undefine,magofferr
@@ -35,6 +37,9 @@ if n_elements(gaia) eq 0 or n_elements(allobj) eq 0 or n_elements(filter) eq 0 o
   print,'Syntax - smashred_measure_gaia_offset,gaia,allobj,filter,gaiacolstr,magoff,magofferr,silent=silent'
   return
 endif
+
+; Magnitude limit
+maglim = 21.0
 
 ; Get GAIA-SMASH color terms for this filter
 colind = where(gaiacolstr.filter eq filter,ncolind)
@@ -51,17 +56,23 @@ colmagind1 = where(tags eq strupcase(gaiacolstr1.colnames[0]),ncolmagind1)
 colmagind2 = where(tags eq strupcase(gaiacolstr1.colnames[1]),ncolmagind2)
 
 ; Match up the stars
-SRCMATCH,allobj.ra,allobj.dec,gaia.ra_icrs,gaia.de_icrs,0.5,ind1,ind2,/sph,count=nmatch
-if nmatch eq 0 then begin
-  print,'No matches'
-  return
-endif
-mallobj = allobj[ind1]
-mgaia = gaia[ind2]
-if not keyword_set(silent) then print,'  ',strtrim(nmatch,2),' matches to GAIA'
+if not keyword_set(matched) then begin
+  SRCMATCH,allobj.ra,allobj.dec,gaia.ra_icrs,gaia.de_icrs,0.5,ind1,ind2,/sph,count=nmatch
+  if nmatch eq 0 then begin
+    print,'No matches'
+    return
+  endif
+  mallobj = allobj[ind1]
+  mgaia = gaia[ind2]
+  if not keyword_set(silent) then print,'  ',strtrim(nmatch,2),' matches to GAIA'
+; Already matched up
+endif else begin
+  mallobj = allobj
+  mgaia = gaia
+endelse
 
 ; Get the good mags
-magmask = (mallobj.(magind[0]) lt 50)
+magmask = (mallobj.(magind[0]) lt maglim and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4)
 ngdmag = long(total(magmask))
 if ngdmag eq 0 then begin
   print,'No good magnitudes in ',filter
@@ -89,18 +100,19 @@ endif else begin
   gmagerr = 2.5*alog10(1.0+mgaia[gdphot].e__fg_/mgaia[gdphot]._fg_)
 endelse
 
-; Get the color terms
+; Get the coefficients
 coef = gaiacolstr1.bestcoef
 
+; Measure the offset
 ; x-G vs. g-i
 ; x = f(g-i)+G
 magmodel = poly(col,coef)+gmag
 diff = mag-magmodel
 magoff0 = median(diff)
 sig = mad(diff)
-gdind = where( abs(diff-magoff0) lt (sig>0.02),ngdind)
+gdind = where( abs(diff-magoff0) lt 2*(sig>0.02),ngdind)
 differr = sqrt(magerr[gdind]^2+gmagerr[gdind]^2)
-magoff = dln_poly_fit(col[gdind],diff[gdind],0,measure_errors=differr,sigma=sigma,/bootstrap,status=status)
+magoff = DLN_POLY_FIT(col[gdind],diff[gdind],0,measure_errors=differr,sigma=sigma,/bootstrap,status=status)
 magoff = magoff[0]
 magofferr = sigma[0]
 

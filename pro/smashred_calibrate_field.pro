@@ -7,6 +7,8 @@
 ;
 ; INPUTS:
 ;  field      The field name, e.g. "Field24"
+;  =version   The version of the final catalogs.  This is only used
+;               if OUTPUTDIR is not input.
 ;  =transfile The file with the photometric transformation equations.
 ;  =reduxdir  The base directory for the PHOTRED reductions.  The
 ;               default is "/data/smash/cp/red/photred/"
@@ -18,21 +20,23 @@
 ;  /silent    Don't print anything to the screen.
 ;
 ; OUTPUTS:
-;  Four binary FITS files are created in the output directory:
-;   FIELD_exposures.fits - information on each unique exposure
-;   FIELD_chips.fits - information on each unique chip
-;   FIELD_allsrc.fits - information on each unique source detection
-;   FIELD_allobj.fits - information on each unique object including
-;                       average magnitudes.
+;  Five binary FITS files are created in the output directory:
+;   FIELD_combined_exposures.fits - information on each unique exposure
+;   FIELD_combined_chips.fits - information on each unique chip
+;   FIELD_combined_allsrc.fits - information on each unique source detection
+;   FIELD_combined_allobj.fits - information on each unique object including
+;                                     average magnitudes.
+;   FIELD_combined_allobj_bright.fits - bright stars in allobj used for
+;                                       cross-matching between fields.
 ;   =error    The error message, if one occurred.
 ;
 ; USAGE:
-;  IDL>smashred_calibrate,'Field24'
+;  IDL>smashred_calibrate_field,'Field24'
 ;
 ; By D.Nidever March 2016
 ;-
 
-pro smashred_calibrate_field,field,transfile=transfile,reduxdir=reduxdir,outputdir=outputdir,$
+pro smashred_calibrate_field,field,version=version,transfile=transfile,reduxdir=reduxdir,outputdir=outputdir,$
                              usegaia=usegaia,redo=redo,compress=compress,silent=silent,error=error
 
 undefine,error
@@ -41,7 +45,7 @@ t0 = systime(1)
 ; Not enough inputs
 if n_elements(field) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_calibrate_field,field,reduxdir=reduxdir,outputdir=outputdir,redo=redo,'
+  print,'Syntax - smashred_calibrate_field,field,version=version,reduxdir=reduxdir,outputdir=outputdir,redo=redo,'
   print,'                                  usegaia=usegaia,compress=compress,error=error'
   return
 endif
@@ -53,8 +57,10 @@ if file_test(reduxdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,error
   return
 endif
-;if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/final/'
-if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/gaiacal/'
+if n_elements(outputdir) eq 0 then begin
+  outputdir = reduxdir+'catalogs/final/'
+  if n_elements(version) gt 0 then outputdir+=version+'/'
+endif
 if file_test(outputdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
   FILE_MKDIR,outputdir
@@ -171,7 +177,8 @@ SMASHRED_CROSSMATCH,field,fstr,chstr,allsrc,allobj,reduxdir=reduxdir,redo=redo,o
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
-SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir
+SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
+                   outputdir=outputdir
 
 
 ; Compute average morphology and coordinate values
@@ -179,9 +186,11 @@ print,'Calculating average morphology and coordinate parameters'
 SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
 
 ; Compute exposure map
+print,'Computing the exposure maps'
 SMASHRED_COMPUTE_EXPMAP,field,chstr,redo=redo,outputdir=outputdir
 
 ; Set non-detections based on the exposure map
+print,'Setting non-detections based on the exposure maps'
 SMASHRED_SET_NONDETECTIONS,field,allobj,dir=outputdir
 
 ; Calculate extinction

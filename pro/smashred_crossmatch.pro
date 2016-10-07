@@ -13,7 +13,7 @@
 ;  =dcr       The matching radius in arcsec.  The default is 0.5 arcsec.
 ;  =reduxdir  The reduction directory, the default is "/data/smash/cp/red/photred/"
 ;  =outputdir  The output directory, the default is reduxdir+"catalogs/final/"
-;  /redo      Reget the photometry even if the temporary output file                                                                                                               
+;  /redo      Reget the photometry even if the temporary output file                                                   
 ;                already exists.  
 ;  /silent    Don't print anything to the screen.
 ;
@@ -106,7 +106,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
                    srcfindx:lonarr(nuexp)-1,u:99.99,uerr:9.99,uscatter:99.99,ndetu:0,g:99.99,gerr:9.99,gscatter:99.99,ndetg:0,$
                    r:99.99,rerr:9.99,rscatter:99.9,ndetr:0,i:99.99,ierr:9.99,iscatter:99.99,ndeti:0,z:99.99,zerr:9.99,$
                    zscatter:99.99,ndetz:0,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
-  cur_allsrc_indx = 0LL         ; next one starts from HERE
+  ur_allsrc_indx = 0LL         ; next one starts from HERE
   nallsrc = n_elements(allsrc)  ; current number of total Allsrc elements, NOT all filled
   ; SRCINDX has NDET indices at the front of the array
   ; SRCFINDX has them in the element that matches the frame they were

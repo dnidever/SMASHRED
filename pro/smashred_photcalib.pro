@@ -15,6 +15,8 @@
 ;  =transfile   The file with the photometric transformation equations.
 ;  =reduxdir    The reduction directory, the default is "/data/smash/cp/red/photred/"
 ;  /usegaia  Use GAIA photometry for overall photometric calibration.
+;  =outputdir   The output directory for the catalogs.  The default is
+;               REDUXDIR+'catalogs/final/'
 ;
 ; OUTPUTS:
 ;  chstr       The photometric transformation information is added and
@@ -30,7 +32,7 @@
 ;-
 
 pro smashred_photcalib,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,$
-                       reduxdir=reduxdir,error=error
+                       reduxdir=reduxdir,error=error,outputdir=outputdir
 
 ninfo = n_elements(info)
 nfstr = n_elements(fstr)
@@ -70,6 +72,8 @@ if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 ; Gaia directory
 gaiadir = '/data/smash/cp/red/photred/gaia/'
 
+; Field name
+field = info[0].field
 
 ; Add MJD to CHSTR
 if tag_exist(chstr,'MJD') eq 0 then begin
@@ -82,9 +86,13 @@ add_tag,chstr,'calibrated',0B,chstr
 ; Add UBERCAL columns to CHSTR 
 add_tag,chstr,'ubercal_magoffset',0.0,chstr
 add_tag,chstr,'ubercal_flag',-1L,chstr
-; Add GAIACAL columns to CHSTR
-add_tag,chstr,'gaiacal_magoffset',0.0,chstr
-add_tag,chstr,'gaiacal_magofferr',99.99,chstr
+;; Add GAIACAL columns to CHSTR
+;add_tag,chstr,'gaiacal_magoffset',0.0,chstr
+;add_tag,chstr,'gaiacal_magofferr',99.99,chstr
+; Add ZEROPOINT offset columns to CHSTR
+add_tag,chstr,'zpcalib_magoffset',0.0,chstr
+add_tag,chstr,'zpcalib_magofferr',99.99,chstr
+add_tag,chstr,'zpcalibflag',0,chstr
 
 ; Load the transformation equations
 trans_fitstr = MRDFITS(transfile,1,/silent)
@@ -184,10 +192,12 @@ endfor
 print,'--------------------------'
 
 ; Some band CANNOT be calibrated, give average zeropoint
+;  Still do this even if we are doing Gaia calibration
+;  it can help to have a good first guess
 bdnocalib = where(nocalib eq 1,nbdnocalib)
-if nbdnocalib gt 0 and not keyword_set(usegaia) then begin
+if nbdnocalib gt 0 then begin
   print,'!!!! CANNOT CALIBRATE ',strtrim(nbdnocalib,2),' FILTER(S): ',strjoin(allfilters[bdnocalib],' '),' !!!!'
-  print,'Giving them average zeropoints for that band and setting COLOR TERMS to ZERO.'
+  ;print,'Giving them average zeropoints for that band'
   for i=0,nbdnocalib-1 do begin
     MATCH,trans_ntstr.filter,allfilters[bdnocalib[i]],ind1,ind2,/sort,count=nmatch
     zpterm = median([trans_ntstr[ind1].zpterm])
@@ -196,25 +206,28 @@ if nbdnocalib gt 0 and not keyword_set(usegaia) then begin
     chstr[ind1].zpterm = zpterm
     chstr[ind1].zptermsig = zptermsig
     ; Set COLOR TERMS to 0.0 for these chips
-    chstr[ind1].colterm = 0.0
-    chstr[ind1].coltermsig = 0.0
+    ;  we can still use these if we have Gaia calibration
+    if not keyword_set(usegaia) then begin
+      chstr[ind1].colterm = 0.0
+      chstr[ind1].coltermsig = 0.0
+    endif
   endfor
 endif
 
 ; SHOULD I ALSO COMPUTE EXPOSURE-LEVEL APERTURE CORRECTIONS??
 ; MAYBE FIT A WEAK SPATIAL POLYNOMIAL??
 
-; ----  LOAD the GAIA catalog for this field ----
-gaiafile = gaiadir+info[0].field+'_gaia.fits'
-if file_test(gaiafile) eq 0 then stop,gaiafile,' NOT FOUND'
-print,'Loading GAIA file'
-gaia = MRDFITS(gaiafile,1,/silent)
-print,strtrim(n_elements(gaia),2),' GAIA sources'
-
-; ---- LOAD the GAIA-SMASH color terms information ----
-gaiacolfile = gaiadir+'gaiasmash_colorterms.fits'
-if file_test(gaiacolfile) eq 0 then stop,gaiacolfile,' NOT FOUND'
-gaiacolstr = MRDFITS(gaiacolfile,1,/silent)
+;; ----  LOAD the GAIA catalog for this field ----
+;gaiafile = gaiadir+field+'_gaia.fits'
+;if file_test(gaiafile) eq 0 then stop,gaiafile,' NOT FOUND'
+;print,'Loading GAIA file'
+;gaia = MRDFITS(gaiafile,1,/silent)
+;print,strtrim(n_elements(gaia),2),' GAIA sources'
+;
+;; ---- LOAD the GAIA-SMASH color terms information ----
+;gaiacolfile = gaiadir+'gaiasmash_colorterms.fits'
+;if file_test(gaiacolfile) eq 0 then stop,gaiacolfile,' NOT FOUND'
+;gaiacolstr = MRDFITS(gaiacolfile,1,/silent)
 
 ; Get average morophology parameters (chi/sharp)
 ;  these are needed in smashred_measure_gaia_offset
@@ -258,8 +271,9 @@ WHILE (doneflag eq 0) do begin
   ;  cause big problems
   ; If using gaia then wait until the 3rd pass to use the
   ;  color terms to let things converge a bit
-  if (niter eq 0 and nbdnocalib gt 0 and not keyword_set(usegaia)) or $
-     (niter le 1 and nbdnocalib gt 0 and keyword_set(usegaia)) then begin
+  ;if (niter eq 0 and nbdnocalib gt 0 and not keyword_set(usegaia)) or $
+  ;   (niter le 1 and nbdnocalib gt 0 and keyword_set(usegaia)) then begin
+  if (niter eq 0 and nbdnocalib gt 0) then begin
     print,'**NOT using COLOR TERMS for NON-PHOTOMETRIC data on INITIAL passes**'
     tchstr = chstr
     bdchstr = where(chstr.badsoln eq 1 or chstr.photometric eq 0,nbdchstr)
@@ -303,13 +317,14 @@ WHILE (doneflag eq 0) do begin
     ; Step 2c. Set absolute zeropoint of magnitute offsets with
     ;            photometric data and/or anchor points
     print,'2c. Set absolute zeropoint with photometric data and achor points'
-    ;  Only use GAIA calibration if needed!
-    usegaiaforthisband = 0
-    if keyword_set(usegaia) then begin
-      calibchips = where(chfiltstr.photometric eq 1 and chfiltstr.badsoln eq 0,ncalibchips)
-      if ncalibchips eq 0 then usegaiaforthisband=1
-    endif
-    SMASHRED_SET_ZEROPOINTS,chfiltstr,ubercalstr,gaia,allobj,gaiacolstr,usegaia=usegaiaforthisband
+    ;;  Only use GAIA calibration if needed!
+    ;usegaiaforthisband = 0
+    ;if keyword_set(usegaia) then begin
+    ;  calibchips = where(chfiltstr.photometric eq 1 and chfiltstr.badsoln eq 0,ncalibchips)
+    ;  if ncalibchips eq 0 then usegaiaforthisband=1
+    ;endif
+    SMASHRED_SET_ZEROPOINTS,field,chfiltstr,ubercalstr,allobj,usegaia=usegaia,$
+                            gaia=gaia,dir=outputdir
 
     ; Step 2d. Set CALIBRATED bit
     print,'2d. Set CALIBRATED bit in CHSTR'
@@ -321,7 +336,7 @@ WHILE (doneflag eq 0) do begin
     ; Save the overlapstr and ubercalstr structure
     ;  the ubercalstr mag offset are relative
     ;  see chstr.ubercal_magoffset for absolute ones
-    outfile = tmpdir+info[0].field+'_'+ufilter[f]+'_photcalib.dat'
+    outfile = tmpdir+field+'_'+ufilter[f]+'_photcalib.dat'
     SAVE,chfiltstr,overlapstr,ubercalstr,file=outfile
  
   Endfor  ; filter loop
@@ -347,8 +362,8 @@ WHILE (doneflag eq 0) do begin
      (niter ge 4 and (maxdiffcmag gt last_maxdiffcmag) and (rmsdiffcmag gt last_rmsdiffcmag)) or $       ; diffs are getting bigger, plateau
      (niter ge maxiter) then doneflag=1                                                                  ; max iterations
 ;if doneflag eq 1 then stop,'finished'
-  ; Don't iteration if all data is non-photometric
-  if nbdnocalib eq 5 and not keyword_set(usegaia) then doneflag=1
+  ; Don't iteration if all data is non-calibratable
+  if total(chstr.calibrated) eq 0 then doneflag=1
   last_zpterm = chstr.zpterm  ; save for next time
   last_maxdiffcmag = maxdiffcmag
   last_rmsdiffcmag = rmsdiffcmag
@@ -367,5 +382,6 @@ ENDWHILE
 print,'Applying transformation equations one last time'
 SMASHRED_APPLY_PHOTTRANSEQN,fstr,chstr,allsrc,allobj
 
+;stop
 
 end
