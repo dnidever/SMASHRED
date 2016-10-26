@@ -118,6 +118,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   ; Add some tags to CHSTR
   add_tag,chstr,'night','',chstr
   chstr.night = night
+  add_tag,chstr,'alftiletype','',chstr
   add_tag,chstr,'gaiarms',0.0,chstr
   add_tag,chstr,'gaianmatch',0L,chstr
   add_tag,chstr,'refexpnum','',chstr
@@ -158,6 +159,15 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
     mchfilelist = file_basename(mchfilelist,'.als')  ; remove .als ending
 
     chind = where(chstr.chip eq ichip,nchind)
+
+    ; Check the combination tile type 
+    if tag_exist(phot,'PROB') then begin
+      combfile = reduxdir+night+'/'+field+'/'+phbase+'_comb.fits'
+      combhead = HEADFITS(combfile)
+      alftiletype = sxpar(combhead,'AFTILTYP',count=nalftiletype)
+      if nalftiletype gt 0 then chstr[chind].alftiletype=alftiletype else chstr[chind].alftiletype='ORIG'
+    endif
+
     ; Loop through all of the exposures for this chip
     for j=0,nchind-1 do begin
       ; Figure out which magnitude column we should use
@@ -228,7 +238,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
         tfrfile = reduxdir+night+'/'+field+'/'+phbase+'.tfr'
         ; Check if the there is a .tfr.orig file, this is the DAOMASTER
         ;  tfr file if ALLFRAME was run
-        if file_test(tfrfile+'.orig') eq 1 then tfrfile+='.orig'
+        ;if file_test(tfrfile+'.orig') eq 1 then tfrfile+='.orig'
+        if file_test(tfrfile+'.orig') eq 1 then stop,'TFR.ORIG FOUND!  There could be problems'
         if file_test(tfrfile) eq 0 then stop,tfrfile+' NOT FOUND'
         LOADTFR,tfrfile,tfrlist,tfrstr
         ; What number is it in the frame list
@@ -250,6 +261,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ; Get RA/DEC coordinates for X/Y
       ;  use IDL X/Y convention, starting at (0,)
       HEAD_XYAD,head,src.x-1,src.y-1,ra,dec,/degree
+      ;src.ra = ra
+      ;src.dec = dec
       src.raindiv = ra
       src.decindiv = dec
 
