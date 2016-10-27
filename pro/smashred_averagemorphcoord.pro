@@ -1,33 +1,34 @@
 ;+
 ;
-; SMASHRED_AVERAGEMORPH
+; SMASHRED_AVERAGEMORPHCOORD
 ;
 ; Calculate average morphological parameters (chi, sharp, flag, prob)
-; using ALLSRC and ALLOBJ.
+; and RA/DEC coordinates using ALLSRC and ALLOBJ.
 ;
 ; INPUTS:
 ;  fstr    The structure with information for each exposure.
 ;  chstr   The structure with information for each chip.
-;  allstr  The structure with information for each source detection.
+;  allsrc  The structure with information for each source detection.
 ;  allobj  The structure with information for each unique object.
 ;
 ; OUTPUTS:
-;  The morphological parameters (chi, sharp, flag, prob) are updated
-;  in ALLOBJ.
+;  The morphological parameters (chi, sharp, flag, prob) and
+;  coordinate parameters (ra, dec, rascatter, decscatter) are
+;  updated in ALLOBJ.
 ;  =error  The error message if one occurred.
 ;
 ; USAGE:
-;  IDL>smashred_averagemorph,fstr,chstr,allsrc,allobj
+;  IDL>smashred_averagemorphcoord,fstr,chstr,allsrc,allobj
 ;
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_averagemorph,fstr,chstr,allsrc,allobj,error=error
+pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error
 
 ; Not enough inputs
 if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_averagemorph,fstr,chstr,allstr,allobj'
+  print,'Syntax - smashred_averagemorphcoord,fstr,chstr,allsrc,allobj'
   return
 endif
 
@@ -93,6 +94,51 @@ allobj.prob = avgprob
 bdflag = where(numflag eq 0,nbdflag)
 if nbdflag gt 0 then flag[bdflag]=-1
 allobj.flag = flag
+
+
+; Measure astrometric median scatter
+;-----------------------------------
+
+; ra/dec scatter
+totalra = dblarr(nallobj)
+totaldec = dblarr(nallobj)
+numobs = lonarr(nallobj)
+nchstr = n_elements(chstr)
+for k=0,nchstr-1 do begin
+  ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+  totalra[allsrc[ind].cmbindx] += allsrc[ind].ra
+  totaldec[allsrc[ind].cmbindx] += allsrc[ind].dec
+  numobs[allsrc[ind].cmbindx]++
+endfor
+newra = totalra/(numobs>1)
+newdec = totaldec/(numobs>1)
+bd = where(numobs eq 0,nbd)
+if nbd gt 0 then newra[bd]=999999.0
+if nbd gt 0 then newdec[bd]=999999.0
+
+; measure scatter, RMS
+;  sqrt(mean(diff^2))
+totalradiff = dblarr(nallobj)
+totaldecdiff = dblarr(nallobj)
+for k=0,nchstr-1 do begin
+  ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+  totalradiff[allsrc[ind].cmbindx] += (newra[allsrc[ind].cmbindx] - allsrc[ind].ra)^2
+  totaldecdiff[allsrc[ind].cmbindx] += (newdec[allsrc[ind].cmbindx] - allsrc[ind].dec)^2
+endfor
+newrascatter = sqrt( totalradiff/(numobs>1) ) * 3600 * cos(newdec/!radeg)
+newdecscatter = sqrt( totaldecdiff/(numobs>1) ) * 3600
+if nbd gt 0 then newrascatter[bd]=99.99
+if nbd gt 0 then newdecscatter[bd]=99.99
+
+; Set scatter=99.99 for numobs=1
+oneobs = where(numobs eq 1,noneobs)
+if noneobs gt 0 then newrascatter[oneobs]=99.99
+if noneobs gt 0 then newdecscatter[oneobs]=99.99
+
+allobj.ra = newra
+allobj.dec = newdec
+allobj.rascatter = newrascatter
+allobj.decscatter = newdecscatter
 
 ;stop
 
