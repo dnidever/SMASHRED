@@ -1,0 +1,14 @@
+#EXPNUM	NIGHT	FIELD	COMMENTS
+00422505	20150316	Field53	bad zeropoint and variability
+00422506	20150316	Field53	bad zeropoint and variability
+00422507	20150316	Field53	bad zeropoint and variability
+00422508	20150316	Field53	bad zeropoint and variability
+00422510	20150316	Field53	bad zeropoint and variability
+00422511	20150316	Field53	bad zeropoint and variability
+00422512	20150316	Field53	bad zeropoint and variability
+00422513	20150316	Field53	bad zeropoint and variability
+00422514	20150316	Field53	bad zeropoint and variability
+00422515	20150316	Field53	bad zeropoint and variability
+00422516	20150316	Field53	bad zeropoint and variability
+00422519	20150316	Field53	bad zeropoint and variability
+00422522	20150316	Field53	bad zeropoint and variability
