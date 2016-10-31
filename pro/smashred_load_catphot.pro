@@ -115,6 +115,15 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
     print,'REMOVING ',strtrim(n_elements(ubadexpnum),2),' BAD exposure(s): ',strjoin(ubadexpnum,',  ')
     REMOVE,badexpind,chstr
     nchstr = n_elements(chstr)
+    ; Also remove from exposures FSTR structure
+    fstr = *info.fstr
+    MATCH,fstr.expnum,ubadexpnum,badind1,badind2,/sort,count=nbadexp2
+    REMOVE,badind1,fstr
+    info.nexp = n_elements(fstr)
+    uibands = uniq(fstr.filter,sort(fstr.filter))
+    expbands = strjoin(fstr[uibands].filter)
+    info.bands = expbands
+    info.fstr = ptr_new(fstr)
   endif
 
   ; KLUDGE! Removing DUPLICATE exposures in short and deep fields
