@@ -56,6 +56,10 @@ endif
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 
+; Load the list of bad exposures
+badexp = IMPORTASCII('~/projects/SMASHRED/obslog/smash_badexposures.txt',/header,delim=string(9B),$
+                     fieldtypes=[7,7,7,7],/silent)
+nbadexp = n_elements(badexp)
 
 ; Construct the base name
 fbase = file_basename(info.file,'_summary.fits')  ; the observed field name
@@ -96,6 +100,22 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   nchstr = n_elements(chstr)
   night = info.night
   field = chstr[0].field
+
+  ; Remove bad exposures
+  undefine,badexpind,ubadexpnum
+  for k=0,nbadexp-1 do begin
+    MATCH,chstr.expnum,badexp[k].expnum,badind1,badind2,/sort,count=nbadexp
+    if nbadexp gt 0 then begin
+      push,badexpind,badind1
+      push,ubadexpnum,badexp[k].expnum
+    endif
+  endfor
+  nbadexpind = n_elements(badexpind)
+  if nbadexpind gt 0 then begin
+    print,'REMOVING ',strtrim(n_elements(ubadexpnum),2),' BAD exposure(s): ',strjoin(ubadexpnum,',  ')
+    REMOVE,badexpind,chstr
+    nchstr = n_elements(chstr)
+  endif
 
   ; KLUDGE! Removing DUPLICATE exposures in short and deep fields
   if night eq '20150318' and field eq 'F5' then begin  ; Field130sh
