@@ -72,7 +72,7 @@ if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 ; Compression
 if n_elements(compress) eq 0 then compress=1
 ; GAIA photometry
-if n_elements(usegaia) eq 0 then usegaia=1
+if n_elements(usegaia) eq 0 then usegaia=0
 
 ; Check if the final files already exists
 outfile = outputdir+field+'_combined'
@@ -146,14 +146,17 @@ For c=0,ninfo-1 do begin
   undefine,chstr1,allsrc1
   SMASHRED_LOAD_CATPHOT,info1,chstr1,allsrc1,/useast,reduxdir=reduxdir,redo=redo,outputdir=outputdir
 
-  ; offset indices
-  chstr1.allsrcindx += n_elements(allsrc)
-  allsrc1.chipindx += n_elements(allchstr)
+  ; Some good data to add
+  if n_elements(allsrc1) gt 0 then begin
+    ; offset indices
+    chstr1.allsrcindx += n_elements(allsrc)
+    allsrc1.chipindx += n_elements(allchstr)
 
-  ; Combine structures
-  push,allfstr,*info1.fstr
-  push,allchstr,chstr1
-  push,allsrc,allsrc1
+    ; Combine structures
+    push,allfstr,*info1.fstr
+    push,allchstr,chstr1
+    push,allsrc,allsrc1
+  endif
 Endfor ; catalog loop
 ; Kludge!  Remove duplicate exposures in short/deep for Field130
 if field eq 'Field130' then begin

@@ -101,7 +101,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   night = info.night
   field = chstr[0].field
 
-  ; Remove bad exposures
+  ; --- Remove bad exposures ---
   undefine,badexpind,ubadexpnum
   for k=0,nbadexp-1 do begin
     MATCH,chstr.expnum,badexp[k].expnum,badind1,badind2,/sort,count=nbadexp
@@ -113,7 +113,13 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   nbadexpind = n_elements(badexpind)
   if nbadexpind gt 0 then begin
     print,'REMOVING ',strtrim(n_elements(ubadexpnum),2),' BAD exposure(s): ',strjoin(ubadexpnum,',  ')
-    REMOVE,badexpind,chstr
+    if nbadexpind eq nchstr then begin
+      print,'NO EXPOSURES LEFT FOR THIS PHOTRED CATALOG'
+      undefine,chstr,allsrc,fstr
+      return
+    endif else begin
+      REMOVE,badexpind,chstr
+    endelse
     nchstr = n_elements(chstr)
     ; Also remove from exposures FSTR structure
     fstr = *info.fstr
