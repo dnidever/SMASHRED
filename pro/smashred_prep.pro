@@ -372,7 +372,8 @@ if keyword_set(keepstandards) then fstr.newfile=fstr.expnum
 
 ; Reference catalog
 if n_elements(refname) eq 0 then begin
-  if not keyword_set(keepstandards) then refcatname='USNO-B1' else refcatname='2MASS-PSC'
+  ;if not keyword_set(keepstandards) then refcatname='USNO-B1' else refcatname='2MASS-PSC'
+  refcatname = 'GAIA/GAIA'
 endif else refcatname=refname
 
 
