@@ -373,12 +373,13 @@ if keyword_set(keepstandards) then fstr.newfile=fstr.expnum
 ; Reference catalog
 if n_elements(refname) eq 0 then begin
   ;if not keyword_set(keepstandards) then refcatname='USNO-B1' else refcatname='2MASS-PSC'
-  refcatname = 'GAIA/GAIA'
+  refcatname = 'GAIA'
 endif else refcatname=refname
 
 
 ;for i=0,nfields-1 do begin
 ; This does all of them
+if strupcase(refcatname) eq 'GAIA' then SMASHRED_WCSPREP_GAIA,fstr else $
   SMASHRED_WCSPREP,fstr,refcatname=refcatname
   ; maybe use pbs_daemon as well.
 ;endfor
