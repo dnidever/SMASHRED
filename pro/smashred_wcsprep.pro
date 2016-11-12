@@ -22,6 +22,10 @@ for i=0,nfields-1 do begin
     print,'Querying VizieR for ',refcatname,' sources'
     canada = 0 ;1
     refcatall = queryvizier(refcatname,[ra,dec],1.5*60.,canada=canada,/allcolumns)
+    if size(refcatall,/type) ne 8 then begin
+      print,'Problem with queryvizier.  Bombing'
+      goto,bomb0
+    endif
     print,strtrim(n_elements(refcatall),2),' 2MASS sources'
     print,'Saving to ',outfile
     save,refcatall,file=outfile
@@ -29,6 +33,14 @@ for i=0,nfields-1 do begin
     print,'Loading previously-saved ',outfile
     restore,outfile
   endelse
+
+  if (strupcase(refcatname) eq 'GAIA' or strupcase(refcatname) eq 'GAIA/GAIA') and $
+     tag_exist(refcatall,'RAJ2000') eq 0 then begin
+    add_tag,refcatall,'raj2000',0.0d0,refcatall
+    add_tag,refcatall,'dej2000',0.0d0,refcatall
+    refcatall.raj2000 = refcatall.ra_icrs
+    refcatall.dej2000 = refcatall.de_icrs
+  endif
 
   ; Loop through all exposures for this field
   expind = where(fstr.object eq fieldstr[i].object,nexpind)
@@ -101,7 +113,7 @@ for i=0,nfields-1 do begin
       BOMB:
     endfor ; chip loop
   endfor ; exposures loop
-
+  BOMB0:
 endfor ; field loop
 
 ;stop
