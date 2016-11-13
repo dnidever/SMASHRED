@@ -26,7 +26,9 @@ pro solve_transphot_jan572014
 
 fields = 'Field'+['157','52','64','44','55','56','22']
 nfields = n_elements(fields)
-dir = '/data/smash/cp/red/photred/catalogs/final/v3/'
+; These fields have now been moved to v3a
+dir = '/data/smash/cp/red/photred/catalogs/final/v3a/'
+;dir = '/data/smash/cp/red/photred/catalogs/final/v3/'
 ; Load the calibrated catalogs
 undefine,allobj,allchstr
 for i=0,nfields-1 do begin
