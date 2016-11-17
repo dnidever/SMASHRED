@@ -62,6 +62,6 @@
    61	57519	20160510	0	overcast
    62	57520	20160511	0	overcast
    63	57521	20160512	0	overcast
-   64   57691   20161029        1       a very clear night of observations from the observers
-   65   57692   20161030        0       clouds at the end of the night
-   66   57693   20161031        0       overcast the first half of the night
+   64	57691	20161029	1	a very clear night of observations from the observers
+   65	57692	20161030	0	clouds at the end of the night
+   66	57693	20161031	0	overcast the first half of the night
