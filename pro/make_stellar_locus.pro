@@ -2,8 +2,12 @@ pro make_stellar_locus,str,tstr,gmax=gmax,pl=pl
 
 ; Make stellar locus templates
 
+if n_elements(str) eq 0 then begin
+  print,'Syntax - make_stellar_locus,str,tstr,gmax=gmax,pl=pl'
+endif
+
 ;if n_elements(str) eq 0 then str=mrdfits('~/decam/FieldB/FieldB_alf_calib_shapecuts_ebv.fits',1)
-if n_elements(str) eq 0 then str=mrdfits('~/smash/reduction/catalogs/final/v3/Field160_combined_allobj.fits.gz',1)  
+;if n_elements(str) eq 0 then str=mrdfits('~/smash/reduction/catalogs/final/v3/Field160_combined_allobj.fits.gz',1)  
 ;;g = where(str.imag lt 21 and str.gmag lt 50 and str.rmag lt 50)
 ;g = where(str.gmag lt 22,ng)    ; and str.gmag lt 50 and str.rmag lt 50)
 if n_elements(gmax) eq 0 then gmax = 21  ; 22
@@ -82,8 +86,10 @@ for i=0,2 do begin
   dum = bspline_iterfit(xx,yy,invvar=invvar,nord=nord,bkspace=bkspace,yfit=model)
   diff = yy-model
   sig = mad(diff,/zero)
-  plot,xx,diff,ps=3,xr=[-1,4],yr=[-4,4]*sig
-  oplot,[-10,10],[0,0],linestyle=2
+  if keyword_set(pl) then begin
+    plot,xx,diff,ps=3,xr=[-1,4],yr=[-4,4]*sig
+    oplot,[-10,10],[0,0],linestyle=2
+  endif
 
   ; Measure sigs and scatters
   si = sort(xx)
@@ -93,7 +99,7 @@ for i=0,2 do begin
   scatters = sigs
   mngi = sigs
   mederr = sigs
-  for j=0,nsigs-1 do begin
+  for j=0L,nsigs-1 do begin
     lo = nbinsigs*j  &  hi=(lo+nbinsigs-1) < (ngd-1)
     sigs[j] = mad(diff[si[lo:hi]],/zero)
     scatters[j] = sqrt( sqrt(median(diff[si[lo:hi]]^2))^2 - sqrt(median(colerr[si[lo:hi]]^2))^2 )
@@ -152,27 +158,29 @@ tstr.scatters = tstr.scatters > 0.0
 ;stop
 
 ; Plots
-plotc,(indgen(5)+1)#replicate(1,nbin),tstr.cols,replicate(1,5)#tstr.gibin,ps=3,xr=[0,6],yr=[-1,6]
-;plot,[0],[0],/nodata,xr=[0,6],yr=[-5,5]
-ind = indgen(5)+1
-bottom = 50
-ncolors = 200
-color = SCALE( tstr.gibin, [min(tstr.gibin),max(tstr.gibin)], [bottom, bottom+ncolors-1])
-for i=0,nbin-1 do oplot,ind,tstr[i].cols,co=color[i]
+if keyword_set(pl) then begin
+  plotc,(indgen(5)+1)#replicate(1,nbin),tstr.cols,replicate(1,5)#tstr.gibin,ps=3,xr=[0,6],yr=[-1,6]
+  ;plot,[0],[0],/nodata,xr=[0,6],yr=[-5,5]
+  ind = indgen(5)+1
+  bottom = 50
+  ncolors = 200
+  color = SCALE( tstr.gibin, [min(tstr.gibin),max(tstr.gibin)], [bottom, bottom+ncolors-1])
+  for i=0,nbin-1 do oplot,ind,tstr[i].cols,co=color[i]
 
-plotc,replicate(1,5)#indgen(nbin),tstr.sigs,ps=3,yr=[-0.1,0.5]
-oplot,indgen(nbin),tstr.uisig,co=80
-;oplot,indgen(nbin),tstr.mederr[0],co=80
-oplot,indgen(nbin),tstr.scatters[0],co=80
-oplot,indgen(nbin),tstr.gisig,co=150
-;oplot,indgen(nbin),tstr.mederr[1],co=150
-oplot,indgen(nbin),tstr.scatters[1],co=150
-oplot,indgen(nbin),tstr.risig,co=200
-;oplot,indgen(nbin),tstr.mederr[2],co=200
-oplot,indgen(nbin),tstr.scatters[2],co=200
-oplot,indgen(nbin),tstr.zisig,co=250
-;oplot,indgen(nbin),tstr.mederr[4],co=250
-oplot,indgen(nbin),tstr.scatters[4],co=250
+  plotc,replicate(1,5)#indgen(nbin),tstr.sigs,ps=3,yr=[-0.1,0.5]
+  oplot,indgen(nbin),tstr.uisig,co=80
+  ;oplot,indgen(nbin),tstr.mederr[0],co=80
+  oplot,indgen(nbin),tstr.scatters[0],co=80
+  oplot,indgen(nbin),tstr.gisig,co=150
+  ;oplot,indgen(nbin),tstr.mederr[1],co=150
+  oplot,indgen(nbin),tstr.scatters[1],co=150
+  oplot,indgen(nbin),tstr.risig,co=200
+  ;oplot,indgen(nbin),tstr.mederr[2],co=200
+  oplot,indgen(nbin),tstr.scatters[2],co=200
+  oplot,indgen(nbin),tstr.zisig,co=250
+  ;oplot,indgen(nbin),tstr.mederr[4],co=250
+  oplot,indgen(nbin),tstr.scatters[4],co=250
+endif
 
 ;stop
 
@@ -236,7 +244,7 @@ if keyword_set(pl) then begin
   if keyword_set(save) then begin
     setdisp
     !p.font = 0
-    ;file='smash_stellar_templates_bspline_colorcolor'
+    file='smash_stellar_locus'
     ps_open,file,thick=4,/color,/encap
     device,/inches,xsize=8.0,ysize=10.0
     charsize=1.3
@@ -277,8 +285,6 @@ if keyword_set(pl) then begin
     ps2jpg,file+'.eps',/eps
   endif
   
-  stop
-
 endif
 
 
@@ -315,6 +321,6 @@ endif
 ;plotc,str[g].g-str[g].i,str[g].u-str[g].i,str[g].g,ps=3,xr=[-1,3.5],yr=[0,6]  
 ;plotc,str[g].g-str[g].ebv*3.303-(str[g].i-str[g].ebv*1.698),str[g].u-str[g].ebv*4.239-(str[g].i-str[;g].ebv*1.698),str[g].g,ps=3,xr=[-1,3.5],yr=[0,6]
 
-stop
+if keyword_set(stp) then stop
 
 end
