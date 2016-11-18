@@ -17,7 +17,15 @@ for i=0,n_elements(info1)-1 do begin
   chips1 = mrdfits(info1[i].file,2,/silent)
   push,chips,chips1
 endfor
-cenra = mean(minmax(chips.ra))
+
+if range(chips.ra) gt 180 then begin
+  ra = chips.ra
+  over = where(ra gt 180,nover,comp=under,ncomp=nunder)
+  if nover gt 0 then ra[over]-=360
+  cenra = mean(minmax(ra))
+endif else begin
+  cenra = mean(minmax(chips.ra))
+endelse
 cendec = mean(minmax(chips.dec))
 rar = range(chips.ra)*cos(cendec/!radeg)*1.1 > 2.3
 decr = range(chips.dec)*1.1 > 2.3
