@@ -1,4 +1,4 @@
-pro qacheck_astids
+pro qacheck_astids,night
 
 ; Check the problem duplicate IDs in the AST files
 
@@ -6,7 +6,11 @@ pro qacheck_astids
 ;goto,findoutliers
 
 reduxdir = '/data/smash/cp/red/photred/'
-dirs = file_search(reduxdir+'20??????',/test_directory,count=ndirs)
+if n_elements(night) gt 0 then begin
+  dirs = file_search(reduxdir+night,/test_directory,count=ndirs)
+endif else begin
+  dirs = file_search(reduxdir+'20??????',/test_directory,count=ndirs)
+endelse
 undefine,gaiastr
 for i=0,ndirs-1 do begin
   files = file_search(dirs[i]+'/F*/F*-*_01.ast',count=nfiles)
