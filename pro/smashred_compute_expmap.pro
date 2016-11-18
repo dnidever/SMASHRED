@@ -33,17 +33,25 @@ outfile = outputdir+field+'_combined_expmap.fits'
 
 ; Output file already exists
 if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
-  if file_test(outfile) eq 1 then print,outfile,' EXISTS and /redo NOT set' else $
-     print,outfile,'.gz EXISTS and /redo NOT set'
+  if file_test(outfile) eq 1 then print,outfile+' EXISTS and /redo NOT set' else $
+     print,outfile+'.gz EXISTS and /redo NOT set'
   return
 endif
 
 print,'Computing Exposure Map for Field=',field
 
 ; Figure out field center and RA/DEC ranges
-rar = minmax(chstr.vertices_ra)
+if range(chstr.vertices_ra) gt 180 then begin
+  vertices_ra = chstr.vertices_ra
+  over = where(vertices_ra gt 180,nover,comp=under,ncomp=nunder)
+  if nover gt 0 then vertices_ra[over]-=360
+  rar = minmax(vertices_ra)
+  cenra = mean(rar)
+endif else begin
+  rar = minmax(chstr.vertices_ra)
+  cenra = mean(rar)
+endelse
 decr = minmax(chstr.vertices_dec)
-cenra = mean(rar)
 cendec = mean(decr)
 ; Set up the tangent plane projection
 step = 0.25/3600.0d0
@@ -64,8 +72,8 @@ SXADDPAR,head,'CRPIX2',yref+1L
 SXADDPAR,head,'CRVAL2',cendec
 SXADDPAR,head,'CTYPE2','DEC--TAN'
 
-print,'RA range = ',strtrim(rar,2),' deg'
-print,'DEC range = ',strtrim(decr,2),' deg'
+print,'RA range = [',strtrim(rar[0],2),',',strtrim(rar[1],2),'] deg'
+print,'DEC range = [',strtrim(decr[0],2),',',strtrim(decr[1],2),'] deg'
 print,'Central RA = ',strtrim(cenra,2)
 print,'Central DEC = ',strtrim(cendec,2)
 print,'NX = ',strtrim(nx,2)
@@ -90,7 +98,8 @@ FOR f=0,nfilters-1 do begin
     night = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
     file = reduxdir+night+'/'+strtrim(chstr1.field,2)+'/'+strtrim(chstr1.file,2)
     print,' ',strtrim(f+1,2),' ',strtrim(i+1,2),'/',strtrim(nind,2),' ',file
-    FITS_READ,file,im1,head1
+    FITS_READ,file,im1,head1,message=error,/no_abort
+    if error ne '' then stop,'PROBLEM loading '+file
     sz1 = size(im1)
     exptime = chstr1.exptime
 
@@ -148,13 +157,15 @@ FOR f=0,nfilters-1 do begin
   if f eq 0 then begin
     MWRFITS,im,outfile,head,/create
   endif else begin
+    ; Fix the header for extension
+    if strmid(head[0],0,6) eq 'SIMPLE' then head[0]="XTENSION= 'IMAGE   '           / IMAGE extension"
     MWRFITS,im,outfile,head
   endelse
 
 ENDFOR
 
 ; Compress the file
-print,'Compressing output file'
-spawn,['gzip','-f',outfile],out,errout,/noshell
+;print,'Compressing output file'
+;spawn,['gzip','-f',outfile],out,errout,/noshell
 
 end
