@@ -127,10 +127,20 @@ endfor
 
 xsig = mad(reform(diff[0,*,*]),dim=2,/zero)
 ysig = mad(reform(diff[1,*,*]),dim=2,/zero)
+sharpsig = mad(reform(sharp[*,*]),dim=2)
 gd = where(finite(xsig) eq 1,ngd)
 plot,als[gd].mag,xsig[gd],ps=1
 
-; save,als,diff,xsig,ysig,file='sim_astromerr.dat'
+; save,als,diff,allalsin,allalsout,sharp,xsig,ysig,sharpsig,file='sim_astromerr.dat'
+
+; sharp scatter
+bindata,alog10(1.0/als[gd].err),alog10(sharpsig[gd]),xbin,ybin,binsize=0.2,min=-0.4,max=3.0,gdind=gdind
+plot,1.0/als[gd].err,sharpsig[gd],ps=1,yr=[0.0001,2],/ylog,/xlog
+oplot,10^xbin,10^ybin,ps=-1,co=250,sym=3
+coef = robust_poly_fit(xbin[gdind],ybin[gdind],1)
+oplot,1.0/als.err,10^poly(alog10(1.0/als.err),coef),ps=3,co=200
+;     0.586401    -0.912015
+; hits a threshold at S/N~2 of ~1.7
 
 ;bindata,alog10(1.0/als[gd].err),alog10(xsig[gd]),xbin,ybin,binsize=0.2,min=0.5,max=3.0,gdind=gdind
 bindata,alog10(1.0/als[gd].err),alog10(xsig[gd]),xbin,ybin,binsize=0.2,min=-0.4,max=3.0,gdind=gdind
