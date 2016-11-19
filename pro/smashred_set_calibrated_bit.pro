@@ -36,7 +36,7 @@ allchipid = strtrim(chstr.expnum,2)+'-'+strtrim(chstr.chip,2)  ; for matching
 ; Get calibrated chips
 ;   ZPCALIBTYPE = 1, 2 and 3 are "real" zeropoint calibrations
 ;     0 - uncalibrated, 4 - GAIA calibrated
-gdphot = where(chstr.zpcalibtype ge 1 and chstr.zpcalibtype le 3,ngdphot,comp=bdphot,ncomp=nbdphot)
+gdphot = where(chstr.zpcalibflag ge 1 and chstr.zpcalibflag le 3,ngdphot,comp=bdphot,ncomp=nbdphot)
 ;gdphot = where(chstr.photometric ge 1 and chstr.badsoln eq 0,ngdphot,comp=bdphot,ncomp=nbdphot)
 if ngdphot gt 0 then begin
 

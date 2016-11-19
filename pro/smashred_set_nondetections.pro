@@ -46,10 +46,12 @@ nfilters = n_elements(filters)
 FOR f=0,nfilters-1 do begin
 
   ; Load the exposure map file
-  FITS_READ,expmapfile,expmap,exphead,exten=f
+  ;FITS_READ,expmapfile,expmap,exphead,exten=f
+  ; fits_read has problems reading large gzip files
+  expmap = MRDFITS(expmapfile,f,exphead)
 
   ; Deal with "bad" mags
-  magind = where(tags eq 'U',nmagind)
+  magind = where(tags eq strupcase(filters[f]),nmagind)
   bdobj = where(allobj.(magind) gt 50,nbdobj)
   if nbdobj gt 0 then begin
     ; Convert to exposure map coordinates
