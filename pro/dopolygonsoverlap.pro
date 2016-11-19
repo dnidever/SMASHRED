@@ -89,14 +89,20 @@ function dopolygonsoverlap, xpolygon1, ypolygon1, xpolygon2, ypolygon2
 ; If a vertex of one of the polygons is inside the other polygon
 ; then they overlap.
     
-n = n_elements(xPolygon2)
+n2 = n_elements(xPolygon2)
 isin = 0
 
 ; Loop through all vertices of second polygon
-for i=0,n-1 do begin
+for i=0,n2-1 do begin
    ; perform iterative boolean OR
    ; if any point is inside the polygon then they overlap   
    isin = isin or ispointinpolygon(xpolygon1, ypolygon1, xpolygon2[i], ypolygon2[i])
+endfor
+
+; Must do the reverse as well, they aren't the same
+n1 = n_elements(xPolygon1)
+for i=0,n1-1 do begin
+   isin = isin or ispointinpolygon(xpolygon2, ypolygon2, xpolygon1[i], ypolygon1[i])
 endfor
    
 return, isin

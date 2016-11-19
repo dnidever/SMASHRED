@@ -1,28 +1,55 @@
-pro qacheck_mch
+pro qacheck_mch,night,field,verbose=verbose,allfields=allfields,thresh=thresh
 
-forward_function trans_coo_dev
+forward_function trans_coo, trans_coo_dev
 ; Compile MATCHSTARS.PRO
 RESOLVE_ROUTINE,'matchstars',/compile_full_file
 
-dirs = file_search('/data/smash/cp/red/photred/20??????',/test_directory,count=ndirs)
+if n_elements(thresh) eq 0 then thresh=5.0  ; pixel difference threshold
+
+if n_elements(night) gt 0 then begin
+  dirs = file_search('/data/smash/cp/red/photred/'+night,/test_directory,count=ndirs)
+endif else begin
+  dirs = file_search('/data/smash/cp/red/photred/20??????',/test_directory,count=ndirs)
+endelse
+print,strtrim(ndirs,2),' nights'
 
 for i=0,ndirs-1 do begin
+;for i=29,ndirs-1 do begin
   print,strtrim(i+1,2),'  '+dirs[i]
   cd,dirs[i]
   readcol,'fields',shortname,fieldname,format='A,A',/silent
-  shind = where(strmid(fieldname,1,/reverse) eq 'sh',nshind)
+  if not keyword_set(allfields) then begin
+    shind = where(strmid(fieldname,1,/reverse) eq 'sh',nshind)
+  endif else begin  ; running on all fields
+    shind = lindgen(n_elements(fieldname))
+    nshind = n_elements(fieldname)
+  endelse
+
+  ; Specific field input
+  if n_elements(field) gt 0 then begin
+    MATCH,shortname,field,shind,ind2,/sort,count=nshind
+    ;shind = where(shortname eq field,nshind)
+    if nshind eq 0 then begin
+      print,field,' NOT FOUND'
+      return
+    endif
+  endif
+
+  ; Loop through the fields
   for j=0,nshind-1 do begin
     shfield1 = shortname[shind[j]]
-    ;print,'  ',strtrim(j+1,2),'  '+shfield1
+    if keyword_set(verbose) then print,' ',strtrim(j+1,2),'  '+shfield1
     cd,dirs[i]+'/'+shfield1
     mchfiles = file_search(shfield1+'-*_??.mch',count=nmchfiles)
+    if nmchfiles eq 0 then goto,bomb
     undefine,allmchstr
     for k=0,nmchfiles-1 do begin
       loadmch,mchfiles[k],mchlist,mchtrans
       mchlistbase = reform( (strsplitter(file_basename(mchlist,'.als'),'_',/extract))[0,*] )
       base = file_basename(mchfiles[k],'.mch')
       ichip = long( (strsplit(base,'_',/extract))[1] )
-      mchstr = replicate({field:'',chip:0L,mchfile:'',alsfile:'',alsbase:'',trans0:fltarr(6),trans:fltarr(6)},n_elements(mchlist))
+      mchstr = replicate({field:'',chip:0L,mchfile:'',alsfile:'',alsbase:'',trans0:fltarr(6),$
+                          trans:fltarr(6),midxdiff:0.0,midydiff:0.0,meddiff:0.0},n_elements(mchlist))
       mchstr.field = shfield1
       mchstr.chip = ichip
       mchstr.mchfile = mchfiles[k]
@@ -75,15 +102,44 @@ for i=0,ndirs-1 do begin
                       bestnorm=chisq, dof=dof, autoderivative=1, /quiet)
         trans = fpar
         mchstr[l+1].trans = trans
-      endfor
-      mchstr[0].trans = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0]
-      xydiff = mchstr.trans[0:1] - mchstr.trans0[0:1]       
-      ;print,strtrim(k+1,2),' ',mchfiles[k],' ',max(abs(xydiff))
-      push,allmchstr,mchstr
-    endfor
 
-    xydiff = allmchstr.trans[0:1] - allmchstr.trans0[0:1]       
-    print,'  ',strtrim(j+1,2),'  '+shfield1,'  ',max(abs(xydiff))
+        ; Compare X/Y transformations in the overlap region
+        ;  using the random positions previously created
+        out = trans_coo(xx2[gdstars],yy2[gdstars],mchstr[l+1].trans0)
+        out0 = trans_coo(xx2[gdstars],yy2[gdstars],mchstr[l+1].trans)
+        mchstr[l+1].meddiff = median(abs(out-out0))
+        ; Compare X/Y transformations in the middle of the chip
+        midout = trans_coo(nx/2,ny/2,mchstr[l+1].trans0)
+        midout0 = trans_coo(nx/2,ny/2,mchstr[l+1].trans)
+        mchstr[l+1].midxdiff = midout[0]-midout0[0]
+        mchstr[l+1].midydiff = midout[1]-midout0[1]
+if mchstr[l+1].meddiff gt thresh then print,mchstr[l+1].alsfile,' ',mchstr[l+1].meddiff
+;if max(abs([mchstr[l+1].midxdiff,mchstr[l+1].midydiff])) gt 2 then print,mchstr[l+1].alsfile,' ',out-out0
+;if max(abs([mchstr[l+1].midxdiff,mchstr[l+1].midydiff])) gt 2 then stop,'high offset'
+;if file_basename(mchlist[l+1],'.als') eq '
+      endfor ; files in MCH file
+      mchstr[0].trans = [0.0, 0.0, 1.0, 0.0, 0.0, 1.0]
+      ;;xydiff = mchstr.trans[0:1] - mchstr.trans0[0:1]       
+      ;;maxdiff = max(abs(xydiff))
+      ;xdiff = mchstr.midxdiff
+      ;ydiff = mchstr.midydiff
+      ;maxdiff = max(abs([xdiff,ydiff]))
+      maxdiff = max(mchstr.meddiff)
+      if maxdiff gt thresh then cmt=' ***' else cmt=''
+      if keyword_set(verbose) then print,'  ',strtrim(k+1,2),' ',mchfiles[k],' ',maxdiff,cmt
+      push,allmchstr,mchstr
+;if maxdiff gt 2 then stop,'large offset'
+    endfor  ; MCH file loop
+
+    ;;xydiff = allmchstr.trans[0:1] - allmchstr.trans0[0:1]       
+    ;;maxdiff = max(abs(xydiff))
+    ;xdiff = allmchstr.midxdiff
+    ;ydiff = allmchstr.midydiff
+    ;maxdiff = max(abs([xdiff,ydiff]))
+    maxdiff = max(allmchstr.meddiff)
+    print,'  ',strtrim(j+1,2),'  '+shfield1,'  ',maxdiff
+
+    bomb:
 
     ;; Make sure the shifts for each exposure are consistent for all chips
     ;uiexp = uniq(allmchstr.alsbase,sort(allmchstr.alsbase))
@@ -124,7 +180,6 @@ for i=0,ndirs-1 do begin
   ;stop
 endfor  ; directory loop
 
-
-stop
+;stop
 
 end

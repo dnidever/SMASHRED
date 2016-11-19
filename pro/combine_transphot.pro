@@ -21,8 +21,8 @@ sxaddpar,head,'filter',allfilters
 if n_elements(outfile) eq 0 then outfile = 'smashred_transphot_eqns.fits'
 FITS_WRITE,outfile,0,head
 MWRFITS,fitstr,outfile,/silent
-MWRFITS,fchipstr,outfile,/silent
-MWRFITS,fntstr,outfile,/silent
+MWRFITS,chipstr,outfile,/silent
+MWRFITS,ntstr,outfile,/silent
 
 stop
 
