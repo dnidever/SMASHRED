@@ -45,7 +45,8 @@ smash = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.
 ; Get all of the summary files
 ;sumfiles = file_search(dir+'inst/20*/F*summary.fits',count=nsumfiles)
 ;sumfiles = file_search(dir+'inst/20*/*summary.fits',count=nsumfiles)
-sumfiles = file_search(dir+'/20*/*summary.fits',count=nsumfiles)
+;sumfiles = file_search(dir+'/20*/*summary.fits',count=nsumfiles)
+sumfiles = file_search(dir+'/20??????/*summary.fits',count=nsumfiles)
 if not keyword_set(silent) then print,'Found ',strtrim(nsumfiles,2),' PHOTRED summary files in ',dir,'/20*/'
 
 ; Create the output structure
