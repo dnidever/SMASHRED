@@ -418,6 +418,19 @@ Endif else begin
   print,'Restoring previously saved ',outfile
   chstr = MRDFITS(outfile,1,/silent)
   allsrc = MRDFITS(outfile,2,/silent)
+
+  ; --- Remove bad exposures from fstr ---
+  fstr = *info.fstr
+  MATCH,fstr.expnum,badexp.expnum,badind1,badind2,/sort,count=nbadexp
+  if nbadexp gt 0 then begin
+    REMOVE,badind1,fstr
+    info.nexp = n_elements(fstr)
+    uibands = uniq(fstr.filter,sort(fstr.filter))
+    expbands = strjoin(fstr[uibands].filter)
+    info.bands = expbands
+    info.fstr = ptr_new(fstr)
+  endif
+
 Endelse
 
 ;stop
