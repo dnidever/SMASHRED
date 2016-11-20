@@ -140,3 +140,8 @@
 00588077        20161030        Field148 bad zeropoint and variability
 00588078        20161030        Field148 bad zeropoint and variability
 00588079        20161030        Field148 bad zeropoint and variability
+00380952        20161031        Field41 bad zeropoint and variability
+00380954        20161031        Field41 bad zeropoint and variability
+00380957        20161031        Field41 bad zeropoint and variability
+00380962        20161031        Field41 bad zeropoint and variability
+00380967        20161031        Field41 bad zeropoint and variability
