@@ -102,8 +102,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   dnan = !values.d_nan
 
   ; Make the ALLOBJ structure schema
-  ;allobj_schema = {id:'',ra:0.0d0,dec:0.0d0,raerr:99.99,decerr:99.99,rascatter:99.99,decscatter:99.99,ndet:0,depthflag:0B,$
-  allobj_schema = {id:'',ra:0.0d0,dec:0.0d0,rascatter:99.99,decscatter:99.99,ndet:0,depthflag:0B,$
+  ;allobj_schema = {id:'',ra:0.0d0,dec:0.0d0,rascatter:99.99,decscatter:99.99,ndet:0,depthflag:0B,$
+  allobj_schema = {id:'',ra:0.0d0,dec:0.0d0,raerr:99.99,decerr:99.99,rascatter:99.99,decscatter:99.99,ndet:0,depthflag:0B,$
                    srcindx:lonarr(nuexp)-1,srcfindx:lonarr(nuexp)-1,u:99.99,uerr:9.99,uscatter:99.99,ndetu:0,g:99.99,gerr:9.99,$
                    gscatter:99.99,ndetg:0,r:99.99,rerr:9.99,rscatter:99.9,ndetr:0,i:99.99,ierr:9.99,iscatter:99.99,ndeti:0,$
                    z:99.99,zerr:9.99,zscatter:99.99,ndetz:0,chi:nan,sharp:nan,flag:-1,prob:nan,ebv:99.99}
