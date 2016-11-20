@@ -35,7 +35,11 @@ for i=0,nchipfiles-1 do begin
   for j=0,nfilters-1 do begin
     dum = where(ufilters eq filters[j],ndet1)
     ndet[j] = ndet1
-    dum = where(chstr[ui].calibrated eq 1 and chstr[ui].photometric eq 1 and chstr[ui].badsoln eq 0 and chstr[ui].filter eq filters[j],ncalib)
+    ; for v3 onward:
+    ; zpcalibflag=1 is photometric and calibrated DECam data,
+    ;  3 means 0.9m data was used for calibration
+    dum = where(chstr[ui].zpcalibflag eq 1 and chstr[ui].zpcalibflag eq 3 and chstr[ui].filter eq filters[j],ncalib)
+    ;dum = where(chstr[ui].calibrated eq 1 and chstr[ui].photometric eq 1 and chstr[ui].badsoln eq 0 and chstr[ui].filter eq filters[j],ncalib)
     if ncalib gt 0 then fieldstr[i].calib[j]=1
   endfor
   fieldstr[i].ndet = ndet
