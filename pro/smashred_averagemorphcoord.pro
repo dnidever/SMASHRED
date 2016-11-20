@@ -140,6 +140,26 @@ allobj.dec = newdec
 allobj.rascatter = newrascatter
 allobj.decscatter = newdecscatter
 
+; Calculate uncertainty in average RA/DEC
+;  add uncertainties in quadrature
+totalraerr = dblarr(nallobj)
+totaldecerr = dblarr(nallobj)
+for k=0,nchstr-1 do begin
+  ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+  totalraerr[allsrc[ind].cmbindx] += allsrc[ind].raerr^2
+  totaldecerr[allsrc[ind].cmbindx] += allsrc[ind].decerr^2
+endfor
+; take sqrt to finish the quadrature and 
+; divide by N since we want the
+; uncertainty of the average
+raerr = sqrt(totalraerr)/(numobs>1)
+decerr = sqrt(totaldecerr)/(numobs>1)
+bd = where(numobs eq 0,nbd)
+if nbd gt 0 then raerr[bd]=999999.0
+if nbd gt 0 then decerr[bd]=999999.0
+allobj.raerr = raerr
+allobj.decerr = decerr
+
 ;stop
 
 end
