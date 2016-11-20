@@ -51,6 +51,10 @@ for i=0,nfields-1 do begin
   print,strtrim(i+1,2),' ',fieldstr[i].field
   vertices_ra = [fieldstr[i].rar[0],fieldstr[i].rar[1],fieldstr[i].rar[1],fieldstr[i].rar[0]]
   vertices_dec = [fieldstr[i].decr[0],fieldstr[i].decr[0],fieldstr[i].decr[1],fieldstr[i].decr[1]]
+  if range(vertices_ra) gt 180 then begin
+    over = where(vertices_ra gt 180,nover,comp=under,ncomp=nunder)
+    if nover gt 0 then vertices_ra[over]-=360
+  endif
 
   ; Find potential overlaps within the bounding rectangle
   ;  loop over the rest of the fields
@@ -58,6 +62,10 @@ for i=0,nfields-1 do begin
   for j=0,nfields-1 do begin
     vertices_ra2 = [fieldstr[j].rar[0],fieldstr[j].rar[1],fieldstr[j].rar[1],fieldstr[j].rar[0]]
     vertices_dec2 = [fieldstr[j].decr[0],fieldstr[j].decr[0],fieldstr[j].decr[1],fieldstr[j].decr[1]]
+    if range(vertices_ra2) gt 180 then begin
+      over = where(vertices_ra2 gt 180,nover,comp=under,ncomp=nunder)
+      if nover gt 0 then vertices_ra2[over]-=360
+    endif
     if j ne i then overlap[j] = dopolygonsoverlap(vertices_ra,vertices_dec,vertices_ra2,vertices_dec2)
   endfor
 
