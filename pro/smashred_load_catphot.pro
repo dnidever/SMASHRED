@@ -85,8 +85,8 @@ outfile = tmpdir+fbase+'_'+info.night+'_photred.fits'
 ;                        USNO-B1/2MASS as reference
 ;  raref/decref  ra/dec coordinates using xref/yref and ref image WCS
 ;                        with USNO-B1/2MASS as reference
-allsrc_schema = {cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,idref:-1L,x:0.0,y:0.0,xref:0.0,yref:0.0,mag:0.0,err:0.0,$
-                 cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0,$
+allsrc_schema = {cmbindx:-1L,chipindx:-1L,fid:'',id:-1L,idref:-1L,x:0.0,y:0.0,xref:0.0,yref:0.0,forced:0B,$
+                 mag:0.0,err:0.0,cmag:-1.0,cerr:-1.0,chi:0.0,sharp:0.0,flag:-1,prob:-1.0,ra:0.0d0,dec:0.0d0,$
 ;                 raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,decref:0.0d0}
                  raerr:0.0,decerr:0.0,raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,decref:0.0d0}
 allsrc = replicate(allsrc_schema,5000000L)
@@ -233,6 +233,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       src.yref = phot1.y
       src.raref = phot1.ra
       src.decref = phot1.dec
+      if tag_exist(phot,'PROB') then src.forced=1 else src.forced=0
       src.mag = phot1.(mind[0])
       src.err = phot1.(mind[0]+1)   ; assume error is the next column
       src.chipindx = chind[j]
