@@ -53,6 +53,7 @@ gaia = MRDFITS(gaiadir+field+'_gaia.fits.gz',1)
 SRCMATCH,allobj.ra,allobj.dec,gaia.ra_icrs,gaia.de_icrs,0.5,ind1,ind2,/sph,count=nmatch
 print,strtrim(nmatch,2),' GAIA matches'
 if nmatch gt 0 then begin
+  allobj[ind1].gaia_match = 1
   allobj[ind1].gaia_source = gaia[ind2].source
   allobj[ind1].gaia_gmag = gaia[ind2]._gmag_
   gmagerr = 2.5*alog10(1.0+gaia[ind2].e__fg_/gaia[ind2]._fg_)
@@ -72,6 +73,7 @@ tmass = MRDFITS(tmassdir+field+'_tmass.fits.gz',1)
 SRCMATCH,allobj.ra,allobj.dec,tmass.raj2000,tmass.dej2000,0.5,ind1,ind2,/sph,count=nmatch
 print,strtrim(nmatch,2),' 2MASS matches'
 if nmatch gt 0 then begin
+  allobj[ind1].tmass_match = 1
   allobj[ind1].tmass_id = tmass[ind2]._2mass
   allobj[ind1].tmass_jmag = tmass[ind2].jmag
   allobj[ind1].tmass_jmagerr = tmass[ind2].e_jmag
@@ -95,6 +97,7 @@ wise = MRDFITS(wisedir+field+'_wise.fits.gz',1)
 SRCMATCH,allobj.ra,allobj.dec,wise.raj2000,wise.dej2000,0.5,ind1,ind2,/sph,count=nmatch
 print,strtrim(nmatch,2),' WISE matches'
 if nmatch gt 0 then begin
+  allobj[ind1].wise_match = 1
   allobj[ind1].wise_id = wise[ind2].allwise
   allobj[ind1].wise_w1mag = wise[ind2].w1mag
   allobj[ind1].wise_w1magerr = wise[ind2].e_w1mag
@@ -117,13 +120,17 @@ for i=0,n_elements(cols)-1 do begin
   ind = where(tags eq strupcase(cols[i]),nind)
   bd = where(finite(allobj.(ind)) eq 0,nbd)
   if nbd gt 0 then begin
-    print,'Fixing ',strtrim(nbd,2),' NANs in ',strupcase(cols[i])
+    ;print,'Fixing ',strtrim(nbd,2),' NANs in ',strupcase(cols[i])
     allobj[bd].(ind) = 99.99
   endif
 endfor
 
 ; Now save the file
+print,'Writing results to ',outfile
+if file_test(outfile) eq 1 then file_delete,outfile
 MWRFITS,allobj,outfile,/create
+print,'Compressing'
+if file_test(outfile+'.gz') eq 1 then file_delete,outfile+'.gz'
 spawn,['gzip',outfile],/noshell
 
 ;stop
