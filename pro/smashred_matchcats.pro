@@ -121,7 +121,7 @@ if nmatch gt 0 then begin
 endif
 
 ; Change any NANs to 99.99
-tags = tag_names(allobj)
+tags = tag_names(xtra)
 cols = ['gaia_gmag','gaia_gerr','tmass_jmag','tmass_jerr','tmass_hmag','tmass_herr','tmass_kmag','tmass_kerr',$
         'wise_w1mag','wise_w1err','wise_w2mag','wise_w2err','wise_w3mag','wise_w3err','wise_w4mag','wise_w4err']
 for i=0,n_elements(cols)-1 do begin
@@ -132,8 +132,6 @@ for i=0,n_elements(cols)-1 do begin
     allobj[bd].(ind) = 99.99
   endif
 endfor
-
-stop
 
 ; Now save the file
 print,'Writing results to ',outfile
