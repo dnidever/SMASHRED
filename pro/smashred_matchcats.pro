@@ -18,7 +18,7 @@ if file_test(dir+field+'_combined_allobj.fits.gz') eq 0 then begin
   return
 endif
 
-outfile = dir+field+'combined_allobj_xmatch.fits'
+outfile = dir+field+'_combined_allobj_xmatch.fits'
 if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
   print,'Output file exists and /redo NOT set'
   return
