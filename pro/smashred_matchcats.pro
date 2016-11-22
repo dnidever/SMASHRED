@@ -30,11 +30,15 @@ nallobj = n_elements(allobj)
 
 ; Copy to new schema
 nan = !values.f_nan
-xtra_schema = {id:'',gaia_match:0B,gaia_matchdist:99.99,gaia_source:-1L,gaia_ra:0.0d0,gaia_dec:0.0d0,gaia_raerr:0.0,gaia_decerr:0.0,gaia_gmag:99.99,gaia_gerr:99.99,$
-               tmass_match:0B,tmass_matchdist:99.99,tmass_id:'',tmass_ra:0.0d0,tmass_dec:0.0d0,tmass_raerr:0.0,tmass_decerr:0.0,tmass_jmag:99.99,tmass_jerr:99.99,$
-               tmass_hmag:99.99,tmass_herr:99.99,tmass_kmag:99.99,tmass_kerr:99.99,tmass_qflg:'',$
-               wise_match:0B,wise_matchdist:99.99,wise_id:'',wise_ra:0.0d0,wise_dec:0.0d0,wise_raerr:0.0,wise_decerr:0.0,wise_w1mag:99.99,wise_w1err:99.99,$
-               wise_w2mag:99.99,wise_w2err:99.99,wise_w3mag:99.99,wise_w3err:99.99,wise_w4mag:99.99,wise_w4err:99.99,wise_qph:''}
+xtra_schema = {id:'',gaia_match:0B,gaia_matchdist:9999.0,gaia_source:-1L,gaia_ra:9999.0d0,gaia_dec:9999.0d0,$
+               gaia_raerr:9999.0,gaia_decerr:9999.0,gaia_gmag:9999.0,gaia_gerr:9999.0,$
+               tmass_match:0B,tmass_matchdist:9999.0,tmass_id:'',tmass_ra:9999.0d0,tmass_dec:9999.0d0,$
+               tmass_raerr:9999.0,tmass_decerr:9999.0,tmass_jmag:9999.0,tmass_jerr:9999.0,$
+               tmass_hmag:9999.0,tmass_herr:9999.0,tmass_kmag:9999.0,tmass_kerr:9999.0,tmass_qflg:'',$
+               wise_match:0B,wise_matchdist:9999.0,wise_id:'',wise_ra:9999.0d0,wise_dec:9999.0d0,$
+               wise_raerr:9999.0,wise_decerr:9999.0,wise_w1mag:9999.0,wise_w1err:9999.0,$
+               wise_w2mag:9999.0,wise_w2err:9999.0,wise_w3mag:9999.0,wise_w3err:9999.0,$
+               wise_w4mag:9999.0,wise_w4err:9999.0,wise_qph:''}
 xtra = REPLICATE(xtra_schema,nallobj)
 xtra.id = allobj.id
 
@@ -120,7 +124,7 @@ if nmatch gt 0 then begin
   xtra[ind1].wise_matchdist = dist
 endif
 
-; Change any NANs to 99.99
+; Change any NANs to 9999.0
 tags = tag_names(xtra)
 cols = ['gaia_gmag','gaia_gerr','tmass_jmag','tmass_jerr','tmass_hmag','tmass_herr','tmass_kmag','tmass_kerr',$
         'wise_w1mag','wise_w1err','wise_w2mag','wise_w2err','wise_w3mag','wise_w3err','wise_w4mag','wise_w4err']
@@ -129,13 +133,12 @@ for i=0,n_elements(cols)-1 do begin
   bd = where(finite(xtra.(ind)) eq 0,nbd)
   if nbd gt 0 then begin
     ;print,'Fixing ',strtrim(nbd,2),' NANs in ',strupcase(cols[i])
-    xtra[bd].(ind) = 99.99
+    xtra[bd].(ind) = 9999.0
   endif
 endfor
 
 ; Only keep ones with some matches
 gd = where(xtra.gaia_match eq 1 or xtra.tmass_match eq 1 or xtra.wise_match eq 1,ngd)
-stop
 xtra = xtra[gd]
 
 ; Now save the file
