@@ -126,17 +126,22 @@ cols = ['gaia_gmag','gaia_gerr','tmass_jmag','tmass_jerr','tmass_hmag','tmass_he
         'wise_w1mag','wise_w1err','wise_w2mag','wise_w2err','wise_w3mag','wise_w3err','wise_w4mag','wise_w4err']
 for i=0,n_elements(cols)-1 do begin
   ind = where(tags eq strupcase(cols[i]),nind)
-  bd = where(finite(allobj.(ind)) eq 0,nbd)
+  bd = where(finite(xtra.(ind)) eq 0,nbd)
   if nbd gt 0 then begin
     ;print,'Fixing ',strtrim(nbd,2),' NANs in ',strupcase(cols[i])
-    allobj[bd].(ind) = 99.99
+    xtra[bd].(ind) = 99.99
   endif
 endfor
+
+; Only keep ones with some matches
+gd = where(xtra.gaia_match eq 1 or xtra.tmass_match eq 1 or xtra.wise_match eq 1,ngd)
+stop
+xtra = xtra[gd]
 
 ; Now save the file
 print,'Writing results to ',outfile
 if file_test(outfile) eq 1 then file_delete,outfile
-MWRFITS,allobj,outfile,/create
+MWRFITS,xtra,outfile,/create
 print,'Compressing'
 if file_test(outfile+'.gz') eq 1 then file_delete,outfile+'.gz'
 spawn,['gzip',outfile],/noshell
