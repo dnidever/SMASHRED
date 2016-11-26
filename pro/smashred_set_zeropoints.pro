@@ -44,36 +44,45 @@ dir09m = '/data/smash/cp/red/photred/0.9m/'
 gaiadir = '/data/smash/cp/red/photred/gaia/'
 
 ; Restore the field overlap structure
-if file_test(dir+'smash_fieldoverlaps.fits') eq 0 then stop,'SMASH_FIELDOVERLAPS.FITS NOT FOUND!!'
-fieldoverlapstr = MRDFITS(dir+'smash_fieldoverlaps.fits',1,/silent)
-fieldoverlapstr.field = strtrim(fieldoverlapstr.field,2)  ; remove any trailing spaces
-fieldoverlapstr.overlapfield = strtrim(fieldoverlapstr.overlapfield,2)  ; remove any trailing spaces
+if file_test(dir+'smash_fieldoverlaps.fits') eq 1 then begin
+  fieldoverlapstr = MRDFITS(dir+'smash_fieldoverlaps.fits',1,/silent)
+  fieldoverlapstr.field = strtrim(fieldoverlapstr.field,2)  ; remove any trailing spaces
+  fieldoverlapstr.overlapfield = strtrim(fieldoverlapstr.overlapfield,2)  ; remove any trailing spaces
+endif
 
 ; Figure out what calibration options are availble for this field/filter
 ;-----------------------------------------------------------------------
 calopt = intarr(4)
 ; OPT 1: Calibration with transformation equations
 calchipind = where(chstr.photometric eq 1 and chstr.badsoln eq 0,ncalchipind)
-if ncalchipind gt 0 then calop[0]=1
+if ncalchipind gt 0 then calopt[0]=1
 ; OPT 2: Calibration with calibrated overlapping fields
-foverlapind = where(strtrim(fieldoverlapstr.field,2) eq field,nfoverlapind)
-if nfoverlapind gt 0 then begin
-  ; See if we can calibrate this filter with the overlaps
-  overlapfilters = ['u','g','r','i','z']
-  overlapfiltind = where(overlapfilters eq filter)  ; index for this filter
-  ; Indices for overlapping fields
-  ofieldind = fieldoverlapstr[foverlapind].overlapindex[0:fieldoverlapstr[foverlapind].noverlap-1]
-  calibfilt = fieldoverlapstr[ofieldind].calib[overlapfiltind]  ; calibration flag for this filter
-  if total(calibfilt) gt 0 then calopt[1]=1  
+if n_elements(fieldoverlapstr) gt 0 then begin
+  foverlapind = where(strtrim(fieldoverlapstr.field,2) eq field,nfoverlapind)
+  if nfoverlapind gt 0 then begin
+    ; See if we can calibrate this filter with the overlaps
+    overlapfilters = ['u','g','r','i','z']
+    overlapfiltind = where(overlapfilters eq filter)  ; index for this filter
+    ; Some overlaps
+    if fieldoverlapstr[foverlapind].noverlap gt 0 then begin
+      ; Indices for overlapping fields
+      ofieldind = fieldoverlapstr[foverlapind].overlapindex[0:fieldoverlapstr[foverlapind].noverlap-1]
+      calibfilt = fieldoverlapstr[ofieldind].calib[overlapfiltind]  ; calibration flag for this filter
+      if total(calibfilt) gt 0 then calopt[1]=1
+    endif else calopt[1]=0  ; no overlap
+  endif
 endif
 ; OPT 3: Calibration with 0.9m data
 if file_test(dir09m+field+'_phot.fits') eq 1 then calopt[2]=1
 ; OPT 4: Calibration with Gaia color-color relations
-if file_test(gaiadir+field+'_gaia.fits') eq 1 and keyword_set(usegaia) then calopt[3]=1
+;         /usegaia must be set, and only r/i/z
+if file_test(gaiadir+field+'_gaia.fits.gz') eq 1 and keyword_set(usegaia) then calopt[3]=1
+;   total(filter eq ['r','i','z']) gt 0 then calopt[3]=1
 
 ; Use the first non-zero option
 ;  they are already in priority order
-if total(calopt) gt 0 then caltype=first_el(where(calopt eq 1))+1
+DECIDEOPT:
+if total(calopt) gt 0 then caltype=first_el(where(calopt eq 1))+1 else caltype=0
 
 
 ; Measure the photometric zero-point offset using the chosen option
@@ -112,7 +121,7 @@ CASE caltype of
     nfoverlap = ngdfoverlap
     ; Load the overlapping field data
     ;   there'll be duplicates, but I think that's okay
-    print,'  Loading overlapping fields ('+strtrim(nfoverlap,2)+'): ',strjoin(fieldoverlapstr[ofieldind].field,', ')
+    print,' Loading overlapping fields ('+strtrim(nfoverlap,2)+'): ',strjoin(fieldoverlapstr[ofieldind].field,', ')
     undefine,olapallobj
     for i=0,nfoverlap-1 do begin
       ;print,'    ',strtrim(i+1,2),' Overlapping field: ',fieldoverlapstr[ofieldind[i]].field
@@ -149,7 +158,7 @@ CASE caltype of
     zpmagofferr = sigma[0]
     ; Set the calibration type in CHSTR
     chstr.zpcalibflag = caltype
-    plotc,molapallobj[gdphot].g-molapallobj[gdphot].r,magdiff[gdphot],mallobj[gdphot].(magind),ps=3,xr=[-1,3.5]
+    ;plotc,molapallobj[gdphot].g-molapallobj[gdphot].r,magdiff[gdphot],mallobj[gdphot].(magind),ps=3,xr=[-1,3.5]
   end
   ; 3) Calibration with 0.9m data
   ;------------------------------
@@ -158,8 +167,14 @@ CASE caltype of
     ; Load the 0.9m photometry file
     str = MRDFITS(dir09m+field+'_phot.fits',1,/silent)
     ; Match them up
-    SRCMATCH,allobj.ra,allobj.dec,str.ra,str.dec,0.5,ind1,ind2,/sph,count=nmatch
+    SRCMATCH,allobj.ra,allobj.dec,str.ra,str.dec,1.0,ind1,ind2,/sph,count=nmatch
     if nmatch eq 0 then stop,'NO MATCHES FROM OVERLAPPING FIELDS. SOMETHING IS VERY WRONG!!!'
+    ; Remove astrometric offset and refit
+    raoff = median(allobj[ind1].ra-str[ind2].ra)
+    decoff = median(allobj[ind1].dec-str[ind2].dec)
+    sig = sqrt(mean( ((allobj[ind1].ra-str[ind2].ra-raoff)*3600.*cos(median(str.dec)/!radeg))^2 + (allobj[ind1].dec-str[ind2].dec-decoff)^2 ))
+    dcr = 0.5 > 2.5*sig < 1.0   ; use smaller matching radius
+    SRCMATCH,allobj.ra,allobj.dec,str.ra+raoff,str.dec+decoff,dcr,ind1,ind2,/sph,count=nmatch
     mallobj = allobj[ind1]   ; matched catalogs
     mstr = str[ind2]
     ; Get the indices for the correct magnitude and error columns
@@ -172,14 +187,44 @@ CASE caltype of
     magdiff = mstr.(omagind) - mallobj.(magind)
     errdiff = sqrt( mstr.(oerrind)^2 + mallobj.(errind)^2 )
     ; Get good sources
-    ;  the allobj_bright.fits catalogs already have these cuts
     gdphot1 = where(mallobj.(magind) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4 and $
-                    mallobj.(errind) lt 0.05,ngdphot1)
-    ; Remove outliers
+                    mallobj.(errind) lt 0.05 and finite(mstr.(omagind)) eq 1,ngdphot1)
+    if ngdphot1 eq 0 then begin
+      print,' Not enough good points to calibrate with 0.9m data.'
+      calopt[2] = 0
+      goto,DECIDEOPT        ; try next option
+    endif
+    ; Remove outliers and contrain color
+    ;  The best agreement b/w DECam and 0.9m calibration is
+    ;   u+g: 0.4<g-i<1.0 
+    ;   r:   0.3<g-i<1.6   but all colors look good
+    ;   i:   0.4<g-i<1.0   decent color term
+    ;   z:   all colors
+    case filter of
+    'u': colrange=[0.4,1.0]
+    'g': colrange=[0.4,1.0]
+    'r': colrange=[0.3,1.6]
+    'i': colrange=[0.4,1.0]
+    'z': colrange=[0.2,2.0]
+    else: colrange=[-100,100]
+    endcase
     medmagdiff = median(magdiff[gdphot1])
     sigmagdiff = mad(magdiff[gdphot1])
     gdphot = where(mallobj.(magind) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4 and $
-                   mallobj.(errind) lt 0.05 and abs(magdiff-medmagdiff) lt 3*(sigmagdiff>0.01),ngdphot)
+                   mallobj.(errind) lt 0.05 and finite(mstr.(omagind)) eq 1 and $
+                   mstr.g-mstr.i ge colrange[0] and mstr.g-mstr.i le colrange[1] and finite(mstr.g-mstr.i) eq 1 and $
+                   abs(magdiff-medmagdiff) lt 3*(sigmagdiff>0.01),ngdphot)
+    ; If none then loosen the constraints a big
+    if ngdphot eq 0 then $
+      gdphot = where(mallobj.(magind) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4 and $
+                     mallobj.(errind) lt 0.07 and finite(mstr.(omagind)) eq 1 and $
+                     mstr.g-mstr.i ge colrange[0]-0.1 and mstr.g-mstr.i le colrange[1]+0.1 and finite(mstr.g-mstr.i) eq 1 and $
+                     abs(magdiff-medmagdiff) lt 4*(sigmagdiff>0.01),ngdphot)
+    if ngdphot eq 0 then begin
+      print,' Not enough good points to calibrate with 0.9m data.'
+      calopt[2] = 0
+      goto,DECIDEOPT        ; try next option
+    endif
     ; Calculate the weighted offset with bootstrap errors
     coef = DLN_POLY_FIT(gdphot*0.0,magdiff[gdphot],0,measure_errors=errdiff[gdphot],sigma=sigma,/bootstrap)
     zpmagoff = -coef[0]
@@ -193,7 +238,7 @@ CASE caltype of
     print,' Setting photometric zeropoint using SMASH-GAIA color-color relations'
     ; Load the Gaia data
     if n_elements(gaia) eq 0 then begin
-      gaiafile = gaiadir+field+'_gaia.fits'
+      gaiafile = gaiadir+field+'_gaia.fits.gz'
       if file_test(gaiafile) eq 0 then stop,gaiafile,' NOT FOUND'
       print,'Loading GAIA file'
       gaia = MRDFITS(gaiafile,1,/silent)
