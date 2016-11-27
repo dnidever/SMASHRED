@@ -37,6 +37,7 @@ print,ifield
 
 ; NEED TO ADD:
 ; -alftiletype, zpcalib_magoffset, zpcalib_magofferr, zpcalibflag
+; leaving out alftiletype
 ; REMOVE:
 ; -gaiacal_magoffset, gaiacal_magofferr
 
@@ -73,21 +74,6 @@ newchips.vertex_dec1 = chips.vertices_dec[0]
 newchips.vertex_dec2 = chips.vertices_dec[1]
 newchips.vertex_dec3 = chips.vertices_dec[2]
 newchips.vertex_dec4 = chips.vertices_dec[3]
-; Setting ZPCALIB colums for regular calibration
-regcalind = where(chips.gaiacal_magoffset eq 0.0 and chips.photometric eq 1 and chips.badsoln eq 0,nregcalind)
-if nregcalind gt 0 then begin
-;  We didn't save these zpterm offset this time!
-;  newchips[regcalind].zpcalib_magoffset = 
-;  newchips[regcalind].zpcalib_magofferr = 
-  newchips[regcalind].zpcalibflag = 1
-endif
-; Setting ZPCALIB colums for GAIACAL
-gaiacalind = where(chips.gaiacal_magoffset ne 0.0,ngaiacalind)
-if ngaiacalind gt 0 then begin
-  newchips[gaiacalind].zpcalib_magoffset = chips[gaiacalind].gaiacal_magoffset
-  newchips[gaiacalind].zpcalib_magofferr = chips[gaiacalind].gaiacal_magofferr
-  newchips[gaiacalind].zpcalibflag = 4
-endif
 newchips.calib_band = chips.band
 newchips.calib_colband = chips.colband
 newchips.calib_colsign = chips.colsign
@@ -226,6 +212,7 @@ MODFITS,outdir+ifield+'_chip.fits',0,head,exten_no=1
 ;TTYPE58 = 'CALIB_COLTERM'      /                                                
 ;TTYPE59 = 'CALIB_COLTERMSIG'   /  
 
+; ADD COMMENTS KEYWORDS!!!
 
 ; --- exposures ---
 ; expnum, nchips, filter, exptime, utdate, uttime, airmass,
@@ -310,6 +297,8 @@ MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 ;TTYPE24 = 'PHOTOMETRIC'        /                                                
 ;TTYPE25 = 'BADSOLN '           /   
 
+; ADD COMMENTS KEYWORDS!!!
+
 ; --- allsrc ---
 ; cmbindx, chipindx, fid, id, idref, x, y, xref, yref, mag, err,
 ; cmag, cerr, chip, sharp, flag, prob, ra, dec, raref, decref
@@ -324,8 +313,8 @@ MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 allsrc = mrdfits(dir+ifield+'_combined_allsrc.fits.gz',1)
 nallsrc = n_elements(allsrc)
 schema_allsrc = {id:'',origid:0L,refid:0L,fieldid:0,expnum:'',chip:0,mjd:0.0d0,filter:'',x:0.0,y:0.0,xref:0.0,yref:0.0,$
-                 mag:0.0,err:0.0,cmag:0.0,cerr:0.0,chi:0.0,sharp:0.0,$
-                 flag:0,prob:0.0,ra:0.0d0,dec:0.0d0,raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,$
+                 forced:0.0,mag:0.0,err:0.0,cmag:0.0,cerr:0.0,chi:0.0,sharp:0.0,$
+                 flag:0,prob:0.0,ra:0.0d0,dec:0.0d0,raerr:0.0,decerr:0.0,raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,$
                  decref:0.0d0}
 newsrc = replicate(schema_allsrc,nallsrc)
 STRUCT_ASSIGN,allsrc,newsrc
@@ -356,20 +345,23 @@ sxaddpar,head,'TUNIT9','Pixels'
 sxaddpar,head,'TUNIT10','Pixels'
 sxaddpar,head,'TUNIT11','Pixels'
 sxaddpar,head,'TUNIT12','Pixels'
-sxaddpar,head,'TUNIT13','Magnitude'
+sxaddpar,head,'TUNIT13','None'
 sxaddpar,head,'TUNIT14','Magnitude'
 sxaddpar,head,'TUNIT15','Magnitude'
 sxaddpar,head,'TUNIT16','Magnitude'
-sxaddpar,head,'TUNIT17','None'
+sxaddpar,head,'TUNIT17','Magnitude'
 sxaddpar,head,'TUNIT18','None'
 sxaddpar,head,'TUNIT19','None'
 sxaddpar,head,'TUNIT20','None'
-sxaddpar,head,'TUNIT21','Degrees'
+sxaddpar,head,'TUNIT21','None'
 sxaddpar,head,'TUNIT22','Degrees'
 sxaddpar,head,'TUNIT23','Degrees'
 sxaddpar,head,'TUNIT24','Degrees'
 sxaddpar,head,'TUNIT25','Degrees'
 sxaddpar,head,'TUNIT26','Degrees'
+sxaddpar,head,'TUNIT27','Degrees'
+sxaddpar,head,'TUNIT28','Degrees'
+sxaddpar,head,'TUNIT29','Degrees'
 MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 
 ;TTYPE1  = 'ID      '           /                                                
@@ -399,6 +391,8 @@ MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 ;TTYPE25 = 'RAREF   '           /                                                
 ;TTYPE26 = 'DECREF  '           /       
 
+; ADD COMMENTS KEYWORDS!!!
+
 ; --- allobj ---
 ; id, ra, dec, rascatter, decscatter, ndet, depthflag, srcindx,
 ; srcfindx, u, uerr, uscatter, g, gerr, gscatter, r, rerr,
@@ -413,7 +407,7 @@ MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 
 allobj = mrdfits(dir+ifield+'_combined_allobj.fits.gz',1)
 nallobj = n_elements(allobj)
-schema_allobj = {id:'',fieldid:0,ra:0.0d0,dec:0.0d0,rascatter:0.0,decscatter:0.0,$
+schema_allobj = {id:'',fieldid:0,ra:0.0d0,dec:0.0d0,raerr:0.0,decerr:0.0,$
                 ndet:0L,depthflag:0B,umag:0.0,uerr:0.0,uscatter:0.0,ndetu:0,gmag:0.0,$
                 gerr:0.0,gscatter:0.0,ndetg:0,rmag:0.0,rerr:0.0,rscatter:0.0,ndetr:0L,$
                 imag:0.0,ierr:0.0,iscatter:0.0,ndeti:0,zmag:0.0,zerr:0.0,zscatter:0.0,$
@@ -537,6 +531,8 @@ MODFITS,outdir+ifield+'_object.fits',0,head,exten_no=1
 ;TTYPE36 = 'PROB    '           /                                                
 ;TTYPE37 = 'EBV     '           /               
 
+; ADD COMMENTS KEYWORDS!!!!
+
 ; --- xmatch ---
 ; ADD XMATCH!!!!
 xmatch = mrdfits(dir+ifield+'_combined_allobj_xmatch.fits.gz',1)
@@ -580,6 +576,7 @@ sxaddhist,'',head,/comment
 ;sxaddpar,head,'TUNIT22','None'
 ;MODFITS,outdir+ifield+'_xmatch.fits',0,head,exten_no=1
 
+stop
 
 ; --- fields ---
 ;   which bands are calibrated
