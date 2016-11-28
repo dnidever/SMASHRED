@@ -410,20 +410,20 @@ sxaddpar,head,'TUCD6','time.start'
 sxaddpar,head,'TUCD7','time.start'
 sxaddpar,head,'TUCD8',''
 sxaddpar,head,'TUCD9','obs.airMass'
-sxaddpar,head,'TUCD10',''
+sxaddpar,head,'TUCD10','meta.code'
 sxaddpar,head,'TUCD11','pos.eq.ra;meta.main'
 sxaddpar,head,'TUCD12','pos.eq.dec;meta.main'
-sxaddpar,head,'TUCD13',''
-sxaddpar,head,'TUCD14',''
+sxaddpar,head,'TUCD13','stat.stdev'
+sxaddpar,head,'TUCD14','instr.det.psf'
 sxaddpar,head,'TUCD15',''
-sxaddpar,head,'TUCD16',''
+sxaddpar,head,'TUCD16','stat.stdev'
 sxaddpar,head,'TUCD17','meta.number'
 sxaddpar,head,'TUCD18',''
-sxaddpar,head,'TUCD19',''
+sxaddpar,head,'TUCD19','stat.fit.chi2'
 sxaddpar,head,'TUCD20','meta.number'
 sxaddpar,head,'TUCD21',''
 sxaddpar,head,'TUCD22',''
-sxaddpar,head,'TUCD23',''
+sxaddpar,head,'TUCD23','phys.absorption'
 sxaddpar,head,'TUCD24','meta.code'
 sxaddpar,head,'TUCD25','meta.code'
 
@@ -431,31 +431,31 @@ sxaddpar,head,'TUCD25','meta.code'
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column descriptions ***',head,/comment
 sxaddhist,'',head,/comment
-sxaddpar,head,'TCOMM1',''
-sxaddpar,head,'TCOMM2',''
-sxaddpar,head,'TCOMM3',''
-sxaddpar,head,'TCOMM4',''
-sxaddpar,head,'TCOMM5',''
-sxaddpar,head,'TCOMM6',''
-sxaddpar,head,'TCOMM7',''
-sxaddpar,head,'TCOMM8',''
-sxaddpar,head,'TCOMM9',''
-sxaddpar,head,'TCOMM10',''
-sxaddpar,head,'TCOMM11',''
-sxaddpar,head,'TCOMM12',''
-sxaddpar,head,'TCOMM13',''
-sxaddpar,head,'TCOMM14',''
-sxaddpar,head,'TCOMM15',''
-sxaddpar,head,'TCOMM16',''
-sxaddpar,head,'TCOMM17',''
-sxaddpar,head,'TCOMM18',''
-sxaddpar,head,'TCOMM19',''
-sxaddpar,head,'TCOMM20',''
-sxaddpar,head,'TCOMM21',''
-sxaddpar,head,'TCOMM22',''
-sxaddpar,head,'TCOMM23',''
-sxaddpar,head,'TCOMM24',''
-sxaddpar,head,'TCOMM25',''
+sxaddpar,head,'TCOMM1','Eight-digit exposure number'
+sxaddpar,head,'TCOMM2','Number of chips with good data for this exposure, normally 60 or 61'
+sxaddpar,head,'TCOMM3','SMASH Field ID'
+sxaddpar,head,'TCOMM4','Filter, u, g, r, i, or z'
+sxaddpar,head,'TCOMM5','Exposure time in seconds'
+sxaddpar,head,'TCOMM6','Observation timestamp: YYYY-MM-DDTHH:MM:SS.SSSSSS'
+sxaddpar,head,'TCOMM7','Observation Modified Julian Date'
+sxaddpar,head,'TCOMM8','Night Modified Julian Date (integer)'
+sxaddpar,head,'TCOMM9','Airmass'
+sxaddpar,head,'TCOMM10','WCS type, always TPV'
+sxaddpar,head,'TCOMM11','Right ascension at center of frame (in degrees)'
+sxaddpar,head,'TCOMM12','Declination at center of frame (in degrees)'
+sxaddpar,head,'TCOMM13','RMS in WCS fit with respect to reference catalog (normally USNO-B1) in arcsec, median across chips'
+sxaddpar,head,'TCOMM14','FWHM of PSF (i.e. seeing) in pixels (multiply by 0.26 to get arcsec), median across chips'
+sxaddpar,head,'TCOMM15','Median sky background level across chips'
+sxaddpar,head,'TCOMM16','Median sigma in sky background across chips'
+sxaddpar,head,'TCOMM17','Total number of DAOPHOT/ALLSTAR sources in frame'
+sxaddpar,head,'TCOMM18','Median ALLSTAR "depth" (peak of the source histogram) across all chips, instrumental mags'
+sxaddpar,head,'TCOMM19','Median DAOPHOT PSF "chi" value across all chips'
+sxaddpar,head,'TCOMM20','Total number of DAOPHOT/ALLFRAMEs sources in frame. -1 if ALLFRAME was not run on this exposure'
+sxaddpar,head,'TCOMM21','Median ALLFRAME depth (peak of the source histogram) across all chips, instrumental mags'
+sxaddpar,head,'TCOMM22','Aperture correction'
+sxaddpar,head,'TCOMM23','Median SFD E(B-V) across frame'
+sxaddpar,head,'TCOMM24','Is this from a photometric night'
+sxaddpar,head,'TCOMM25','Did we have a good transformation equation/solution for these data'
 MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 
 ;COMMENT  *** Column names ***                                                   
@@ -551,6 +551,75 @@ sxaddpar,head,'TUNIT26','Degrees'
 sxaddpar,head,'TUNIT27','Degrees'
 sxaddpar,head,'TUNIT28','Degrees'
 sxaddpar,head,'TUNIT29','Degrees'
+
+; Add UCD
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column UCD ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TUCD1',''
+sxaddpar,head,'TUCD2',''
+sxaddpar,head,'TUCD3',''
+sxaddpar,head,'TUCD4',''
+sxaddpar,head,'TUCD5',''
+sxaddpar,head,'TUCD6',''
+sxaddpar,head,'TUCD7',''
+sxaddpar,head,'TUCD8',''
+sxaddpar,head,'TUCD9',''
+sxaddpar,head,'TUCD10',''
+sxaddpar,head,'TUCD11',''
+sxaddpar,head,'TUCD12',''
+sxaddpar,head,'TUCD13',''
+sxaddpar,head,'TUCD14',''
+sxaddpar,head,'TUCD15',''
+sxaddpar,head,'TUCD16',''
+sxaddpar,head,'TUCD17',''
+sxaddpar,head,'TUCD18',''
+sxaddpar,head,'TUCD19',''
+sxaddpar,head,'TUCD20',''
+sxaddpar,head,'TUCD21',''
+sxaddpar,head,'TUCD22',''
+sxaddpar,head,'TUCD23',''
+sxaddpar,head,'TUCD24',''
+sxaddpar,head,'TUCD25',''
+sxaddpar,head,'TUCD26',''
+sxaddpar,head,'TUCD27',''
+sxaddpar,head,'TUCD28',''
+sxaddpar,head,'TUCD29',''
+
+; Add descriptions
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column descriptions ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TCOMM1','Unique ID for this source, the field name plus a running number'
+sxaddpar,head,'TCOMM2','ID used for this detection in the original als/alf chip file'
+sxaddpar,head,'TCOMM3','ID used for this detection in the reference frame file'
+sxaddpar,head,'TCOMM4','SMASH Field ID'
+sxaddpar,head,'TCOMM5','Eight-digit exposure number'
+sxaddpar,head,'TCOMM6','Chip number (1-62)'
+sxaddpar,head,'TCOMM7','Exposure Modified Julian Date'
+sxaddpar,head,'TCOMM8','Filter, u, g, r, i, or z'
+sxaddpar,head,'TCOMM9','X-coordinate for this source in the original chip (1-indexed)'
+sxaddpar,head,'TCOMM10','Y-coordinate for this source in the original chip (1-indexed)'
+sxaddpar,head,'TCOMM11','X-coordinate for this source in the reference chip (1-indexed)'
+sxaddpar,head,'TCOMM12','Y-coordinate for this source in the reference chip (1-indexed)'
+sxaddpar,head,'TCOMM13','Boolean flag indicating if this is forced photometry (ALLFRAME) or single-frame (ALLSTAR)'
+sxaddpar,head,'TCOMM14','Instrumental magnitude from ALLFRAME or ALLSTAR (not both)'
+sxaddpar,head,'TCOMM15','Uncertainty of MAG'
+sxaddpar,head,'TCOMM16','Calibrated magnitude version of MAG'
+sxaddpar,head,'TCOMM17','Uncertainty of CMAG including errors in calibration'
+sxaddpar,head,'TCOMM18','DAOPHOT chi value, i.e. how well the PSF fit this source'
+sxaddpar,head,'TCOMM19','DAOPHOT sharp value, measurement of peakiness'
+sxaddpar,head,'TCOMM20','Source Extractor FLAG value from coadd image (only if ALLFRAME was run otherwise -1)'
+sxaddpar,head,'TCOMM21','Source Extractor stellaricity probability value (0~galaxy, 1~star, -1 if ALLFRAME not run)'
+sxaddpar,head,'TCOMM22','Right Ascension (J2000.0) of source, in degrees'
+sxaddpar,head,'TCOMM23','Declination (J2000.0) of source, in degrees'
+sxaddpar,head,'TCOMM24',''
+sxaddpar,head,'TCOMM25',''
+sxaddpar,head,'TCOMM26',''
+sxaddpar,head,'TCOMM27',''
+sxaddpar,head,'TCOMM28',''
+sxaddpar,head,'TCOMM29',''
+
 MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 
 ;TTYPE1  = 'ID      '           /                                                
@@ -565,20 +634,23 @@ MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 ;TTYPE10 = 'Y       '           /                                                
 ;TTYPE11 = 'XREF    '           /                                                
 ;TTYPE12 = 'YREF    '           /                                                
-;TTYPE13 = 'MAG     '           /                                                
-;TTYPE14 = 'ERR     '           /                                                
-;TTYPE15 = 'CMAG    '           /                                                
-;TTYPE16 = 'CERR    '           /                                                
-;TTYPE17 = 'CHI     '           /                                                
-;TTYPE18 = 'SHARP   '           /                                                
-;TTYPE19 = 'FLAG    '           /                                                
-;TTYPE20 = 'PROB    '           /                                                
-;TTYPE21 = 'RA      '           /                                                
-;TTYPE22 = 'DEC     '           /                                                
-;TTYPE23 = 'RAINDIV  '          /                                                
-;TTYPE24 = 'DECINDIV '          /       
-;TTYPE25 = 'RAREF   '           /                                                
-;TTYPE26 = 'DECREF  '           /       
+;TTYPE13 = 'FORCED  '           /                                                
+;TTYPE14 = 'MAG     '           /                                                
+;TTYPE15 = 'ERR     '           /                                                
+;TTYPE16 = 'CMAG    '           /                                                
+;TTYPE17 = 'CERR    '           /                                                
+;TTYPE18 = 'CHI     '           /                                                
+;TTYPE19 = 'SHARP   '           /                                                
+;TTYPE20 = 'FLAG    '           /                                                
+;TTYPE21 = 'PROB    '           /                                                
+;TTYPE22 = 'RA      '           /                                                
+;TTYPE23 = 'DEC     '           /                                                
+;TTYPE24 = 'RAERR  '            /                                                
+;TTYPE25 = 'DECERR '            /       
+;TTYPE26 = 'RAINDIV  '          /                                                
+;TTYPE27 = 'DECINDIV '          /       
+;TTYPE28 = 'RAREF   '           /                                                
+;TTYPE29 = 'DECREF  '           /       
 
 ; ADD COMMENTS KEYWORDS!!!
 
