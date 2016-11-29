@@ -151,7 +151,7 @@ sxaddpar,head,'TUNIT57','Magnitude'
 sxaddpar,head,'TUNIT58','None'
 sxaddpar,head,'TUNIT59','None'
 
-; Column UCD
+; Add UCD
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column UCD ***',head,/comment
 sxaddhist,'',head,/comment
@@ -166,7 +166,7 @@ sxaddpar,head,'TUCD8','instr.det.gain'
 sxaddpar,head,'TUCD9','instr.det.noise'
 sxaddpar,head,'TUCD10','meta.number'
 sxaddpar,head,'TUCD11','meta.number'
-sxaddpar,head,'TUCD12','meta.code'
+sxaddpar,head,'TUCD12','pos.wcs.ctype'
 sxaddpar,head,'TUCD13','instr.pixel'
 sxaddpar,head,'TUCD14','pos.eq.ra;meta.main'
 sxaddpar,head,'TUCD15','pos.eq.dec;meta.main'
@@ -174,18 +174,18 @@ sxaddpar,head,'TUCD16','stat.stdev'
 sxaddpar,head,'TUCD17','stat.stdev'
 sxaddpar,head,'TUCD18','meta.number'
 sxaddpar,head,'TUCD19','instr.det.psf'
-sxaddpar,head,'TUCD20',''
+sxaddpar,head,'TUCD20','instr.skyLevel'
 sxaddpar,head,'TUCD21','stat.error'
 sxaddpar,head,'TUCD22','meta.number'
-sxaddpar,head,'TUCD23',''
+sxaddpar,head,'TUCD23','phot.mag'
 sxaddpar,head,'TUCD24','meta.number'
 sxaddpar,head,'TUCD25','meta.code'
 sxaddpar,head,'TUCD26','meta.number'
 sxaddpar,head,'TUCD27','meta.code'
 sxaddpar,head,'TUCD28','stat.fit.chi2'
 sxaddpar,head,'TUCD29','meta.number'
-sxaddpar,head,'TUCD30',''
-sxaddpar,head,'TUCD31',''
+sxaddpar,head,'TUCD30','phot.mag'
+sxaddpar,head,'TUCD31','phot.mag.aperCorr'
 sxaddpar,head,'TUCD32','phys.absorption'
 sxaddpar,head,'TUCD33','meta.id'
 sxaddpar,head,'TUCD34','pos.eq.ra'
@@ -200,7 +200,7 @@ sxaddpar,head,'TUCD42','meta.number'
 sxaddpar,head,'TUCD43','meta.code'
 sxaddpar,head,'TUCD44','phot.mag'
 sxaddpar,head,'TUCD45','stat.error;phot.mag'
-sxaddpar,head,'TUCD46','arith.zp;phot.mag'
+sxaddpar,head,'TUCD46','phot.calib;phot.mag'
 sxaddpar,head,'TUCD47','stat.error;phot.mag'
 sxaddpar,head,'TUCD48','meta.code;phot.mag'
 sxaddpar,head,'TUCD49','meta.code'
@@ -208,14 +208,14 @@ sxaddpar,head,'TUCD50','meta.code'
 sxaddpar,head,'TUCD51','instr.filter'
 sxaddpar,head,'TUCD52','instr.filter'
 sxaddpar,head,'TUCD53','meta.code'
-sxaddpar,head,'TUCD54','arith.zp;phot.mag'
-sxaddpar,head,'TUCD55','stat.error;phot.mag'
-sxaddpar,head,'TUCD56','phys.absorption'
+sxaddpar,head,'TUCD54','phot.calib'
+sxaddpar,head,'TUCD55','stat.error'
+sxaddpar,head,'TUCD56','obs.atmos.extinction'
 sxaddpar,head,'TUCD57','stat.error'
-sxaddpar,head,'TUCD58',''
+sxaddpar,head,'TUCD58','stat.param'
 sxaddpar,head,'TUCD59','stat.error'
 
-; Column descriptions
+; Add descriptions
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column descriptions ***',head,/comment
 sxaddhist,'',head,/comment
@@ -234,9 +234,9 @@ sxaddpar,head,'TCOMM12','WCS type, always TPV'
 sxaddpar,head,'TCOMM13','Arcsec per pixel'
 sxaddpar,head,'TCOMM14','Right ascension at center of chip (in degrees)'
 sxaddpar,head,'TCOMM15','Declination at center of chip (in degrees)'
-sxaddpar,head,'TCOMM16','RMS in WCS fit with respect to reference catalog (normally USNO-B1) in arcsec'
-sxaddpar,head,'TCOMM17','The RMS of the residuals using the GAIA reference stars.'
-sxaddpar,head,'TCOMM18','GAIA matches used for the astrometric fitting.'
+sxaddpar,head,'TCOMM16','RMS in WCS fit with respect to reference catalog in arcsec'
+sxaddpar,head,'TCOMM17','The RMS of the residuals using the GAIA reference stars'
+sxaddpar,head,'TCOMM18','GAIA matches used for the astrometric fitting'
 sxaddpar,head,'TCOMM19','FWHM of PSF (i.e. seeing) in pixels (multiply by 0.26 to get arcsec)'
 sxaddpar,head,'TCOMM20','Median sky background level'
 sxaddpar,head,'TCOMM21','Sigma in sky background'
@@ -247,11 +247,11 @@ sxaddpar,head,'TCOMM25','Analytical function type for DAOPHOT PSF'
 sxaddpar,head,'TCOMM26','PSF box size in pixels'
 sxaddpar,head,'TCOMM27','Spatial PSF variations, -1 to 2'
 sxaddpar,head,'TCOMM28','DAOPHOT PSF "chi" "goodness-of-fit" value'
-sxaddpar,head,'TCOMM29','Total number of DAOPHOT/ALLFRAMEs sources. -1 if ALLFRAME was not run on this exposure'
-sxaddpar,head,'TCOMM30','Median ALLFRAME depth (peak of the source histogram), instrumental mags, NaN if ALLFRAME not run'
+sxaddpar,head,'TCOMM29','Total number of DAOPHOT/ALLFRAME sources'
+sxaddpar,head,'TCOMM30','Median ALLFRAME depth, instrumental mags'
 sxaddpar,head,'TCOMM31','Aperture correction'
 sxaddpar,head,'TCOMM32','Median SFD E(B-V) for this chip'
-sxaddpar,head,'TCOMM33','Exposure number for the reference frame.'
+sxaddpar,head,'TCOMM33','Exposure number for the reference frame'
 sxaddpar,head,'TCOMM34','First RA value for the four corners of the chip'
 sxaddpar,head,'TCOMM35','Second RA value for the four corners of the chip'
 sxaddpar,head,'TCOMM36','Third RA value for the four corners of the chip'
@@ -261,17 +261,17 @@ sxaddpar,head,'TCOMM39','Second DEC value for the four corners of the chip'
 sxaddpar,head,'TCOMM40','Third DEC value for the four corners of the chip'
 sxaddpar,head,'TCOMM41','Fourth DEC value for the four corners of the chip'
 sxaddpar,head,'TCOMM42','Number of sources in SOURCE table for this chip'
-sxaddpar,head,'TCOMM43','Is this chip calibrated or not.'
+sxaddpar,head,'TCOMM43','Is this chip calibrated or not'
 sxaddpar,head,'TCOMM44','The magnitude offset applied from the ubercal algorithm'
-sxaddpar,head,'TCOMM45','Ubercal flag: 0-none, 1-good, 2-used med exp+chip offset, 3-used med exp+std chip offset.'
-sxaddpar,head,'TCOMM46','The zero-point offset used for this chip.'
-sxaddpar,head,'TCOMM47','The uncertainty in the zero-point offset.'
-sxaddpar,head,'TCOMM48','ZP calib type: 1-phot DECam data, 2-overlap, 3-0.9m data, 4-SMASH-GAIA color-color relations.'
+sxaddpar,head,'TCOMM45','Ubercal flag: 0-none, 1-good, 2-med exp+chip, 3-med exp+std chip'
+sxaddpar,head,'TCOMM46','The zero-point offset used for this chip'
+sxaddpar,head,'TCOMM47','The uncertainty in the zero-point offset'
+sxaddpar,head,'TCOMM48','ZP calib type: 1-phot DECam, 2-overlap, 3-0.9m, 4-GAIA relations'
 sxaddpar,head,'TCOMM49','Is this from a photometric night'
 sxaddpar,head,'TCOMM50','Did we have a good transformation equation/solution for these data'
 sxaddpar,head,'TCOMM51','Transformation equation band name'
 sxaddpar,head,'TCOMM52','Transformation equation band name to construct the color'
-sxaddpar,head,'TCOMM53','Trans. eqn. sign: 1 - color=band-colband; -1 - color=colband-band.'
+sxaddpar,head,'TCOMM53','Trans. eqn. sign: 1 - color=band-colband; -1 - color=colband-band'
 sxaddpar,head,'TCOMM54','Transformation equation zeropoint term'
 sxaddpar,head,'TCOMM55','Transformation equation uncertainty in zeropoint term'
 sxaddpar,head,'TCOMM56','Transformation equation airmass/extinction term'
@@ -341,7 +341,7 @@ MODFITS,outdir+ifield+'_chip.fits',0,head,exten_no=1
 ;TTYPE58 = 'CALIB_COLTERM'      /                                                
 ;TTYPE59 = 'CALIB_COLTERMSIG'   /  
 
-; ADD COMMENTS KEYWORDS!!!
+;stop
 
 ; --- exposures ---
 ; expnum, nchips, filter, exptime, utdate, uttime, airmass,
@@ -355,7 +355,7 @@ exp = mrdfits(dir+ifield+'_combined_exposures.fits.gz',1)
 nexp = n_elements(exp)
 schema_exp = {expnum:'',nchips:0L,fieldid:0,filter:'',exptime:0.0,$
               dateobs:'',mjd:0.0d0,night_mjd:0L,airmass:0.0,wcstype:'',ra:0.0d0,$
-              dec:0.0d0,wcsrms:0.0,fwhm:0.0,skymode:0.0,skysig:0.0,$
+              dec:0.0d0,wcsrms:0.0,gaiawcsrms:0.0,fwhm:0.0,skymode:0.0,skysig:0.0,$
               dao_nsources:0L,dao_depth:0.0,dao_psfchi:0.0,alf_nsources:0L,$
               alf_depth:0.0,apcor:0.0,ebv:0.0,photometric:0B,badsoln:0B}
 newexp = replicate(schema_exp,nexp)
@@ -365,6 +365,10 @@ newexp.dateobs = exp.utdate+'T'+exp.uttime
 for j=0,nexp-1 do newexp[j].mjd=date2jd(newexp[j].dateobs,/mjd)
 MATCH,newexp.expnum,chips.expnum,ind1,ind2,/sort
 newexp[ind1].night_mjd = chips[ind2].mjd
+for j=0,nexp-1 do begin
+  MATCH,newexp[j].expnum,chips.expnum,ind1,ind2,/sort
+  newexp[j].gaiawcsrms = median(chips[ind2].gaiarms)
+endfor
 MWRFITS,newexp,outdir+ifield+'_exposure.fits',/create
 ; Add the units
 head = headfits(outdir+ifield+'_exposure.fits',exten=1)
@@ -384,18 +388,19 @@ sxaddpar,head,'TUNIT10','None'
 sxaddpar,head,'TUNIT11','Degrees'
 sxaddpar,head,'TUNIT12','Degrees'
 sxaddpar,head,'TUNIT13','Arcseconds'
-sxaddpar,head,'TUNIT14','Pixels'
-sxaddpar,head,'TUNIT15','Counts'
+sxaddpar,head,'TUNIT14','Arcseconds'
+sxaddpar,head,'TUNIT15','Pixels'
 sxaddpar,head,'TUNIT16','Counts'
-sxaddpar,head,'TUNIT17','None'
-sxaddpar,head,'TUNIT18','Magnitude'
-sxaddpar,head,'TUNIT19','None'
+sxaddpar,head,'TUNIT17','Counts'
+sxaddpar,head,'TUNIT18','None'
+sxaddpar,head,'TUNIT19','Magnitude'
 sxaddpar,head,'TUNIT20','None'
-sxaddpar,head,'TUNIT21','Magnitude'
+sxaddpar,head,'TUNIT21','None'
 sxaddpar,head,'TUNIT22','Magnitude'
 sxaddpar,head,'TUNIT23','Magnitude'
-sxaddpar,head,'TUNIT24','None'
+sxaddpar,head,'TUNIT24','Magnitude'
 sxaddpar,head,'TUNIT25','None'
+sxaddpar,head,'TUNIT26','None'
 
 ; Add UCD
 sxaddhist,'',head,/comment
@@ -405,29 +410,30 @@ sxaddpar,head,'TUCD1','meta.id;meta.main'
 sxaddpar,head,'TUCD2','meta.number'
 sxaddpar,head,'TUCD3','meta.id'
 sxaddpar,head,'TUCD4','instr.filter'
-sxaddpar,head,'TUCD5',''
-sxaddpar,head,'TUCD6','time.start'
-sxaddpar,head,'TUCD7','time.start'
-sxaddpar,head,'TUCD8',''
+sxaddpar,head,'TUCD5','time.duration'
+sxaddpar,head,'TUCD6','time.epoch'
+sxaddpar,head,'TUCD7','time.epoch'
+sxaddpar,head,'TUCD8','time.epoch'
 sxaddpar,head,'TUCD9','obs.airMass'
-sxaddpar,head,'TUCD10','meta.code'
+sxaddpar,head,'TUCD10','pos.wcs.ctype'
 sxaddpar,head,'TUCD11','pos.eq.ra;meta.main'
 sxaddpar,head,'TUCD12','pos.eq.dec;meta.main'
 sxaddpar,head,'TUCD13','stat.stdev'
-sxaddpar,head,'TUCD14','instr.det.psf'
-sxaddpar,head,'TUCD15',''
-sxaddpar,head,'TUCD16','stat.stdev'
-sxaddpar,head,'TUCD17','meta.number'
-sxaddpar,head,'TUCD18',''
-sxaddpar,head,'TUCD19','stat.fit.chi2'
-sxaddpar,head,'TUCD20','meta.number'
-sxaddpar,head,'TUCD21',''
-sxaddpar,head,'TUCD22',''
-sxaddpar,head,'TUCD23','phys.absorption'
-sxaddpar,head,'TUCD24','meta.code'
+sxaddpar,head,'TUCD14','stat.stdev'
+sxaddpar,head,'TUCD15','instr.det.psf'
+sxaddpar,head,'TUCD16','instr.skyLevel'
+sxaddpar,head,'TUCD17','stat.stdev'
+sxaddpar,head,'TUCD18','meta.number'
+sxaddpar,head,'TUCD19','phot.mag'
+sxaddpar,head,'TUCD20','stat.fit.chi2'
+sxaddpar,head,'TUCD21','meta.number'
+sxaddpar,head,'TUCD22','phot.mag'
+sxaddpar,head,'TUCD23','phot.mag.aperCorr'
+sxaddpar,head,'TUCD24','phys.absorption'
 sxaddpar,head,'TUCD25','meta.code'
+sxaddpar,head,'TUCD26','meta.code'
 
-; Add comments
+; Add descriptions
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column descriptions ***',head,/comment
 sxaddhist,'',head,/comment
@@ -443,19 +449,21 @@ sxaddpar,head,'TCOMM9','Airmass'
 sxaddpar,head,'TCOMM10','WCS type, always TPV'
 sxaddpar,head,'TCOMM11','Right ascension at center of frame (in degrees)'
 sxaddpar,head,'TCOMM12','Declination at center of frame (in degrees)'
-sxaddpar,head,'TCOMM13','RMS in WCS fit with respect to reference catalog (normally USNO-B1) in arcsec, median across chips'
-sxaddpar,head,'TCOMM14','FWHM of PSF (i.e. seeing) in pixels (multiply by 0.26 to get arcsec), median across chips'
-sxaddpar,head,'TCOMM15','Median sky background level across chips'
-sxaddpar,head,'TCOMM16','Median sigma in sky background across chips'
-sxaddpar,head,'TCOMM17','Total number of DAOPHOT/ALLSTAR sources in frame'
-sxaddpar,head,'TCOMM18','Median ALLSTAR "depth" (peak of the source histogram) across all chips, instrumental mags'
-sxaddpar,head,'TCOMM19','Median DAOPHOT PSF "chi" value across all chips'
-sxaddpar,head,'TCOMM20','Total number of DAOPHOT/ALLFRAMEs sources in frame. -1 if ALLFRAME was not run on this exposure'
-sxaddpar,head,'TCOMM21','Median ALLFRAME depth (peak of the source histogram) across all chips, instrumental mags'
-sxaddpar,head,'TCOMM22','Aperture correction'
-sxaddpar,head,'TCOMM23','Median SFD E(B-V) across frame'
-sxaddpar,head,'TCOMM24','Is this from a photometric night'
-sxaddpar,head,'TCOMM25','Did we have a good transformation equation/solution for these data'
+sxaddpar,head,'TCOMM13','RMS in WCS fit w.r.t. ref catalog in arcsec, median of chips'
+sxaddpar,head,'TCOMM14','RMS in WCS fit w.r.t. GAIA catalog in arcsec, median of chips'
+sxaddpar,head,'TCOMM15','FWHM of PSF (i.e. seeing) in pixels, median across chips'
+sxaddpar,head,'TCOMM16','Median sky background level across chips'
+sxaddpar,head,'TCOMM17','Median sigma in sky background across chips'
+sxaddpar,head,'TCOMM18','Total number of DAOPHOT/ALLSTAR sources in frame'
+sxaddpar,head,'TCOMM19','Median ALLSTAR "depth" across all chips, instrumental mags'
+sxaddpar,head,'TCOMM20','Median DAOPHOT PSF "chi" value across all chips'
+sxaddpar,head,'TCOMM21','Total number of DAOPHOT/ALLFRAME sources in frame'
+sxaddpar,head,'TCOMM22','Median ALLFRAME depth across all chips, instrumental mags'
+sxaddpar,head,'TCOMM23','Aperture correction'
+sxaddpar,head,'TCOMM24','Median SFD E(B-V) across frame'
+sxaddpar,head,'TCOMM25','Is this from a photometric night'
+sxaddpar,head,'TCOMM26','Did we have a good transformation equation/solution for these data'
+
 MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 
 ;COMMENT  *** Column names ***                                                   
@@ -473,20 +481,21 @@ MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 ;TTYPE11 = 'RA      '           /                                                
 ;TTYPE12 = 'DEC     '           /                                                
 ;TTYPE13 = 'WCSRMS  '           /                                                
-;TTYPE14 = 'FWHM    '           /                                                
-;TTYPE15 = 'SKYMODE '           /                                                
-;TTYPE16 = 'SKYSIG  '           /                                                
-;TTYPE17 = 'DAO_NSOURCES'       /                                                
-;TTYPE18 = 'DAO_DEPTH'          /                                                
-;TTYPE19 = 'DAO_PSFCHI'         /                                                
-;TTYPE20 = 'ALF_NSOURCES'       /                                                
-;TTYPE21 = 'ALF_DEPTH'          /                                                
-;TTYPE22 = 'APCOR   '           /                                                
-;TTYPE23 = 'EBV     '           /                                                
-;TTYPE24 = 'PHOTOMETRIC'        /                                                
-;TTYPE25 = 'BADSOLN '           /   
+;TTYPE14 = 'GAIAWCSRMS '        /                                                
+;TTYPE15 = 'FWHM    '           /                                                
+;TTYPE16 = 'SKYMODE '           /                                                
+;TTYPE17 = 'SKYSIG  '           /                                                
+;TTYPE18 = 'DAO_NSOURCES'       /                                                
+;TTYPE19 = 'DAO_DEPTH'          /                                                
+;TTYPE20 = 'DAO_PSFCHI'         /                                                
+;TTYPE21 = 'ALF_NSOURCES'       /                                                
+;TTYPE22 = 'ALF_DEPTH'          /                                                
+;TTYPE23 = 'APCOR   '           /                                                
+;TTYPE24 = 'EBV     '           /                                                
+;TTYPE25 = 'PHOTOMETRIC'        /                                                
+;TTYPE26 = 'BADSOLN '           /   
 
-; ADD COMMENTS KEYWORDS!!!
+;stop
 
 ; --- allsrc ---
 ; cmbindx, chipindx, fid, id, idref, x, y, xref, yref, mag, err,
@@ -502,7 +511,7 @@ MODFITS,outdir+ifield+'_exposure.fits',0,head,exten_no=1
 allsrc = mrdfits(dir+ifield+'_combined_allsrc.fits.gz',1)
 nallsrc = n_elements(allsrc)
 schema_allsrc = {id:'',origid:0L,refid:0L,fieldid:0,expnum:'',chip:0,mjd:0.0d0,filter:'',x:0.0,y:0.0,xref:0.0,yref:0.0,$
-                 forced:0.0,mag:0.0,err:0.0,cmag:0.0,cerr:0.0,chi:0.0,sharp:0.0,$
+                 forced:0b,mag:0.0,err:0.0,cmag:0.0,cerr:0.0,chi:0.0,sharp:0.0,$
                  flag:0,prob:0.0,ra:0.0d0,dec:0.0d0,raerr:0.0,decerr:0.0,raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,$
                  decref:0.0d0}
 newsrc = replicate(schema_allsrc,nallsrc)
@@ -556,35 +565,35 @@ sxaddpar,head,'TUNIT29','Degrees'
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column UCD ***',head,/comment
 sxaddhist,'',head,/comment
-sxaddpar,head,'TUCD1',''
-sxaddpar,head,'TUCD2',''
-sxaddpar,head,'TUCD3',''
-sxaddpar,head,'TUCD4',''
-sxaddpar,head,'TUCD5',''
-sxaddpar,head,'TUCD6',''
-sxaddpar,head,'TUCD7',''
-sxaddpar,head,'TUCD8',''
-sxaddpar,head,'TUCD9',''
-sxaddpar,head,'TUCD10',''
-sxaddpar,head,'TUCD11',''
-sxaddpar,head,'TUCD12',''
-sxaddpar,head,'TUCD13',''
-sxaddpar,head,'TUCD14',''
-sxaddpar,head,'TUCD15',''
-sxaddpar,head,'TUCD16',''
-sxaddpar,head,'TUCD17',''
-sxaddpar,head,'TUCD18',''
-sxaddpar,head,'TUCD19',''
-sxaddpar,head,'TUCD20',''
-sxaddpar,head,'TUCD21',''
-sxaddpar,head,'TUCD22',''
-sxaddpar,head,'TUCD23',''
-sxaddpar,head,'TUCD24',''
-sxaddpar,head,'TUCD25',''
-sxaddpar,head,'TUCD26',''
-sxaddpar,head,'TUCD27',''
-sxaddpar,head,'TUCD28',''
-sxaddpar,head,'TUCD29',''
+sxaddpar,head,'TUCD1','meta.id;meta.main'
+sxaddpar,head,'TUCD2','meta.id'
+sxaddpar,head,'TUCD3','meta.id'
+sxaddpar,head,'TUCD4','meta.id'
+sxaddpar,head,'TUCD5','meta.id'
+sxaddpar,head,'TUCD6','meta.id'
+sxaddpar,head,'TUCD7','time.epoch'
+sxaddpar,head,'TUCD8','instr.filter'
+sxaddpar,head,'TUCD9','pos.cartesian.x'
+sxaddpar,head,'TUCD10','pos.cartesian.y'
+sxaddpar,head,'TUCD11','pos.cartesian.x'
+sxaddpar,head,'TUCD12','pos.cartesian.y'
+sxaddpar,head,'TUCD13','meta.code'
+sxaddpar,head,'TUCD14','phot.mag'
+sxaddpar,head,'TUCD15','stat.error;phot.mag'
+sxaddpar,head,'TUCD16','phot.mag'
+sxaddpar,head,'TUCD17','stat.error;phot.mag'
+sxaddpar,head,'TUCD18','stat.fit.chi2'
+sxaddpar,head,'TUCD19','meta.code'
+sxaddpar,head,'TUCD20','meta.code'
+sxaddpar,head,'TUCD21','stat.probability'
+sxaddpar,head,'TUCD22','pos.eq.ra;meta.main'
+sxaddpar,head,'TUCD23','pos.eq.dec;meta.main'
+sxaddpar,head,'TUCD24','stat.error'
+sxaddpar,head,'TUCD25','stat.error'
+sxaddpar,head,'TUCD26','pos.eq.ra'
+sxaddpar,head,'TUCD27','pos.eq.dec'
+sxaddpar,head,'TUCD28','pos.eq.ra'
+sxaddpar,head,'TUCD29','pos.eq.dec'
 
 ; Add descriptions
 sxaddhist,'',head,/comment
@@ -602,23 +611,23 @@ sxaddpar,head,'TCOMM9','X-coordinate for this source in the original chip (1-ind
 sxaddpar,head,'TCOMM10','Y-coordinate for this source in the original chip (1-indexed)'
 sxaddpar,head,'TCOMM11','X-coordinate for this source in the reference chip (1-indexed)'
 sxaddpar,head,'TCOMM12','Y-coordinate for this source in the reference chip (1-indexed)'
-sxaddpar,head,'TCOMM13','Boolean flag indicating if this is forced photometry (ALLFRAME) or single-frame (ALLSTAR)'
+sxaddpar,head,'TCOMM13','Boolean flag indicating if this is forced (ALLFRAME) photometry'
 sxaddpar,head,'TCOMM14','Instrumental magnitude from ALLFRAME or ALLSTAR (not both)'
 sxaddpar,head,'TCOMM15','Uncertainty of MAG'
 sxaddpar,head,'TCOMM16','Calibrated magnitude version of MAG'
 sxaddpar,head,'TCOMM17','Uncertainty of CMAG including errors in calibration'
 sxaddpar,head,'TCOMM18','DAOPHOT chi value, i.e. how well the PSF fit this source'
 sxaddpar,head,'TCOMM19','DAOPHOT sharp value, measurement of peakiness'
-sxaddpar,head,'TCOMM20','Source Extractor FLAG value from coadd image (only if ALLFRAME was run otherwise -1)'
-sxaddpar,head,'TCOMM21','Source Extractor stellaricity probability value (0~galaxy, 1~star, -1 if ALLFRAME not run)'
+sxaddpar,head,'TCOMM20','Source Extractor FLAG value from coadd image'
+sxaddpar,head,'TCOMM21','Source Extractor stellaricity probability value (0~galaxy, 1~star)'
 sxaddpar,head,'TCOMM22','Right Ascension (J2000.0) of source, in degrees'
 sxaddpar,head,'TCOMM23','Declination (J2000.0) of source, in degrees'
-sxaddpar,head,'TCOMM24',''
-sxaddpar,head,'TCOMM25',''
-sxaddpar,head,'TCOMM26',''
-sxaddpar,head,'TCOMM27',''
-sxaddpar,head,'TCOMM28',''
-sxaddpar,head,'TCOMM29',''
+sxaddpar,head,'TCOMM24','Uncertainty in RA (arcseconds) based on S/N of source and PSF FWHM'
+sxaddpar,head,'TCOMM25','Uncertainty in DEC (arcseconds) based on S/N of source and PSF FWHM'
+sxaddpar,head,'TCOMM26','Right Ascension of source, from the original chip X/Y and WCS'
+sxaddpar,head,'TCOMM27','Declination of source, from the original chip X/Y and WCS'
+sxaddpar,head,'TCOMM28','Right Ascension of source, from X/YREF and ref WCS'
+sxaddpar,head,'TCOMM29','Declination of source, from X/YREF and ref WCS'
 
 MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 
@@ -652,7 +661,7 @@ MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 ;TTYPE28 = 'RAREF   '           /                                                
 ;TTYPE29 = 'DECREF  '           /       
 
-; ADD COMMENTS KEYWORDS!!!
+;stop
 
 ; --- allobj ---
 ; id, ra, dec, rascatter, decscatter, ndet, depthflag, srcindx,
@@ -669,8 +678,8 @@ MODFITS,outdir+ifield+'_source.fits',0,head,exten_no=1
 allobj = mrdfits(dir+ifield+'_combined_allobj.fits.gz',1)
 nallobj = n_elements(allobj)
 schema_allobj = {id:'',fieldid:0,ra:0.0d0,dec:0.0d0,raerr:0.0,decerr:0.0,$
-                ndet:0L,depthflag:0B,umag:0.0,uerr:0.0,uscatter:0.0,ndetu:0,gmag:0.0,$
-                gerr:0.0,gscatter:0.0,ndetg:0,rmag:0.0,rerr:0.0,rscatter:0.0,ndetr:0L,$
+                ndet:0,depthflag:0B,umag:0.0,uerr:0.0,uscatter:0.0,ndetu:0,gmag:0.0,$
+                gerr:0.0,gscatter:0.0,ndetg:0,rmag:0.0,rerr:0.0,rscatter:0.0,ndetr:0,$
                 imag:0.0,ierr:0.0,iscatter:0.0,ndeti:0,zmag:0.0,zerr:0.0,zscatter:0.0,$
                 ndetz:0,u_g:99.99,g_r:99.99,g_i:99.99,i_z:99.99,chi:0.0,sharp:0.0,$
                 flag:0,prob:0.0,ebv:0.0}
@@ -752,14 +761,99 @@ sxaddpar,head,'TUNIT34','None'
 sxaddpar,head,'TUNIT35','None'
 sxaddpar,head,'TUNIT36','None'
 sxaddpar,head,'TUNIT37','Magnitude'
+
+; Add UCD
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column UCD ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TUCD1','meta.id;meta.main'
+sxaddpar,head,'TUCD2','meta.id'
+sxaddpar,head,'TUCD3','pos.eq.ra;meta.main'
+sxaddpar,head,'TUCD4','pos.eq.dec;meta.main'
+sxaddpar,head,'TUCD5','stat.error'
+sxaddpar,head,'TUCD6','stat.error'
+sxaddpar,head,'TUCD7','meta.number'
+sxaddpar,head,'TUCD8','meta.code'
+sxaddpar,head,'TUCD9','phot.mag;em.opt.u'
+sxaddpar,head,'TUCD10','stat.error;phot.mag'
+sxaddpar,head,'TUCD11','stat.stdev;phot.mag'
+sxaddpar,head,'TUCD12','meta.number'
+sxaddpar,head,'TUCD13','phot.mag;em.opt.g'
+sxaddpar,head,'TUCD14','stat.error;phot.mag'
+sxaddpar,head,'TUCD15','stat.stdev;phot.mag'
+sxaddpar,head,'TUCD16','meta.number'
+sxaddpar,head,'TUCD17','phot.mag;em.opt.r'
+sxaddpar,head,'TUCD18','stat.error;phot.mag'
+sxaddpar,head,'TUCD19','stat.stdev;phot.mag'
+sxaddpar,head,'TUCD20','meta.number'
+sxaddpar,head,'TUCD21','phot.mag;em.opt.i'
+sxaddpar,head,'TUCD22','stat.error;phot.mag'
+sxaddpar,head,'TUCD23','stat.stdev;phot.mag'
+sxaddpar,head,'TUCD24','meta.number'
+sxaddpar,head,'TUCD25','phot.mag;em.opt.z'
+sxaddpar,head,'TUCD26','stat.error;phot.mag'
+sxaddpar,head,'TUCD27','stat.stdev;phot.mag'
+sxaddpar,head,'TUCD28','meta.number'
+sxaddpar,head,'TUCD29','phot.color;em.opt.u;em.opt.g'
+sxaddpar,head,'TUCD30','phot.color;em.opt.g;em.opt.r'
+sxaddpar,head,'TUCD31','phot.color;em.opt.g;em.opt.i'
+sxaddpar,head,'TUCD32','phot.color;em.opt.i;em.opt.z'
+sxaddpar,head,'TUCD33','stat.fit.chi2'
+sxaddpar,head,'TUCD34','meta.code'
+sxaddpar,head,'TUCD35','meta.code'
+sxaddpar,head,'TUCD36','stat.probability'
+sxaddpar,head,'TUCD37','phys.absorption'
+
+; Add descriptions
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column descriptions ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TCOMM1','Unique ID for this object, the field name plus a running number'
+sxaddpar,head,'TCOMM2','SMASH Field ID'
+sxaddpar,head,'TCOMM3','Right Ascension (J2000.0) of source, in degrees'
+sxaddpar,head,'TCOMM4','Declination (J2000.0) of source, in degrees'
+sxaddpar,head,'TCOMM5','Uncertainty in mean RA of object (arcseconds) from indiv values'
+sxaddpar,head,'TCOMM6','Uncertainty in mean DEC of object (arcseconds) from indiv values'
+sxaddpar,head,'TCOMM7','Number of detections of this source (in ALLSRC)'
+sxaddpar,head,'TCOMM8','Flag of exposure detected in: 1-shallow, 2-deep, 3-both'
+sxaddpar,head,'TCOMM9','Weighted-average, calibrated u-band magnitude, 99.99 if no detection'
+sxaddpar,head,'TCOMM10','Uncertainty in calibrated u-band magnitude'
+sxaddpar,head,'TCOMM11','RMS scatter in u from multiple measurements of this object'
+sxaddpar,head,'TCOMM12','Number of detections in u'
+sxaddpar,head,'TCOMM13','Weighted-average, calibrated g-band magnitude, 99.99 if no detection'
+sxaddpar,head,'TCOMM14','Unceratinty in calibrated g-band magnitude'
+sxaddpar,head,'TCOMM15','RMS scatter in g from multiple measurements of this object'
+sxaddpar,head,'TCOMM16','Number of detections in g'
+sxaddpar,head,'TCOMM17','Weighted-avarage, calibrated r-band magnitude, 99.99 if no detection'
+sxaddpar,head,'TCOMM18','Uncertainty in calibrated r-band magnitude'
+sxaddpar,head,'TCOMM19','RMS scatter in r from multiple measurements of this object'
+sxaddpar,head,'TCOMM20','Number of detections in r'
+sxaddpar,head,'TCOMM21','Weighted-average, calibrated i-band magnitude, 99.99 if no detection'
+sxaddpar,head,'TCOMM22','Uncertainty in calibrated i-band magnitude'
+sxaddpar,head,'TCOMM23','RMS scatter in i from multiple measurements of this object'
+sxaddpar,head,'TCOMM24','Number of detections in i'
+sxaddpar,head,'TCOMM25','Weighted-avarege, calibrated z-band magnitude, 99.99 if no detection'
+sxaddpar,head,'TCOMM26','Uncertainty in calibrated z-band magnitude'
+sxaddpar,head,'TCOMM27','RMS scatter in z from multiple measurements of this object'
+sxaddpar,head,'TCOMM28','Number of detections in z'
+sxaddpar,head,'TCOMM29','u-g color index'
+sxaddpar,head,'TCOMM30','g-r color index'
+sxaddpar,head,'TCOMM31','g-r color index'
+sxaddpar,head,'TCOMM32','i-z color index'
+sxaddpar,head,'TCOMM33','Average DAOPHOT chi value, i.e. how well the PSF fit this source'
+sxaddpar,head,'TCOMM34','Average DAOPHOT sharp value, measurement of peakiness'
+sxaddpar,head,'TCOMM35','OR-combined Source Extractor FLAG value from coadd image'
+sxaddpar,head,'TCOMM36','Average Source Extractor stellaricity probability value'
+sxaddpar,head,'TCOMM37','SFD E(B-V) reddening value for this object'
+
 MODFITS,outdir+ifield+'_object.fits',0,head,exten_no=1
 
 ;TTYPE1  = 'ID      '           /                                                
 ;TTYPE2  = 'FIELDID '           /                                                
 ;TTYPE3  = 'RA      '           /                                                
 ;TTYPE4  = 'DEC     '           /                                                
-;TTYPE5  = 'RASCATTER'          /                                                
-;TTYPE6  = 'DECSCATTER'         /                                                
+;TTYPE5  = 'RAERR'              /                                                
+;TTYPE6  = 'DECERR'             /                                                
 ;TTYPE7  = 'NDET    '           /                                                
 ;TTYPE8  = 'DEPTHFLAG'          /                                                
 ;TTYPE9  = 'UMAG    '           /                                                
@@ -792,10 +886,9 @@ MODFITS,outdir+ifield+'_object.fits',0,head,exten_no=1
 ;TTYPE36 = 'PROB    '           /                                                
 ;TTYPE37 = 'EBV     '           /               
 
-; ADD COMMENTS KEYWORDS!!!!
+stop
 
 ; --- xmatch ---
-; ADD XMATCH!!!!
 xmatch = mrdfits(dir+ifield+'_combined_allobj_xmatch.fits.gz',1)
 nxmatch = n_elements(xmatch)
 ;schema_xmatch = {id:'',gaia_match:0b,gaia_matchdist:0.0,gaia_source:0L,gaia_ra:0.0d0,gaia_dec:0.0d0,$
@@ -807,7 +900,13 @@ nxmatch = n_elements(xmatch)
 ;         wise_w3err:0.0,wise_w4mag:0.0,wise_w4err:0.0,wise_qph:''}
 ;newxmatch = replicate(schema_xmatch,nxmatch)
 ;STRUCT_ASSIGN,allobj,new
-MWRFITS,field,outdir+ifield+'_xmatch.fits',/create
+newxmatch = xmatch
+newxmatch.id = strmid(strtrim(xmatch.id,2),5)        ; strip 'Field' portion 
+newxmatch.tmass_id = strtrim(xmatch.tmass_id,2)      ; trim trailing whitespace
+newxmatch.tmass_qflg = strtrim(xmatch.tmass_qflg,2)  ; trim trailing whitespace
+newxmatch.wise_id = strtrim(xmatch.wise_id,2)        ; trim trailing whitespace
+newxmatch.wise_qph = strtrim(xmatch.wise_qph,2)      ; trim trailing whitespace
+MWRFITS,newxmatch,outdir+ifield+'_xmatch.fits',/create
 ; Add the units
 head = headfits(outdir+ifield+'_xmatch.fits',exten=1)
 sxaddhist,'',head,/comment
@@ -854,14 +953,13 @@ sxaddpar,head,'TUNIT38','Magnitude'
 sxaddpar,head,'TUNIT39','Magnitude'
 sxaddpar,head,'TUNIT40','None'
 
-; Add the UCD
-
+; Add UCD
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column UCD ***',head,/comment
 sxaddhist,'',head,/comment
 sxaddpar,head,'TUCD1','meta.id;meta.main'
-sxaddpar,head,'TUCD2',''
-sxaddpar,head,'TUCD3',''
+sxaddpar,head,'TUCD2','meta.code'
+sxaddpar,head,'TUCD3','pos.angDistance'
 sxaddpar,head,'TUCD4','meta.id'
 sxaddpar,head,'TUCD5','pos.eq.ra'
 sxaddpar,head,'TUCD6','pos.eq.dec'
@@ -869,8 +967,8 @@ sxaddpar,head,'TUCD7','stat.error'
 sxaddpar,head,'TUCD8','stat.error'
 sxaddpar,head,'TUCD9','phot.mag'
 sxaddpar,head,'TUCD10','stat.error;phot.mag'
-sxaddpar,head,'TUCD11',''
-sxaddpar,head,'TUCD12',''
+sxaddpar,head,'TUCD11','meta.code'
+sxaddpar,head,'TUCD12','pos.angDistance'
 sxaddpar,head,'TUCD13','meta.id'
 sxaddpar,head,'TUCD14','pos.eq.ra'
 sxaddpar,head,'TUCD15','pos.eq.dec'
@@ -883,8 +981,8 @@ sxaddpar,head,'TUCD21','stat.error;phot.mag;em.IR.H'
 sxaddpar,head,'TUCD22','phot.mag;em.IR.K'
 sxaddpar,head,'TUCD23','stat.error;phot.mag;em.IR.K'
 sxaddpar,head,'TUCD24','meta.code.qual;phot'
-sxaddpar,head,'TUCD25',''
-sxaddpar,head,'TUCD26',''
+sxaddpar,head,'TUCD25','meta.code'
+sxaddpar,head,'TUCD26','pos.angDistance'
 sxaddpar,head,'TUCD27','meta.id'
 sxaddpar,head,'TUCD28','pos.eq.ra'
 sxaddpar,head,'TUCD29','pos.eq.dec'
@@ -900,7 +998,7 @@ sxaddpar,head,'TUCD38','phot.mag;em.IR.15-30um'
 sxaddpar,head,'TUCD39','stat.error;phot.mag'
 sxaddpar,head,'TUCD40','meta.code.qual;phot'
 
-; Add the descriptions
+; Add descriptions
 sxaddhist,'',head,/comment
 sxaddhist,'  ***  Column descriptions ***',head,/comment
 sxaddhist,'',head,/comment
@@ -913,7 +1011,7 @@ sxaddpar,head,'TCOMM6','GAIA declination (degrees)'
 sxaddpar,head,'TCOMM7','GAIA RA uncertainty (arcseconds)'
 sxaddpar,head,'TCOMM8','GAIA DEC uncertainty (arcseconds)'
 sxaddpar,head,'TCOMM9','GAIA G-band mean magnitude'
-sxaddpar,head,'TCOMM10','GAIA uncertainty in G-band magnitue (calculated from flux uncertainty)'
+sxaddpar,head,'TCOMM10','GAIA uncertainty in G-band magnitue (from flux uncertainty)'
 sxaddpar,head,'TCOMM11','Boolean flag indicating if a match with 2MASS-PSC was found'
 sxaddpar,head,'TCOMM12','Distance to matched 2MASS-PSC source (arcseconds)'
 sxaddpar,head,'TCOMM13','2MASS source ID'
@@ -945,16 +1043,16 @@ sxaddpar,head,'TCOMM38','ALLWISE W4 magnitude (22.1um)'
 sxaddpar,head,'TCOMM39','ALLWISE uncertainty in W4 magnitude'
 sxaddpar,head,'TCOMM40','ALLWISE photometric quality flag'
 
-;MODFITS,outdir+ifield+'_xmatch.fits',0,head,exten_no=1
+MODFITS,outdir+ifield+'_xmatch.fits',0,head,exten_no=1
 
-stop
+;stop
 
 ; --- fields ---
 ;   which bands are calibrated
 ;   name, central RA/DEC, nexposures
 field = {fieldid:0,name:'',ra:0.0d0,dec:0.0d0,glon:0.0d0,glat:0.0d0,$
-         mslon:0.0d0,mslat:0.0d0,nexp:0L,nexp_u:0L,nexp_g:0L,nexp_r:0L,$
-         nexp_i:0L,nexp_z:0L,nchips:0L,nsrc:0LL,nobj:0LL,ucalib:0B,gcalib:0B,$
+         mslon:0.0d0,mslat:0.0d0,nexp:0,nexp_u:0,nexp_g:0,nexp_r:0,$
+         nexp_i:0,nexp_z:0,nchips:0L,nsrc:0L,nobj:0L,ucalib:0B,gcalib:0B,$
          rcalib:0B,icalib:0B,zcalib:0B}
 field.fieldid = fieldid
 field.name = ifield
@@ -974,27 +1072,32 @@ zexp = where(newexp.filter eq 'z',nzexp)
 field.nexp_z = nzexp
 ; which bands are calibrated
 uchip = where(chips.filter eq 'u',nuchips)
-ucalib = where(chips.filter eq 'u' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nucalib)
+;ucalib = where(chips.filter eq 'u' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nucalib)
+ucalib = where(chips.filter eq 'u' and chips.calibrated eq 1,nucalib)
 ucalibfrac = nucalib/float(nuchips) 
 if nucalib gt 0 then field.ucalib=1 else field.ucalib=0
 ;if ucalibfrac gt 0.7 then field.ucalib=1 else field.ucalib=0
 gchip = where(chips.filter eq 'g',ngchips)
-gcalib = where(chips.filter eq 'g' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,ngcalib)
+;gcalib = where(chips.filter eq 'g' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,ngcalib)
+gcalib = where(chips.filter eq 'g' and chips.calibrated eq 1,ngcalib)
 gcalibfrac = ngcalib/float(ngchips)
 if ngcalib gt 0 then field.gcalib=1 else field.gcalib=0
 ;if gcalibfrac gt 0.70 then field.gcalib=1 else field.gcalib=0
 rchip = where(chips.filter eq 'r',nrchips)
-rcalib = where(chips.filter eq 'r' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nrcalib)
+;rcalib = where(chips.filter eq 'r' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nrcalib)
+rcalib = where(chips.filter eq 'r' and chips.calibrated eq 1,nrcalib)
 rcalibfrac = nrcalib/float(nrchips)
 if nrcalib gt 0 then field.rcalib=1 else field.rcalib=0
 ;if rcalibfrac gt 0.70 then field.rcalib=1 else field.rcalib=0
 ichip = where(chips.filter eq 'i',nichips)
-icalib = where(chips.filter eq 'i' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nicalib)
+;icalib = where(chips.filter eq 'i' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nicalib)
+icalib = where(chips.filter eq 'i' and chips.calibrated eq 1,nicalib)
 icalibfrac = nicalib/float(nichips)
 if nicalib gt 0 then field.icalib=1 else field.icalib=0
 ;if icalibfrac gt 0.70 then field.icalib=1 else field.icalib=0
 zchip = where(chips.filter eq 'z',nzchips)
-zcalib = where(chips.filter eq 'z' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nzcalib)
+;zcalib = where(chips.filter eq 'z' and chips.calibrated eq 1 and chips.photometric eq 1 and chips.badsoln eq 0,nzcalib)
+zcalib = where(chips.filter eq 'z' and chips.calibrated eq 1,nzcalib)
 zcalibfrac = nzcalib/float(nzchips)
 if nzcalib gt 0 then field.zcalib=1 else field.zcalib=0
 ;if zcalibfrac gt 0.70 then field.zcalib=1 else field.zcalib=0
@@ -1035,6 +1138,61 @@ sxaddpar,head,'TUNIT19','None'
 sxaddpar,head,'TUNIT20','None'
 sxaddpar,head,'TUNIT21','None'
 sxaddpar,head,'TUNIT22','None'
+
+; Add UCD
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column UCD ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TUCD1','meta.id;meta.main'
+sxaddpar,head,'TUCD2','meta.id'
+sxaddpar,head,'TUCD3','pos.eq.ra;meta.main'
+sxaddpar,head,'TUCD4','pos.eq.dec;meta.main'
+sxaddpar,head,'TUCD5','pos.galactic.lon'
+sxaddpar,head,'TUCD6','pos.galactic.lat'
+sxaddpar,head,'TUCD7','pos.magstream.lon'
+sxaddpar,head,'TUCD8','pos.magstream.lat'
+sxaddpar,head,'TUCD9','meta.number'
+sxaddpar,head,'TUCD10','meta.number'
+sxaddpar,head,'TUCD11','meta.number'
+sxaddpar,head,'TUCD12','meta.number'
+sxaddpar,head,'TUCD13','meta.number'
+sxaddpar,head,'TUCD14','meta.number'
+sxaddpar,head,'TUCD15','meta.number'
+sxaddpar,head,'TUCD16','meta.number'
+sxaddpar,head,'TUCD17','meta.number'
+sxaddpar,head,'TUCD18','meta.code.qual'
+sxaddpar,head,'TUCD19','meta.code.qual'
+sxaddpar,head,'TUCD20','meta.code.qual'
+sxaddpar,head,'TUCD21','meta.code.qual'
+sxaddpar,head,'TUCD22','meta.code.qual'
+
+; Add descriptions
+sxaddhist,'',head,/comment
+sxaddhist,'  ***  Column descriptions ***',head,/comment
+sxaddhist,'',head,/comment
+sxaddpar,head,'TCOMM1','SMASH Field ID'
+sxaddpar,head,'TCOMM2','SMASH Field name'
+sxaddpar,head,'TCOMM3','Right Ascension (J2000.0) of field, in degrees'
+sxaddpar,head,'TCOMM4','Declination (J2000.0) of field, in degrees'
+sxaddpar,head,'TCOMM5','Galactic longitude of field, in degrees'
+sxaddpar,head,'TCOMM6','Galactic latitude of field, in degrees'
+sxaddpar,head,'TCOMM7','Magellanic Stream longitude of field, in degrees'
+sxaddpar,head,'TCOMM8','Magellanic Stream latitude of field, in degrees'
+sxaddpar,head,'TCOMM9','Number of total exposures of field'
+sxaddpar,head,'TCOMM10','Number of u-band exposures'
+sxaddpar,head,'TCOMM11','Number of g-band exposures'
+sxaddpar,head,'TCOMM12','Number of r-band exposures'
+sxaddpar,head,'TCOMM13','Number of i-band exposures'
+sxaddpar,head,'TCOMM14','Number of z-band exposures'
+sxaddpar,head,'TCOMM15','Number of chips for this field'
+sxaddpar,head,'TCOMM16','Number of sources for this field'
+sxaddpar,head,'TCOMM17','Number of objects for this field'
+sxaddpar,head,'TCOMM18','Is the u-band data calibrated'
+sxaddpar,head,'TCOMM19','Is the g-band data calibrated'
+sxaddpar,head,'TCOMM20','Is the r-band data calibrated'
+sxaddpar,head,'TCOMM21','Is the i-band data calibrated'
+sxaddpar,head,'TCOMM22','Is the z-band data calibrated'
+
 MODFITS,outdir+ifield+'_field.fits',0,head,exten_no=1
 
 ;TTYPE1  = 'FIELDID '           /                                                
