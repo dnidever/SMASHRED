@@ -886,7 +886,7 @@ MODFITS,outdir+ifield+'_object.fits',0,head,exten_no=1
 ;TTYPE36 = 'PROB    '           /                                                
 ;TTYPE37 = 'EBV     '           /               
 
-stop
+;stop
 
 ; --- xmatch ---
 xmatch = mrdfits(dir+ifield+'_combined_allobj_xmatch.fits.gz',1)
