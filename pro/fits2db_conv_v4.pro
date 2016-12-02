@@ -838,7 +838,7 @@ sxaddpar,head,'TCOMM27','RMS scatter in z from multiple measurements of this obj
 sxaddpar,head,'TCOMM28','Number of detections in z'
 sxaddpar,head,'TCOMM29','u-g color index'
 sxaddpar,head,'TCOMM30','g-r color index'
-sxaddpar,head,'TCOMM31','g-r color index'
+sxaddpar,head,'TCOMM31','g-i color index'
 sxaddpar,head,'TCOMM32','i-z color index'
 sxaddpar,head,'TCOMM33','Average DAOPHOT chi value, i.e. how well the PSF fit this source'
 sxaddpar,head,'TCOMM34','Average DAOPHOT sharp value, measurement of peakiness'
