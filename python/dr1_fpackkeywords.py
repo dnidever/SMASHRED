@@ -67,8 +67,13 @@ if __name__ == "__main__":
                     fitshdr['FZQMETHD'] = 'SUBTRACTIVE_DITHER_1'
                     fitshdr['FZQVALUE'] = 8
                     fitshdr['FZDTHRSD'] = 'CHECKSUM'
+                    # remove "BEGIN MAIN ...." and "BEGIN EXTENSION ..."
+                    for val in fitshdr:
+                        if val[0:5] == "BEGIN":
+                            fitshdr.remove(val)
                     #hdulist.close(output_verify='ignore')         # now FITS header is MODIFIED
 		    fits.writeto(fullfile,data,header=fitshdr,clobber=True)
+                    sys.exit()
                 else:
                     print fullfile, "do nothing"
 
