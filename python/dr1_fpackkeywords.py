@@ -15,7 +15,7 @@ from astropy.utils.exceptions import AstropyWarning
 #import pylab
 #from scipy.signal import argrelmin
 #import scipy.ndimage.filters as filters
-#import time
+import time
 
 
 if __name__ == "__main__":
@@ -42,10 +42,12 @@ if __name__ == "__main__":
     # losslessly with PLIO.
 
     print "Adding fpack keywords to SMASH FITS headers"
+    t0 = time.time()
 
     # Find all of the fits files
     #basedir = "/datalab/users/dnidever/smash/dr1/"
-    basedir = "/data/smash/dr1/"
+    #basedir = "/data/smash/dr1/"
+    basedir = "/data/smash/cp/red/photred/test/"
 
     warnings.simplefilter('ignore', category=AstropyWarning)
 
@@ -57,13 +59,17 @@ if __name__ == "__main__":
                     print fullfile, " adding fpack keyword values"
 
                     # Apply changes to header (MODIFY IN PLACE)
-                    hdulist = fits.open(fullfile, mode='update') # modify IN PLACE
-                    fitshdr = hdulist[0].header # use only first in list
+                    #hdulist = fits.open(fullfile, mode='update') # modify IN PLACE
+                    #fitshdr = hdulist[0].header # use only first in list
+		    data, fitshdr = fits.getdata(fullfile,header=True)
                     # add the keywords
                     fitshdr['FZALGOR'] = 'RICE_1'
                     fitshdr['FZQMETHD'] = 'SUBTRACTIVE_DITHER_1'
-                    fitshdr['FZQVALUE'] = 4
+                    fitshdr['FZQVALUE'] = 8
                     fitshdr['FZDTHRSD'] = 'CHECKSUM'
-                    hdulist.close(output_verify='ignore')         # now FITS header is MODIFIED
+                    #hdulist.close(output_verify='ignore')         # now FITS header is MODIFIED
+		    fits.writeto(fullfile,data,header=fitshdr,clobber=True)
                 else:
                     print fullfile, "do nothing"
+
+    print time.time()-t0
