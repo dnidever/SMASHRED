@@ -31,6 +31,9 @@ allrawstr = mrdfits(catdir+'observations/decam_all_raw.vot.fits',1)
 add_tag,allrawstr,'expnum','',allrawstr
 allrawstr.expnum = strmid(file_basename(allrawstr.dtacqnam,'.fits.fz'),6)
 
+; Get RAW filenames
+;rawfpath = mrdfits(catdir+'observations/mss_filenames_raw.fits.gz',1)
+
 ; Read in the VO tables
 ;read_votable,catdir+'observations/smash_raw_vot.xml',rawstr
 ;add_tag,rawstr,'expnum','',rawstr
@@ -40,6 +43,11 @@ allrawstr.expnum = strmid(file_basename(allrawstr.dtacqnam,'.fits.fz'),6)
 ;rawstr.smashfield = rawinfo.field
 ;add_tag,rawstr,'nsaname','',rawstr
 ;rawstr.nsaname = strtrim(strmid(file_basename(rawstr.reference),9),2)
+;add_tag,rawstr,'fullpath','',rawstr
+;match,rawfpath.base,strtrim(rawstr.nsaname,2),ind1,ind2,/sort
+;rawstr[ind2].fullpath = rawfpath[ind1].filename
+;add_tag,rawstr,'night','',rawstr
+;rawstr.night = strmid(rawstr.fullpath,22,8)
 ;;mwrfits,rawstr,catdir+'observations/smash_raw_vot.fits',/create
 rawstr = mrdfits(catdir+'observations/smash_raw_vot.fits',1)
 
@@ -54,6 +62,12 @@ rawstr = mrdfits(catdir+'observations/smash_raw_vot.fits',1)
 ;add_tag,instcalstr,'fullpath','',instcalstr
 ;match,fpath.base,instcalstr.nsaname,ind1,ind2,/sort
 ;instcalstr[ind2].fullpath = strtrim(fpath[ind1].filename,2)
+;add_tag,instcalstr,'night','',instcalstr
+;for i=0,n_elements(instcalstr)-1 do begin
+;  match,rawstr.expnum,instcalstr[i].expnum,ind1,ind2,/sort,count=nmatch
+;  if nmatch eq 0 then stop,'cannot match to rawstr'
+;  instcalstr[i].night = rawstr[ind1[0]].night
+;endfor
 ;;mwrfits,instcalstr,catdir+'observations/smash_instcal_vot.fits',/create
 instcalstr = mrdfits(catdir+'observations/smash_instcal_vot.fits',1)
 
@@ -68,6 +82,12 @@ instcalstr = mrdfits(catdir+'observations/smash_instcal_vot.fits',1)
 ;add_tag,resampstr,'fullpath','',resampstr
 ;match,fpath.base,resampstr.nsaname,ind1,ind2,/sort
 ;resampstr[ind2].fullpath = strtrim(fpath[ind1].filename,2)
+;add_tag,resampstr,'night','',resampstr
+;for i=0,n_elements(resampstr)-1 do begin
+;  match,rawstr.expnum,resampstr[i].expnum,ind1,ind2,/sort,count=nmatch
+;  if nmatch eq 0 then stop,'cannot match to rawstr'
+;  resampstr[i].night = rawstr[ind1[0]].night
+;endfor
 ;;mwrfits,resampstr,catdir+'observations/smash_resampled_vot.fits',/create
 resampstr = mrdfits(catdir+'observations/smash_resampled_vot.fits',1)
 
@@ -85,42 +105,44 @@ stackstr = mrdfits(catdir+'observations/smash_stacked_vot.fits',1)
 stackstr.fullpath = strtrim(stackstr.fullpath,2)
 
 ; Load the header information from the mass store stack files
+;stackhdstr = mrdfits(catdir+'observations/smash_stacked_vot_scrape.fits',1)
+;stackhdstr.filename = strtrim(stackhdstr.filename,2)
+;add_tag,stackhdstr,'minexptime',0.0,stackhdstr
+;add_tag,stackhdstr,'maxexptime',0.0,stackhdstr
+;add_tag,stackhdstr,'totexptime',0.0,stackhdstr
+;add_tag,stackhdstr,'exptimebin','',stackhdstr
+;
+;; Get the minimum and maximum exptime per stack
+;for i=0,n_elements(stackhdstr)-1 do begin
+;  names = [stackhdstr[i].imcmb001, stackhdstr[i].imcmb002, stackhdstr[i].imcmb003, stackhdstr[i].imcmb004,$
+;           stackhdstr[i].imcmb005, stackhdstr[i].imcmb006, stackhdstr[i].imcmb007, stackhdstr[i].imcmb008,$
+;           stackhdstr[i].imcmb009, stackhdstr[i].imcmb010]
+;  gdnames = where(names ne 'None',ngdnames)
+;  names = names[gdnames]
+;  expnum = strmid(names,6)
+;  exptime = fltarr(ngdnames)-1
+;  filter = strarr(ngdnames)
+;  match,allrawstr.expnum,expnum,ind1,ind2,/sort,count=nmatch
+;  exptime[ind2] = allrawstr[ind1].exposure
+;  filter[ind2] = allrawstr[ind1].filter
+;  if nmatch ne ngdnames then stop,'not all matched'
+;  ;for j=0,ngdnames-1 do begin
+;  ;  match,allrawstr.expnum,expnum[j],ind1,ind2,/sort,count=nmatch
+;  ;  if nmatch gt 0 then exptime[j]=allrawstr[ind1[0]].exposure
+;  ;endfor
+;  ; Some stacks are missing filter information from the NSA VO table
+;  if strtrim(stackhdstr[i].filter,2) eq 'None' then stackhdstr[i].filter=filter[0]
+;  gdexptime = where(exptime gt 0,ngdexptime)
+;  stackhdstr[i].minexptime = min(exptime[gdexptime])
+;  stackhdstr[i].maxexptime = max(exptime[gdexptime])
+;  stackhdstr[i].totexptime = total(exptime[gdexptime]) 
+;  ; Decide on exptime bin names
+;  ;stop
+;
+;endfor
+;mwrfits,stackhdstr,catdir+'observations/smash_stacked_vot_scrape.fits',/create
 stackhdstr = mrdfits(catdir+'observations/smash_stacked_vot_scrape.fits',1)
 stackhdstr.filename = strtrim(stackhdstr.filename,2)
-add_tag,stackhdstr,'minexptime',0.0,stackhdstr
-add_tag,stackhdstr,'maxexptime',0.0,stackhdstr
-add_tag,stackhdstr,'totexptime',0.0,stackhdstr
-add_tag,stackhdstr,'exptimebin','',stackhdstr
-
-; Get the minimum and maximum exptime per stack
-for i=0,n_elements(stackhdstr)-1 do begin
-  names = [stackhdstr[i].imcmb001, stackhdstr[i].imcmb002, stackhdstr[i].imcmb003, stackhdstr[i].imcmb004,$
-           stackhdstr[i].imcmb005, stackhdstr[i].imcmb006, stackhdstr[i].imcmb007, stackhdstr[i].imcmb008,$
-           stackhdstr[i].imcmb009, stackhdstr[i].imcmb010]
-  gdnames = where(names ne 'None',ngdnames)
-  names = names[gdnames]
-  expnum = strmid(names,6)
-  exptime = fltarr(ngdnames)-1
-  filter = strarr(ngdnames)
-  match,allrawstr.expnum,expnum,ind1,ind2,/sort,count=nmatch
-  exptime[ind2] = allrawstr[ind1].exposure
-  filter[ind2] = allrawstr[ind1].filter
-  if nmatch ne ngdnames then stop,'not all matched'
-  ;for j=0,ngdnames-1 do begin
-  ;  match,allrawstr.expnum,expnum[j],ind1,ind2,/sort,count=nmatch
-  ;  if nmatch gt 0 then exptime[j]=allrawstr[ind1[0]].exposure
-  ;endfor
-  ; Some stacks are missing filter information from the NSA VO table
-  if strtrim(stackhdstr[i].filter,2) eq 'None' then stackhdstr[i].filter=filter[0]
-  gdexptime = where(exptime gt 0,ngdexptime)
-  stackhdstr[i].minexptime = min(exptime[gdexptime])
-  stackhdstr[i].maxexptime = max(exptime[gdexptime])
-  stackhdstr[i].totexptime = total(exptime[gdexptime])
-  
-  ; Decide on exptime bin names
-  ;stop
-
-endfor
 
 ; Each group has five files which go together
 ;  use almost all of the PLFNAME for the group name
@@ -219,7 +241,7 @@ for i=0,ndr1-1 do begin
   Endfor
 
   ; Stacked files
-  gdstack = where(stackstr.smashfield eq dr1[i].field,ngdstack)
+  gdstack = where(strtrim(stackstr.smashfield,2) eq dr1[i].field,ngdstack)
   if ngdstack eq 0 then stop,'No stack files for ',dr1[i].field
   fstackstr = stackstr[gdstack]  
   ; Get more detailed FITS header information for these files
@@ -254,8 +276,6 @@ for i=0,ndr1-1 do begin
   fstackstr = fstackstr[useind]
   fstackhdstr = fstackhdstr[useind]
 
-; MAYBE LOOP THROUGH THE RELEVANT NIGHTS!!!  
-
   ; Create empty versions of the files in the right directory
   ;   structure on bambam
   ; Also create summary/inventory files for each directory
@@ -266,38 +286,51 @@ for i=0,ndr1-1 do begin
   for j=0,n_elements(frawstr)-1 do spawn,['touch',outdir+'raw/'+dr1[i].field+'/'+frawstr[j].nsaname],/noshell
   ; inventory file
   rawinvfile = outdir+'raw/'+dr1[i].field+'/INVENTORY.raw.'+dr1[i].field+'.txt'
-  fmt = '(I-5,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-25,F-9.2,F-13.6,F-13.6)'
+  fmt = '(I-5,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-10,A-25,F-9.2,F-13.6,F-13.6)'
   dateobs = repstr(strtrim(frawstr.date_obs,2),' ','T')   ; replace space with T
+  object = repstr(frawstr.object,' ','')
   writecol,rawinvfile,lindgen(n_elements(frawstr))+1,frawstr.nsaname,frawstr.expnum,frawstr.proctype,frawstr.prodtype,frawstr.smashfield,$
-           frawstr.object,strmid(frawstr.filter,0,1),dateobs,frawstr.exposure,frawstr.ra,frawstr.dec,fmt=fmt
-  head = '#NUM   FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER        DATEOBS          EXPTIME      RA           DEC'
+           object,strmid(frawstr.filter,0,1),frawstr.night,dateobs,frawstr.exposure,frawstr.ra,frawstr.dec,fmt=fmt
+  head = '#NUM   FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER  NIGHT          DATEOBS          EXPTIME      RA           DEC'
   writeline,rawinvfile,head,/prepend
+  ftypes = [3,7,7,7,7,7,7,7,7,7,4,5,5]
+  rawinv = importascii(rawinvfile,/header,fieldtypes=ftypes)
+  mwrfits,rawinv,repstr(rawinvfile,'.txt','.fits'),/create
+  push,allrawinv,rawinv
 
   ; Make instcal directory and files
   if file_test(outdir+'instcal/'+dr1[i].field,/directory) eq 0 then file_mkdir,outdir+'instcal/'+dr1[i].field
   for j=0,n_elements(finstcalstr)-1 do spawn,['touch',outdir+'instcal/'+dr1[i].field+'/'+finstcalstr[j].nsaname],/noshell
   ; inventory file
   instcalinvfile = outdir+'instcal/'+dr1[i].field+'/INVENTORY.instcal.'+dr1[i].field+'.txt'
-  fmt = '(I-5,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-25,F-9.2,F-13.6,F-13.6)'
+  fmt = '(I-5,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-10,A-25,F-9.2,F-13.6,F-13.6)'
   dateobs = repstr(strtrim(finstcalstr.date_obs,2),' ','T')   ; replace space with T
+  object = repstr(finstcalstr.object,' ','')
   writecol,instcalinvfile,lindgen(n_elements(finstcalstr))+1,finstcalstr.nsaname,finstcalstr.expnum,finstcalstr.proctype,finstcalstr.prodtype,finstcalstr.smashfield,$
-           finstcalstr.object,strmid(finstcalstr.filter,0,1),dateobs,finstcalstr.exposure,finstcalstr.ra,finstcalstr.dec,fmt=fmt
-  head = '#NUM   FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER        DATEOBS          EXPTIME      RA           DEC'
+           object,strmid(finstcalstr.filter,0,1),finstcalstr.night,dateobs,finstcalstr.exposure,finstcalstr.ra,finstcalstr.dec,fmt=fmt
+  head = '#NUM   FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER  NIGHT          DATEOBS          EXPTIME      RA           DEC'
   writeline,instcalinvfile,head,/prepend
+  ftypes = [3,7,7,7,7,7,7,7,7,7,4,5,5]
+  instcalinv = importascii(instcalinvfile,/header,fieldtypes=ftypes)
+  mwrfits,instcalinv,repstr(instcalinvfile,'.txt','.fits'),/create
+  push,allinstcalinv,instcalinv
 
   ; Make resampled directory and files
   if file_test(outdir+'resampled/'+dr1[i].field,/directory) eq 0 then file_mkdir,outdir+'resampled/'+dr1[i].field
   for j=0,n_elements(fresampstr)-1 do spawn,['touch',outdir+'resampled/'+dr1[i].field+'/'+fresampstr[j].nsaname],/noshell
   ; inventory file
   resampinvfile = outdir+'resampled/'+dr1[i].field+'/INVENTORY.resampled.'+dr1[i].field+'.txt'
-  fmt = '(I-5,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-25,F-9.2,F-13.6,F-13.6)'
+  fmt = '(I-5,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-10,A-25,F-9.2,F-13.6,F-13.6)'
   dateobs = repstr(strtrim(fresampstr.date_obs,2),' ','T')   ; replace space with T
+  object = repstr(fresampstr.object,' ','')
   writecol,resampinvfile,lindgen(n_elements(fresampstr))+1,fresampstr.nsaname,fresampstr.expnum,fresampstr.proctype,fresampstr.prodtype,fresampstr.smashfield,$
-           fresampstr.object,strmid(fresampstr.filter,0,1),dateobs,fresampstr.exposure,fresampstr.ra,fresampstr.dec,fmt=fmt
-  head = '#NUM   FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER        DATEOBS          EXPTIME      RA           DEC'
+           object,strmid(fresampstr.filter,0,1),fresampstr.night,dateobs,fresampstr.exposure,fresampstr.ra,fresampstr.dec,fmt=fmt
+  head = '#NUM   FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER  NIGHT          DATEOBS          EXPTIME      RA           DEC'
   writeline,resampinvfile,head,/prepend
-
-; GET THE NIGHT INFORMATION FROM THE RAW FILE PATH
+  ftypes = [3,7,7,7,7,7,7,7,7,7,4,5,5]
+  resampinv = importascii(resampinvfile,/header,fieldtypes=ftypes)
+  mwrfits,resampinv,repstr(resampinvfile,'.txt','.fits'),/create
+  push,allresampinv,resampinv
 
   ; Make stacked directory and files
   if file_test(outdir+'stacked/'+dr1[i].field,/directory) eq 0 then file_mkdir,outdir+'stacked/'+dr1[i].field
@@ -306,14 +339,60 @@ for i=0,ndr1-1 do begin
   stackinvfile = outdir+'stacked/'+dr1[i].field+'/INVENTORY.stacked.'+dr1[i].field+'.txt'
   fmt = '(I-5,A-36,A-11,A-8,A-12,A-15,A-4,A-25,F-9.2,F-13.6,F-13.6)'
   dateobs = repstr(strtrim(fstackstr.date_obs,2),' ','T')   ; replace space with T
+  object = repstr(fstackstr.object,' ','')
   writecol,stackinvfile,lindgen(n_elements(fstackstr))+1,fstackstr.nsaname,fstackstr.proctype,fstackstr.prodtype,fstackstr.smashfield,$
-           fstackstr.object,strmid(fstackstr.filter,0,1),dateobs,fstackstr.exposure,fstackstr.ra,fstackstr.dec,fmt=fmt
+           object,strmid(fstackstr.filter,0,1),dateobs,fstackstr.exposure,fstackstr.ra,fstackstr.dec,fmt=fmt
   head = '#NUM   FILENAME                          PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER        DATEOBS          EXPTIME      RA           DEC'
   writeline,stackinvfile,head,/prepend
-
-  stop
+  ftypes = [3,7,7,7,7,7,7,7,4,5,5]
+  stackinv = importascii(stackinvfile,/header,fieldtypes=ftypes)
+  mwrfits,stackinv,repstr(stackinvfile,'.txt','.fits'),/create
+  push,allstackinv,stackinv
 
 endfor  ; field
+
+; Make combined inventory files, ASCII and FITS versions
+
+; RAW
+rawinvfile = outdir+'raw/INVENTORY.raw.txt'
+fmt = '(I-7,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-10,A-25,F-9.2,F-13.6,F-13.6)'
+allrawinv.num = lindgen(n_elements(allrawinv))+1
+writecol,rawinvfile,allrawinv.num,allrawinv.filename,allrawinv.expnum,allrawinv.proctype,allrawinv.prodtype,allrawinv.smashfield,$
+         allrawinv.object,allrawinv.filter,allrawinv.night,allrawinv.dateobs,allrawinv.exptime,allrawinv.ra,allrawinv.dec,fmt=fmt
+head = '# NUM    FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER  NIGHT          DATEOBS          EXPTIME      RA           DEC'
+writeline,rawinvfile,head,/prepend
+mwrfits,allrawinv,repstr(rawinvfile,'.txt','.fits'),/create
+
+; InstCal
+instcalinvfile = outdir+'instcal/INVENTORY.instcal.txt'
+fmt = '(I-7,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-10,A-25,F-9.2,F-13.6,F-13.6)'
+allinstcalinv.num = lindgen(n_elements(allinstcalinv))+1
+writecol,instcalinvfile,allinstcalinv.num,allinstcalinv.filename,allinstcalinv.expnum,allinstcalinv.proctype,allinstcalinv.prodtype,allinstcalinv.smashfield,$
+         allinstcalinv.object,allinstcalinv.filter,allinstcalinv.night,allinstcalinv.dateobs,allinstcalinv.exptime,allinstcalinv.ra,allinstcalinv.dec,fmt=fmt
+head = '# NUM    FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER  NIGHT          DATEOBS          EXPTIME      RA           DEC'
+writeline,instcalinvfile,head,/prepend
+mwrfits,allinstcalinv,repstr(instcalinvfile,'.txt','.fits'),/create
+
+; Resampled
+resampinvfile = outdir+'resampled/INVENTORY.resampled.txt'
+fmt = '(I-7,A-36,A-10,A-11,A-8,A-12,A-15,A-4,A-10,A-25,F-9.2,F-13.6,F-13.6)'
+allresampinv.num = lindgen(n_elements(allresampinv))+1
+writecol,resampinvfile,allresampinv.num,allresampinv.filename,allresampinv.expnum,allresampinv.proctype,allresampinv.prodtype,allresampinv.smashfield,$
+         allresampinv.object,allresampinv.filter,allresampinv.night,allresampinv.dateobs,allresampinv.exptime,allresampinv.ra,allresampinv.dec,fmt=fmt
+head = '# NUM    FILENAME                          EXPNUM    PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER  NIGHT          DATEOBS          EXPTIME      RA           DEC'
+writeline,resampinvfile,head,/prepend
+mwrfits,allresampinv,repstr(resampinvfile,'.txt','.fits'),/create
+
+; Stacked
+rawinvfile = outdir+'stacked/INVENTORY.stacked.txt'
+fmt = '(I-7,A-36,A-11,A-8,A-12,A-15,A-4,A-25,F-9.2,F-13.6,F-13.6)'
+allstackinv.num = lindgen(n_elements(allstackinv))+1
+writecol,stackinvfile,allstackinv.num,allstackinv.filename,allstackinv.proctype,allstackinv.prodtype,allstackinv.smashfield,$
+         allstackinv.object,allstackinv.filter,allstackinv.dateobs,allstackinv.exptime,allstackinv.ra,allstackinv.dec,fmt=fmt
+head = '# NUM    FILENAME                          PROCTYPE PRODTYPE  SMASHFIELD  OBJECT       FILTER        DATEOBS          EXPTIME      RA           DEC'
+writeline,stackinvfile,head,/prepend
+mwrfits,stackinv,repstr(stackinvfile,'.txt','.fits'),/create
+
 
 stop
 
