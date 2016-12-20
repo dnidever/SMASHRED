@@ -94,7 +94,7 @@ maskfile = file_basename(maskfile,'.fz')
 ; How many extensions are there
 fits_open,imfile,fcb
 next = fcb.nextend
-fits_close,imfile  
+fits_close,fcb  
 print,strtrim(next,2),' extensions'
 
 ; Chip loop
