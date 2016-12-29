@@ -31,7 +31,7 @@ endif else begin
   rar = range(chips.ra)*cos(cendec/!radeg)*1.1 > 2.3
 endelse
 print,field,' ',cenra,cendec,rar,decr
-wise = queryvizier('ALLWISE',[cenra,cendec],[rar*60,decr*60],/canada,/all)
+wise = queryvizier('ALLWISE',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
 print,strtrim(n_elements(wise),2),' ALLWISE sources found'
 
 MWRFITS,wise,outfile,/create

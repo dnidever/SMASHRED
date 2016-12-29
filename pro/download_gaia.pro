@@ -31,7 +31,7 @@ endif else begin
   rar = range(chips.ra)*cos(cendec/!radeg)*1.1 > 2.3
 endelse
 print,field,' ',cenra,cendec,rar,decr
-gaia = queryvizier('GAIA/GAIA',[cenra,cendec],[rar*60,decr*60],/canada,/all)
+gaia = queryvizier('GAIA/GAIA',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
 print,strtrim(n_elements(gaia),2),' GAIA sources found'
 
 MWRFITS,gaia,outfile,/create
