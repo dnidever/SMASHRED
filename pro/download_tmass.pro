@@ -31,7 +31,8 @@ endif else begin
   rar = range(chips.ra)*cos(cendec/!radeg)*1.1 > 2.3
 endelse
 print,field,' ',cenra,cendec,rar,decr
-tmass = queryvizier('2MASS-PSC',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
+tmass = queryvizier('II/246',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
+;tmass = queryvizier('2MASS-PSC',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
 print,strtrim(n_elements(tmass),2),' 2MASS sources found'
 
 MWRFITS,tmass,outfile,/create

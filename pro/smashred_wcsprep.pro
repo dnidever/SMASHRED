@@ -21,7 +21,9 @@ for i=0,nfields-1 do begin
   if file_test(outfile) eq 0 or keyword_set(redo) then begin
     print,'Querying VizieR for ',refcatname,' sources'
     cfa = 1
-    refcatall = queryvizier(refcatname,[ra,dec],1.5*60.,cfa=cfa,/allcolumns)
+    userefcatname = refcatname
+    if refcatname eq '2MASS-PSC' and cfa eq 1 then userefcatname='II/246'  ; cfa issue
+    refcatall = queryvizier(userefcatname,[ra,dec],1.5*60.,cfa=cfa,/allcolumns)
     if size(refcatall,/type) ne 8 then begin
       print,'Problem with queryvizier.  Bombing'
       goto,bomb0
