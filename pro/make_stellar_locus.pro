@@ -1,7 +1,29 @@
+;+
+;
+; MAKE_STELLAR_LOCUS
+;
+; Define the stellar locus in the various bands.
+;
+; INPUTS:
+;  str      A structure with SMASH photometry.
+;  =gmax    The maximum g-value to use of the sources that define the
+;             stellar locus.  The default is gmax=21.0.
+;  /pl      Make some plots.
+;
+; OUTPUTS:
+;  tstr     The structure of the stellar locus.
+;
+; USAGE:
+;  IDL>make_stellar_locus,str,tstr
+; 
+; By D.Nidever  Nov 2016
+;-
+
 pro make_stellar_locus,str,tstr,gmax=gmax,pl=pl
 
 ; Make stellar locus templates
 
+; Not enough inputs
 if n_elements(str) eq 0 then begin
   print,'Syntax - make_stellar_locus,str,tstr,gmax=gmax,pl=pl'
 endif
@@ -11,12 +33,12 @@ endif
 ;;g = where(str.imag lt 21 and str.gmag lt 50 and str.rmag lt 50)
 ;g = where(str.gmag lt 22,ng)    ; and str.gmag lt 50 and str.rmag lt 50)
 if n_elements(gmax) eq 0 then gmax = 21  ; 22
-g = where(str.g lt gmax,ng)
+;g = where(str.g lt gmax,ng)
+g = where(str.g lt gmax and (str.r lt 50 or str.i lt 50) and abs(str.sharp) lt 1,ng)
 print,'Max g = ',gmax
 
 ;  needs to be detected and gri, removes crap
 str1 = str[g]
-;stop,'CRASHING!!'
 nstr = ng
 
 
