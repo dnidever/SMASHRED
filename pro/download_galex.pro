@@ -1,7 +1,9 @@
 pro download_galex,field,redo=redo
 
 ;outdir = '/data/smash/cp/red/photred/gaia/'
-outdir = '/datalab/users/dnidever/smash/cp/red/photred/galex/'
+;outdir = '/datalab/users/dnidever/smash/cp/red/photred/galex/'
+rootdir = smashred_rootdir()
+outdir = rootdir+'cp/red/photred/galex/'
 outfile = outdir+field+'_galex.fits'
 if file_test(outfile) eq 1 and not keyword_set(redo) then begin
   print,outfile,' EXISTS and /redo not set'
