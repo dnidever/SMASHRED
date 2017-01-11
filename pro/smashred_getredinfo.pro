@@ -30,7 +30,10 @@ pro smashred_getredinfo,info,dir=dir,silent=silent
 
 undefine,info
 
-if n_elements(dir) eq 0 then dir='/data/smash/cp/red/photred/'
+
+rootdir = SMASHRED_ROOTDIR()
+if n_elements(dir) eq 0 then dir=rootdir+'cp/red/photred/'
+;if n_elements(dir) eq 0 then dir='/data/smash/cp/red/photred/'
 ;dir='/data/smash/cp/red/photred/catalogs/inst/'
 
 ; Directory not found
@@ -40,7 +43,8 @@ if file_test(dir,/directory) eq 0 then begin
 endif
 
 ; Load the SMASH fields file
-smash = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
+;smash = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
+smash = importascii(rootdir+'cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
 
 ; Get all of the summary files
 ;sumfiles = file_search(dir+'inst/20*/F*summary.fits',count=nsumfiles)
