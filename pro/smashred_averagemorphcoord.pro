@@ -23,7 +23,7 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error
+pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error,alslowsnrcut=alslowsnrcut
 
 ; Not enough inputs
 if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
@@ -35,9 +35,11 @@ endif
 ; Get average chi, sharp, flag, prob
 nallobj = n_elements(allobj)
 totchi = fltarr(nallobj) & numchi = lon64arr(nallobj)
-totsharp = fltarr(nallobj) & numsharp = lon64arr(nallobj)
+;totsharp = fltarr(nallobj) & numsharp = lon64arr(nallobj)
+totsharp = fltarr(nallobj) & totwtsharp = fltarr(nallobj)
 totprob = fltarr(nallobj) & numprob = lon64arr(nallobj)
 flag = intarr(nallobj) & numflag = lon64arr(nallobj)
+; Exposure loop
 nfstr = n_elements(fstr)
 for i=0,nfstr-1 do begin
   gd = where(allobj.srcfindx[i] ge 0,ngd)
@@ -49,13 +51,26 @@ for i=0,nfstr-1 do begin
     totchi[gdchi] += chi1[gdchi]
     numchi[gdchi]++
   endif
-  ; SHARP
+  ;; SHARP
+  ;; use "weights" with wt=1 for normal values
+  ;; and wt=0.0001 for short, allstar and S/N<5
   sharp1 = fltarr(nallobj)+!values.f_nan
   sharp1[gd] = allsrc[allobj[gd].srcfindx[i]].sharp
   gdsharp = where(finite(sharp1) eq 1 and sharp1 lt 1e5,ngdsharp)
   if ngdsharp gt 0 then begin
-    totsharp[gdsharp] += sharp1[gdsharp]
-    numsharp[gdsharp]++
+    wtsharp1 = fltarr(nallobj)
+    wtsharp1[gdsharp] = 1.0
+    ; Set wt to 1e-4 for ALLSTAR short exposures with S/N<5
+    if fstr.exptime lt 100 and keyword_set(alslowsnrcut) then begin
+      snr = fltarr(nallobj)
+      snr[gd] = 1.087/allsrc[allobj[gd].srcfindx[i]].err
+      lowsnrind = where(finite(sharp1) eq 1 and sharp1 lt 1e5 and snr lt 5,nlowsnrind)
+      if nlowsnrind gt 0 then wtsharp1[lowsnrind]=1e-4
+    endif
+    totsharp[gdsharp] += wtsharp1[gdsharp]*sharp1[gdsharp]
+    totwtsharp[gdshar] += wtsharp1[gdsharp]
+    ;totsharp[gdsharp] += sharp1[gdsharp]
+    ;numsharp[gdsharp]++
   endif
   ; PROB
   prob1 = fltarr(nallobj)+!values.f_nan
@@ -81,9 +96,11 @@ avgchi = fltarr(nallobj)+99.99
 if ngdchi gt 0 then avgchi[gdchi]=totchi[gdchi]/numchi[gdchi]
 allobj.chi = avgchi
 ; Make average SHARP
-gdsharp = where(numsharp gt 0,ngdsharp)
+;gdsharp = where(numsharp gt 0,ngdsharp)
+gdsharp = where(totwtsharp gt 0,ngdsharp)
 avgsharp = fltarr(nallobj)+99.99
-if ngdsharp gt 0 then avgsharp[gdsharp]=totsharp[gdsharp]/numsharp[gdsharp]
+;if ngdsharp gt 0 then avgsharp[gdsharp]=totsharp[gdsharp]/numsharp[gdsharp]
+if ngdsharp gt 0 then avgsharp[gdsharp]=totsharp[gdsharp]/totwtsharp[gdsharp]
 allobj.sharp = avgsharp
 ; Make average PROB
 gdprob = where(numprob gt 0,ngdprob)
