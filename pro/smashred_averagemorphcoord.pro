@@ -54,6 +54,9 @@ for i=0,nfstr-1 do begin
   ;; SHARP
   ;; use "weights" with wt=1 for normal values
   ;; and wt=0.0001 for short, allstar and S/N<5
+  ;; Using weights will still use the low S/N
+  ;; sharp value if it's the ONLY detection, which
+  ;  is what I want to do.
   sharp1 = fltarr(nallobj)+!values.f_nan
   sharp1[gd] = allsrc[allobj[gd].srcfindx[i]].sharp
   gdsharp = where(finite(sharp1) eq 1 and sharp1 lt 1e5,ngdsharp)
@@ -61,14 +64,14 @@ for i=0,nfstr-1 do begin
     wtsharp1 = fltarr(nallobj)
     wtsharp1[gdsharp] = 1.0
     ; Set wt to 1e-4 for ALLSTAR short exposures with S/N<5
-    if fstr.exptime lt 100 and keyword_set(alslowsnrcut) then begin
+    if fstr[i].exptime lt 100 and keyword_set(alslowsnrcut) then begin
       snr = fltarr(nallobj)
       snr[gd] = 1.087/allsrc[allobj[gd].srcfindx[i]].err
       lowsnrind = where(finite(sharp1) eq 1 and sharp1 lt 1e5 and snr lt 5,nlowsnrind)
       if nlowsnrind gt 0 then wtsharp1[lowsnrind]=1e-4
     endif
     totsharp[gdsharp] += wtsharp1[gdsharp]*sharp1[gdsharp]
-    totwtsharp[gdshar] += wtsharp1[gdsharp]
+    totwtsharp[gdsharp] += wtsharp1[gdsharp]
     ;totsharp[gdsharp] += sharp1[gdsharp]
     ;numsharp[gdsharp]++
   endif
