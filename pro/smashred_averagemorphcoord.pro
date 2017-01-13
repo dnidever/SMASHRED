@@ -10,6 +10,7 @@
 ;  chstr   The structure with information for each chip.
 ;  allsrc  The structure with information for each source detection.
 ;  allobj  The structure with information for each unique object.
+;  /deeponly   Only use the deep exposures.
 ;  /alslowsnrcut   Downweight ALLSTAR S/N<5 sharp (short exposures)
 ;                    because are "bad".  Will keep the sharp if it
 ;                    is the only detection for that object.
@@ -26,12 +27,12 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error,alslowsnrcut=alslowsnrcut
+pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error,alslowsnrcut=alslowsnrcut,deeponly=deeponly
 
 ; Not enough inputs
 if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,alslowsnrcut=alslowsnrcut'
+  print,'Syntax - smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,alslowsnrcut=alslowsnrcut,deeponly=deeponly'
   return
 endif
 
@@ -41,13 +42,22 @@ totchi = fltarr(nallobj) & numchi = lon64arr(nallobj)
 totsharp = fltarr(nallobj) & totwtsharp = fltarr(nallobj)
 totprob = fltarr(nallobj) & numprob = lon64arr(nallobj)
 flag = intarr(nallobj) & numflag = lon64arr(nallobj)
-; Exposure loop
+; Exposures to use
 nfstr = n_elements(fstr)
-for i=0,nfstr-1 do begin
-  gd = where(allobj.srcfindx[i] ge 0,ngd)
+;  Only deep exposures
+if keyword_set(deeponly) then begin
+  expind = where(fstr.exptime gt 100,nexpind)
+;  All exposures
+endif else begin
+  nexpind = nfstr
+  expind = lindgen(nexpind)
+endelse
+; Exposure loop
+for i=0,nexpind-1 do begin
+  gd = where(allobj.srcfindx[expind[i]] ge 0,ngd)
   ; CHI
   chi1 = fltarr(nallobj)+!values.f_nan
-  chi1[gd] = allsrc[allobj[gd].srcfindx[i]].chi
+  chi1[gd] = allsrc[allobj[gd].srcfindx[expind[i]]].chi
   gdchi = where(finite(chi1) eq 1 and chi1 lt 1e5,ngdchi)
   if ngdchi gt 0 then begin
     totchi[gdchi] += chi1[gdchi]
@@ -60,15 +70,15 @@ for i=0,nfstr-1 do begin
   ;; sharp value if it's the ONLY detection, which
   ;  is what I want.
   sharp1 = fltarr(nallobj)+!values.f_nan
-  sharp1[gd] = allsrc[allobj[gd].srcfindx[i]].sharp
+  sharp1[gd] = allsrc[allobj[gd].srcfindx[expind[i]]].sharp
   gdsharp = where(finite(sharp1) eq 1 and sharp1 lt 1e5,ngdsharp)
   if ngdsharp gt 0 then begin
     wtsharp1 = fltarr(nallobj)
     wtsharp1[gdsharp] = 1.0
     ; Set wt to 1e-4 for ALLSTAR short exposures with S/N<5
-    if fstr[i].exptime lt 100 and keyword_set(alslowsnrcut) then begin
+    if fstr[expind[i]].exptime lt 100 and keyword_set(alslowsnrcut) then begin
       snr = fltarr(nallobj)
-      snr[gd] = 1.087/allsrc[allobj[gd].srcfindx[i]].err
+      snr[gd] = 1.087/allsrc[allobj[gd].srcfindx[expind[i]]].err
       lowsnrind = where(finite(sharp1) eq 1 and sharp1 lt 1e5 and snr lt 5,nlowsnrind)
       if nlowsnrind gt 0 then wtsharp1[lowsnrind]=1e-4
     endif
@@ -77,7 +87,7 @@ for i=0,nfstr-1 do begin
   endif
   ; PROB
   prob1 = fltarr(nallobj)+!values.f_nan
-  prob1[gd] = allsrc[allobj[gd].srcfindx[i]].prob
+  prob1[gd] = allsrc[allobj[gd].srcfindx[expind[i]]].prob
   gdprob = where(finite(prob1) eq 1 and prob1 lt 50 and prob1 gt -0.5,ngdprob)
   if ngdprob gt 0 then begin
     totprob[gdprob] += prob1[gdprob]
@@ -86,7 +96,7 @@ for i=0,nfstr-1 do begin
   ; FLAG,  logical OR across all detections
   ;    0s are essentially ignored
   flag1 = intarr(nallobj)-1
-  flag1[gd] = allsrc[allobj[gd].srcfindx[i]].flag
+  flag1[gd] = allsrc[allobj[gd].srcfindx[expind[i]]].flag
   gdflag = where(flag1 ne -1,ngdflag)
   if ngdflag gt 0 then begin
     flag[gdflag] OR= flag1[gdflag]
