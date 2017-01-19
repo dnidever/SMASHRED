@@ -108,7 +108,10 @@ for i=0,ncolor-1 do begin
 
   ; Interpolate the model color for each source  
   gd = where(str.g lt 50 and str.i lt 50 and str.(magind1) lt 50 and str.(magind2) lt 50 and $
-             str.g-str.i ge min(tstr.gibin) and str.g-str.i le max(tstr.gibin),ngd)
+             str.g-str.i ge -5 and str.g-str.i le 10,ngd)
+  ;gd = where(str.g lt 50 and str.i lt 50 and str.(magind1) lt 50 and str.(magind2) lt 50 and $
+  ;           str.g-str.i ge (min(tstr.gibin)-0.5) and str.g-str.i le (max(tstr.gibin)+0.5),ngd)
+  ;           str.g-str.i ge min(tstr.gibin) and str.g-str.i le max(tstr.gibin),ngd)
   INTERP,tstr.gibin,tcolbin,str[gd].g-str[gd].i,tcol
 
   coldiff = fltarr(nstr)+99.99
