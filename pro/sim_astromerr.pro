@@ -121,9 +121,15 @@ for i=0,nmocks-1 do begin
   add_tag,alsout,'mock',i+1,alsout
   push,allalsout,alsout
 
+  ; Save the matched versions as well
+  push,mallalsin,als1[ind1]
+  push,mallalsout,alsout[ind2]
+
   ;stop
 
 endfor
+
+stop
 
 xsig = mad(reform(diff[0,*,*]),dim=2,/zero)
 ysig = mad(reform(diff[1,*,*]),dim=2,/zero)
@@ -131,7 +137,7 @@ sharpsig = mad(reform(sharp[*,*]),dim=2)
 gd = where(finite(xsig) eq 1,ngd)
 plot,als[gd].mag,xsig[gd],ps=1
 
-; save,als,diff,allalsin,allalsout,sharp,xsig,ysig,sharpsig,file='sim_astromerr.dat'
+; save,als,diff,allalsin,allalsout,mallalsin,mallalsout,sharp,xsig,ysig,sharpsig,file='sim_astromerr.dat'
 
 ; sharp scatter
 bindata,alog10(1.0/als[gd].err),alog10(sharpsig[gd]),xbin,ybin,binsize=0.2,min=-0.4,max=3.0,gdind=gdind
