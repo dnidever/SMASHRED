@@ -49,7 +49,7 @@ end
 pro smashred_apply_phottranseqn,fstr,chstr,allsrc,allobj
 
 ; Not enough inputs
-if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) then begin
+if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
   print,'Syntax - smashred_apply_phottranseqn,fstr,chstr,allsrc,allobj'
   return
 endif
