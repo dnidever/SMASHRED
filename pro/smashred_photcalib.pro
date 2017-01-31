@@ -328,7 +328,7 @@ WHILE (doneflag eq 0) do begin
 
     ; Step 2d. Set CALIBRATED bit
     print,'2d. Set CALIBRATED bit in CHSTR'
-    SMASHRED_SET_CALIBRATED_BIT,chfiltstr,overlapstr,ubercalstr,usegaia=usegaia
+    SMASHRED_SET_CALIBRATED_BIT,chfiltstr,overlapstr
 
     ; Stuff it back in
     chstr[chfiltind] = chfiltstr
