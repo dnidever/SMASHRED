@@ -95,9 +95,10 @@ FOR f=0,nfilters-1 do begin
   ; Loop through the files
   For i=0,nind-1 do begin
     chstr1 = chstr[ind[i]]
-    CALDAT,chstr1.mjd+2400000.5d0-0.5,month,day,year,hour,minute,second
-    night = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
-    file = reduxdir+night+'/'+strtrim(chstr1.field,2)+'/'+strtrim(chstr1.file,2)
+    file = chstr1.photdir+'/'+strtrim(chstr1.field,2)+'/'+strtrim(chstr1.file,2)
+    ;CALDAT,chstr1.mjd+2400000.5d0-0.5,month,day,year,hour,minute,second
+    ;night = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
+    ;file = reduxdir+night+'/'+strtrim(chstr1.field,2)+'/'+strtrim(chstr1.file,2)
     print,' ',strtrim(f+1,2),' ',strtrim(i+1,2),'/',strtrim(nind,2),' ',file
     FITS_READ,file,im1,head1,message=error,/no_abort
     if error ne '' then stop,'PROBLEM loading '+file

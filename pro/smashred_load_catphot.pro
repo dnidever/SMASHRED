@@ -67,6 +67,7 @@ fbase = file_basename(info.file,'_summary.fits')  ; the observed field name
 
 ; Output filename
 outfile = tmpdir+fbase+'_'+info.night+'_photred.fits'
+; This will now use "deep" for the all-deep PHOTRED runs
 
 
 ; --- Initalize ALLSRC structure ---
@@ -100,8 +101,35 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   ; Load the chip-level summary information
   chstr = MRDFITS(info.file,2,/silent)  ; load the chip structure
   nchstr = n_elements(chstr)
-  night = info.night
+  ;photdir = reduxdir+night
+  photdir = file_dirname(info.file)
   field = chstr[0].field
+
+  ; Add some tags to CHSTR
+  add_tag,chstr,'photdir',photdir,chstr
+  add_tag,chstr,'night','',chstr
+  ;chstr.night = night
+  add_tag,chstr,'alftiletype','',chstr
+  add_tag,chstr,'gaiarms',0.0,chstr
+  add_tag,chstr,'gaianmatch',0L,chstr
+  add_tag,chstr,'refexpnum','',chstr
+  add_tag,chstr,'vertices_ra',dblarr(4),chstr
+  add_tag,chstr,'vertices_dec',dblarr(4),chstr
+  add_tag,chstr,'nsrc',-1L,chstr
+  add_tag,chstr,'allsrcindx',-1LL,chstr
+
+  ; Add MJD to CHSTR
+  if tag_exist(chstr,'MJD') eq 0 then begin
+    add_tag,chstr,'MJD',0L,chstr
+    dateobs = chstr.utdate+'T'+chstr.uttime
+    for i=0,nchstr-1 do chstr[i].mjd=PHOTRED_GETMJD('','ctio',dateobs=dateobs[i])
+  endif
+  ; Add NIGHT to CHSTR
+  for i=0,nchstr-1 do begin
+    CALDAT,chstr[i].mjd+2400000.5d0-0.5,month,day,year,hour,minute,second
+    night = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
+    chstr[i].night = night
+  endfor
 
   ; --- Remove bad exposures ---
   undefine,badexpind,ubadexpnum
@@ -135,7 +163,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
   endif
 
   ; KLUDGE! Removing DUPLICATE exposures in short and deep fields
-  if night eq '20150318' and field eq 'F5' then begin  ; Field130sh
+  ;if night eq '20150318' and field eq 'F5' then begin  ; Field130sh
+  if total(stregex(chstr.night,'20150318',/boolean)) gt 0 and field eq 'F5' then begin  ; Field130sh
     MATCH,chstr.expnum,'00423440',bdind,dum,/sort,count=nbdind
     if nbdind gt 0 then begin
       print,'KLUDGE! Removing DUPLICATE exposure 00423440 (in short and deep field) from short field'
@@ -143,7 +172,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       nchstr = n_elements(chstr)
     endif
   endif
-  if night eq '20150330' and field eq 'F7' then begin  ; Field130sh
+  ;if night eq '20150330' and field eq 'F7' then begin  ; Field130sh
+  if total(stregex(chstr.night,'20150330',/boolean)) gt 0 and field eq 'F7' then begin  ; Field130sh
     MATCH,chstr.expnum,'00426607',bdind,dum,/sort,count=nbdind
     if nbdind gt 0 then begin
       print,'KLUDGE! Removing DUPLICATE exposure 00423440 (in short and deep field) from short field'
@@ -152,34 +182,22 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
     endif
   endif
 
-  ; Add some tags to CHSTR
-  add_tag,chstr,'night','',chstr
-  chstr.night = night
-  add_tag,chstr,'alftiletype','',chstr
-  add_tag,chstr,'gaiarms',0.0,chstr
-  add_tag,chstr,'gaianmatch',0L,chstr
-  add_tag,chstr,'refexpnum','',chstr
-  add_tag,chstr,'vertices_ra',dblarr(4),chstr
-  add_tag,chstr,'vertices_dec',dblarr(4),chstr
-  add_tag,chstr,'nsrc',-1L,chstr
-  add_tag,chstr,'allsrcindx',-1LL,chstr
 
   ; --- Get data from the phot/ast files ----
   ; Use PHOT files
   if not keyword_set(useast) and not keyword_set(useorig) then begin
     ext = '.phot'
-    photfiles = file_search(reduxdir+night+'/'+field+'/'+field+'-*_??'+ext,count=nphotfiles)
-    print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',reduxdir+night+'/'+field+'/'
+    photfiles = file_search(photdir+'/'+field+'/'+field+'-*_??'+ext,count=nphotfiles)
+    print,strtrim(nphotfiles,2),' PHOT files for ',fbase,' in ',photdir+'/'+field+'/'
   ; Use AST files
   endif else begin
     ext = '.ast'
-    photfiles = file_search(reduxdir+night+'/'+field+'/'+field+'-*_??'+ext,count=nphotfiles)
-    print,strtrim(nphotfiles,2),' AST files for ',fbase,' in ',reduxdir+night+'/'+field+'/'
+    photfiles = file_search(photdir+'/'+field+'/'+field+'-*_??'+ext,count=nphotfiles)
+    print,strtrim(nphotfiles,2),' AST files for ',fbase,' in ',photdir+'/'+field+'/'
   endelse
 
   ; --- Loop through individual chip AST/PHOT files ---
-  for i=0,nphotfiles-1 do begin
-  
+  for i=0,nphotfiles-1 do begin  
     print,strtrim(i+1,2),' ',photfiles[i]
     ; Load the PHOT/AST file
     phot = IMPORTASCII(photfiles[i],/header,/silent)
@@ -199,7 +217,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
 
     ; Check the combination tile type 
     if tag_exist(phot,'PROB') then begin
-      combfile = reduxdir+night+'/'+field+'/'+phbase+'_comb.fits'
+      combfile = photdir+'/'+field+'/'+phbase+'_comb.fits'
+      ;combfile = reduxdir+night+'/'+field+'/'+phbase+'_comb.fits'
       combhead = HEADFITS(combfile)
       alftiletype = sxpar(combhead,'AFTILTYP',count=nalftiletype)
       if nalftiletype gt 0 then chstr[chind].alftiletype=alftiletype else chstr[chind].alftiletype='ORIG'
@@ -248,7 +267,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       src.sharp = !values.f_nan
 
       ; Load the FITS header of the original chip file
-      fitsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
+      fitsfile = photdir+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
+      ;fitsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
       if file_test(fitsfile) eq 0 then stop,fitsfile,' NOT FOUND'
       head = headfits(fitsfile)
       ; Get the MJD for this exposure
@@ -261,7 +281,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ; Are we using ALF or ALS files?
       ;   Determine if als/alf if prob/flag is there
       if tag_exist(phot,'PROB') then origphotexten='alf' else origphotexten='als'
-      origphotfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
+      origphotfile = photdir+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
+      ;origphotfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.'+origphotexten
       if file_test(origphotfile) eq 0 then stop,origphotfile,' NOT FOUND'
 
       ; Load original photometry als/alf file
@@ -273,7 +294,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
         MATCH,src.idref,origphot.id,ind1,ind2,/sort,count=nmatch
       ; ALS: Need to use the TFR file to get indices for the als file
       endif else begin
-        tfrfile = reduxdir+night+'/'+field+'/'+phbase+'.tfr'
+        tfrfile = photdir+'/'+field+'/'+phbase+'.tfr'
+        ;tfrfile = reduxdir+night+'/'+field+'/'+phbase+'.tfr'
         ; Check if the there is a .tfr.orig file, this is the DAOMASTER
         ;  tfr file if ALLFRAME was run
         ;if file_test(tfrfile+'.orig') eq 1 then tfrfile+='.orig'
@@ -307,7 +329,8 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ; Get GAIA-calibrated coordinates
       ;--------------------------------
       if mjd lt 57691 then begin
-        gaiawcsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.gaiawcs.head'
+        gaiawcsfile = photdir+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.gaiawcs.head'
+        ;gaiawcsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.gaiawcs.head'
         if file_test(gaiawcsfile) eq 0 then stop,gaiawcsfile+' NOT FOUND'
         READLINE,gaiawcsfile,gaiahead
       endif else begin

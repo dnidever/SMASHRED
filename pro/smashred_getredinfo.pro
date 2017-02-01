@@ -15,6 +15,8 @@
 ; INPUTS:
 ;  =dir       The directory with the catalogs.  By default,
 ;               dir='/data/smash/cp/red/photred/'
+;  =sumfiles  Input list of summary files.  Otherwise
+;               dir+'/20??????/*summaryf.its' is searched.
 ;  /silent    Don't print anything to the screen.
 ;
 ; OUTPUTS:
@@ -26,10 +28,9 @@
 ; By D.Nidever Feb 2016
 ;-
 
-pro smashred_getredinfo,info,dir=dir,silent=silent
+pro smashred_getredinfo,info,dir=dir,sumfiles=sumfiles,silent=silent
 
 undefine,info
-
 
 rootdir = SMASHRED_ROOTDIR()
 if n_elements(dir) eq 0 then dir=rootdir+'cp/red/photred/'
@@ -50,8 +51,17 @@ smash = importascii(rootdir+'cp/red/photred/catalogs/pro/smash_fields_final.txt'
 ;sumfiles = file_search(dir+'inst/20*/F*summary.fits',count=nsumfiles)
 ;sumfiles = file_search(dir+'inst/20*/*summary.fits',count=nsumfiles)
 ;sumfiles = file_search(dir+'/20*/*summary.fits',count=nsumfiles)
-sumfiles = file_search(dir+'/20??????/*summary.fits',count=nsumfiles)
-if not keyword_set(silent) then print,'Found ',strtrim(nsumfiles,2),' PHOTRED summary files in ',dir,'/20*/'
+if n_elements(sumfiles) eq 0 then begin
+  sumfiles = file_search(dir+'/20??????/*summary.fits',count=nsumfiles)
+  if not keyword_set(silent) then print,'Found ',strtrim(nsumfiles,2),' PHOTRED summary files in ',dir,'/20??????/'
+endif else begin
+  if not keyword_set(silent) then print,'Using ',strtrim(nsumfiles,2),' input PHOTRED summary files'
+  nsumfiles = n_elements(sumfiles)
+endelse
+if nsumfiles eq 0 then begin
+  print,'No PHOTRED summary files'
+  return
+endif
 
 ; Create the output structure
 info = replicate({file:'',object:'',field:'',sh:-1,night:'',nexp:0L,bands:'',fstr:ptr_new()},nsumfiles)
@@ -71,6 +81,8 @@ for i=0,nsumfiles-1 do begin
     info[i].object = base
   endelse
   info[i].night = strmid(file_basename(file_dirname(sumfiles[i])),0,8)  ; 20130320
+  ; /datalab/users/dnidever/smash/cp/red/photred/deep/Field110/Field110_summary.fits'
+  if stregex(sumfiles[i],'deep',/boolean) then info[i].night='deep'
   info[i].nexp = n_elements(fstr)
   ui = uniq(fstr.filter,sort(fstr.filter))
   info[i].bands = strjoin(fstr[ui].filter)
