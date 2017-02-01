@@ -27,7 +27,8 @@ if n_elements(field) eq 0 or n_elements(chstr) eq 0 then begin
   return
 endif
 
-reduxdir = '/data/smash/cp/red/photred/'
+reduxdir = SMASHRED_ROOTDIR()+'cp/red/photred/'
+;reduxdir = '/data/smash/cp/red/photred/'
 if n_elements(outputdir) eq 0 then outputdir=reduxdir+'catalogs/fina/'
 outfile = outputdir+field+'_combined_expmap.fits'
 
