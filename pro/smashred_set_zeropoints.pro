@@ -39,9 +39,13 @@ if n_elements(field) eq 0 or n_elements(chstr) eq 0 or n_elements(ubercalstr) eq
 endif
 
 filter = chstr[0].filter
-if n_elements(dir) eq 0 then dir='/data/smash/cp/red/photred/catalogs/final/'
-dir09m = '/data/smash/cp/red/photred/0.9m/'
-gaiadir = '/data/smash/cp/red/photred/gaia/'
+rootdir = SMASHRED_ROOTDIR()
+if n_elements(dir) eq 0 then dir=rootdir+'cp/red/photred/catalogs/final/'
+dir09m = rootdir+'cp/red/photred/0.9m/'
+gaiadir = rootdir+'cp/red/photred/gaia/'
+;if n_elements(dir) eq 0 then dir='/data/smash/cp/red/photred/catalogs/final/'
+;dir09m = '/data/smash/cp/red/photred/0.9m/'
+;gaiadir = '/data/smash/cp/red/photred/gaia/'
 
 ; Restore the field overlap structure
 if file_test(dir+'smash_fieldoverlaps.fits') eq 1 then begin

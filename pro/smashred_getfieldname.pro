@@ -36,7 +36,9 @@ if tag_exist(str,'RA') eq 0 or tag_exist(str,'DEC') eq 0 then begin
 endif
 
 ; Load the SMASH fields file
-smash = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
+rootdir = SMASHRED_ROOTDIR()
+smash = importascii(rootdir+'cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
+;smash = importascii('/data/smash/cp/red/photred/catalogs/pro/smash_fields_final.txt',/header,/silent)
 add_tag,smash,'field','',smash
 smash.field = 'Field'+strtrim(smash.num,2)
 

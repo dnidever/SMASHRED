@@ -9,6 +9,8 @@
 ;  field      The field name, e.g. "Field24"
 ;  =version   The version of the final catalogs.  This is only used
 ;               if OUTPUTDIR is not input.
+;  =sumfiles  Input list of summary files to use.  Otherwise smashred_getredinfo
+;               uses all summary files for FIELD in dir+'/20??????/*summary.fits'
 ;  =transfile The file with the photometric transformation equations.
 ;  =reduxdir  The base directory for the PHOTRED reductions.  The
 ;               default is "/data/smash/cp/red/photred/"
@@ -36,7 +38,7 @@
 ; By D.Nidever March 2016
 ;-
 
-pro smashred_calibrate_field,field,version=version,transfile=transfile,reduxdir=reduxdir,outputdir=outputdir,$
+pro smashred_calibrate_field,field,version=version,sumfiles=sumfiles,transfile=transfile,reduxdir=reduxdir,outputdir=outputdir,$
                              usegaia=usegaia,redo=redo,compress=compress,silent=silent,error=error
 
 undefine,error
@@ -45,13 +47,14 @@ t0 = systime(1)
 ; Not enough inputs
 if n_elements(field) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_calibrate_field,field,version=version,reduxdir=reduxdir,outputdir=outputdir,redo=redo,'
+  print,'Syntax - smashred_calibrate_field,field,version=version,sumfiles=sumfiles,reduxdir=reduxdir,outputdir=outputdir,redo=redo,'
   print,'                                  usegaia=usegaia,compress=compress,error=error'
   return
 endif
 
 ; Defaults
-if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
+if n_elements(reduxdir) eq 0 then reduxdir=SMASHRED_ROOTDIR()+'cp/red/photred/'
+;if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
 if file_test(reduxdir,/directory) eq 0 then begin
   error = reduxdir+' NOT FOUND'
   if not keyword_set(silent) then print,error
@@ -65,7 +68,8 @@ if file_test(outputdir,/directory) eq 0 then begin
   if not keyword_set(silent) then print,outputdir+' does NOT exist.  Creating it.'
   FILE_MKDIR,outputdir
 endif
-if n_elements(transfile) eq 0 then transfile='/data/smash/cp/red/photred/stdred/smashred_transphot_eqns.fits'
+if n_elements(transfile) eq 0 then transfile=SMASHRED_ROOTDIR()+'cp/red/photred/stdred/smashred_transphot_eqns.fits'
+;if n_elements(transfile) eq 0 then transfile='/data/smash/cp/red/photred/stdred/smashred_transphot_eqns.fits'
 ; Temporary directory
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
@@ -86,15 +90,19 @@ endif
 
 ; Get reduction info
 print,'Getting reduction information'
-SMASHRED_GETREDINFO,allinfo,/silent
-gdinfo = where(allinfo.field eq field,ngdinfo)
-if ngdinfo eq 0 then begin
-  error = 'No reduced exposures for '+field
-  if not keyword_set(silent) then print,error
-  return
-endif
-info = allinfo[gdinfo]
-ninfo = ngdinfo
+if n_elements(sumfiles) gt 0 then begin
+  SMASHRED_GETREDINFO,info,sumfiles=sumfiles,/silent
+endif else begin
+  SMASHRED_GETREDINFO,allinfo,/silent
+  gdinfo = where(allinfo.field eq field,ngdinfo)
+  if ngdinfo eq 0 then begin
+    error = 'No reduced exposures for '+field
+    if not keyword_set(silent) then print,error
+    return
+  endif
+  info = allinfo[gdinfo]
+endelse
+ninfo = n_elements(info)
 
 ; MAYBE GET THE CATALOGS FROM THE PHOTRED DIRECTOREIS DIRECTLY!!!!???
 ; HOW DO WE KNOW IF THE CATALOGS/PHOT FILES ARE CALIBRATED OR INST??

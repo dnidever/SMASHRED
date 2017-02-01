@@ -41,7 +41,8 @@ if n_elements(info) eq 0 then begin
 endif
 
 ; Defaults
-if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
+if n_elements(reduxdir) eq 0 then reduxdir=SMASHRED_ROOTDIR()+'cp/red/photred/'
+;if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
 if file_test(reduxdir,/directory) eq 0 then begin
   error = reduxdir+' NOT FOUND'
   if not keyword_set(silent) then print,error

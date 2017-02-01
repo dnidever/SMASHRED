@@ -37,7 +37,8 @@ if n_elements(field) eq 0 then begin
 endif
 
 ; Defaults
-if n_elements(dir) eq 0 then dir = '/data/smash/cp/red/photred/catalogs/gaiacal/'
+if n_elements(dir) eq 0 then dir = SMASHRED_ROOTDIR()+'cp/red/photred/catalogs/gaiacal/'
+;if n_elements(dir) eq 0 then dir = '/data/smash/cp/red/photred/catalogs/gaiacal/'
 if n_elements(maglim) eq 0 then maglim=22.0
 
 ; Check that the allobj catalog exists

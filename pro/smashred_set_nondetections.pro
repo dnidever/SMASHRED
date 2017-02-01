@@ -21,7 +21,8 @@
 
 pro smashred_set_nondetections,field,allobj,dir=dir
 
-if n_elements(dir) eq 0 then dir = '/data/smash/cp/red/photred/catalogs/final/'
+if n_elements(dir) eq 0 then dir = SMASHRED_ROOTDIR()+'cp/red/photred/catalogs/final/'
+;if n_elements(dir) eq 0 then dir = '/data/smash/cp/red/photred/catalogs/final/'
 
 ; Not enough inputs
 if n_elements(field) eq 0 or n_elements(allobj) eq 0 then begin

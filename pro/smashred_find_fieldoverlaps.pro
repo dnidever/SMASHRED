@@ -6,7 +6,8 @@ if n_elements(version) eq 0 then begin
   print,'Please enter the version number, e.g. "v2"'
   return
 endif
-dir = '/data/smash/cp/red/photred/catalogs/final/'+version+'/'
+dir = SMASHRED_ROOTDIR()+'cp/red/photred/catalogs/final/'+version+'/'
+;dir = '/data/smash/cp/red/photred/catalogs/final/'+version+'/'
 
 filters = ['u','g','r','i','z']
 nfilters = n_elements(filters)

@@ -55,7 +55,8 @@ endif
 ; affect the color terms.  So needs to be a 
 
 ; Defaults
-if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
+if n_elements(reduxdir) eq 0 then reduxdir=SMASHRED_ROOTDIR()+'cp/red/photred/'
+;if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
 if file_test(reduxdir,/directory) eq 0 then begin
   error = reduxdir+' NOT FOUND'
   if not keyword_set(silent) then print,error
@@ -70,7 +71,8 @@ endif
 tmpdir = outputdir+'/tmp/'
 if file_test(tmpdir,/directory) eq 0 then FILE_MKDIR,tmpdir
 ; Gaia directory
-gaiadir = '/data/smash/cp/red/photred/gaia/'
+gaiadir = SMASHRED_ROOTDIR()+'cp/red/photred/gaia/'
+;gaiadir = '/data/smash/cp/red/photred/gaia/'
 
 ; Field name
 field = info[0].field
