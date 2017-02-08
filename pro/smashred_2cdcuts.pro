@@ -9,12 +9,14 @@
 ;  str      A structure of SMASH photometry.
 ;  =gmax    The maximum g-value to use when defining the stellar
 ;             locus.  gmas=23.0 by default.
+;  =aststr  The structure of artificial stars.
 ;  /pl      Make some plots.
 ;  /stp     Stop at the end of the program.
 ;
 ; OUTPUTS:
 ;  ind      The indices for elements that passed the cuts.
 ;  tstr     The stellar locus structure.
+;  =astind  The indices for the ASTs that passed the cuts.
 ;
 ; USAGE:
 ;  IDL>smashred_2cdcuts,str,ind
@@ -22,7 +24,7 @@
 ; By D.Nidever  Jan 2017
 ;-
 
-pro smashred_2cdcuts,str,ind,tstr,gmax=gmax,pl=pl,stp=stp
+pro smashred_2cdcuts,str,ind,tstr,gmax=gmax,aststr=aststr,astind=astind,pl=pl,stp=stp
 
 ; Use color-color cuts for star-galaxy separation
 
@@ -32,11 +34,12 @@ pro smashred_2cdcuts,str,ind,tstr,gmax=gmax,pl=pl,stp=stp
 
 undefine,ind
 undefine,tstr
+undefine,astind
   
 ; Not enough inputs
 nstr = n_elements(str)
 if nstr eq 0 then begin
-  print,'Syntax - smashred_2cdcuts,str,ind,tstr,gmax=gmax,pl=pl,stp=stp'
+  print,'Syntax - smashred_2cdcuts,str,ind,tstr,gmax=gmax,aststr=aststr,astind=astind,pl=pl,stp=stp'
   return
 endif
 
@@ -83,6 +86,11 @@ ncolor = n_elements(color)
 stags = tag_names(str)
 ttags = tag_names(tstr)
 mask = bytarr(nstr)+1
+naststr = n_elements(aststr)
+if naststr gt 0 then begin
+  atags = tag_names(aststr)
+  astmask = bytarr(naststr)+1
+endif
 for i=0,ncolor-1 do begin
 
   band1 = first_el(strsplit(color[i],'-',/extract))
@@ -131,6 +139,36 @@ for i=0,ncolor-1 do begin
   ;mask = mask and (abs(reldiff) lt rthresh[i] or reldiff gt 90)
   mask = mask and ((abs(reldiff) lt rthresh[i] and abs(coldiff) lt athresh[i]) or reldiff gt 90)
 
+  ; ASTs
+  if naststr gt 0 then begin
+    astmagind1 = where(atags eq strupcase(band1),nastmagind1)
+    astmagind2 = where(atags eq strupcase(band2),nastmagind2)
+    astcol = aststr.(astmagind1) - aststr.(astmagind2)
+
+    ; Input colors
+    astinpmagind1 = where(atags eq 'AST_'+strupcase(band1),nastinpmagind1)
+    astinpmagind2 = where(atags eq 'AST_'+strupcase(band2),nastinpmagind2)
+    astinpcol = aststr.(astinpmagind1) - aststr.(astinpmagind2)
+
+    ; Don't use the color-color fits, just subtract the input color
+    ;  from the recovered color and assume that they follow
+    ;  the derived stellar locus
+    astgd = where(aststr.g lt 50 and aststr.i lt 50 and aststr.(astmagind1) lt 50 and aststr.(astmagind2) lt 50 and $
+                  aststr.g-aststr.i ge -5 and aststr.g-aststr.i le 10,nastgd)
+    astcoldiff = fltarr(naststr)+99.99
+    astcoldiff[astgd] = astcol[astgd] - astinpcol[astgd]
+
+    ; Divide by observation errors
+    asterrind1 = where(atags eq strupcase(band1)+'ERR',nasterrind1)
+    asterrind2 = where(atags eq strupcase(band2)+'ERR',nasterrind2)
+    astobserr = sqrt( aststr.(asterrind1)^2 + aststr.(asterrind2)^2 ) > 0.03  ; lower threshold
+    astreldiff = astcoldiff
+    astreldiff[astgd] /= astobserr[astgd]
+
+    ; Mask
+    astmask = astmask and ((abs(astreldiff) lt rthresh[i] and abs(astcoldiff) lt athresh[i]) or astreldiff gt 90)
+  endif
+
   ;; Plotting
   if keyword_set(pl) then begin
     ;hess,str[gd].g-str[gd].i,coldiff[gd],dx=0.05,dy=0.03,yr=[-2,2],/log,xtit='g-i',ytit='Delta '+color[i],$
@@ -164,7 +202,8 @@ for i=0,ncolor-1 do begin
 
 endfor
 
-ind = where(mask eq 1,ningd)
+ind = where(mask eq 1,nind)
+astind = where(astmask eq 1,nastind)
 
 if keyword_set(pl) then begin
   ;gd = where(mask eq 1 and str.g lt 50 and str.i lt 50 and str.u lt 50,ngd)

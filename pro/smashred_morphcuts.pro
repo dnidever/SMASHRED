@@ -11,12 +11,14 @@
 ;                   sources.  By default this is 0.2.
 ;  =nsigthresh    The number of sigmas to use for the sharpness cut
 ;                   at the faint end.  The default is 2.0.
+;  =astobj        The structure of artificial stars.
 ;  /pl            Make some plots
 ;  /stp           Stop at the end of the program.
 ;
 ; OUTPUTS:
 ;  ind            The index array of sources passing the sharpness cuts.
 ;  fitstr         The structure with the fitting parameters.
+;  =astind        The indices of ASTs that passed the sharpness cuts.
 ;
 ; USAGE:
 ;  IDL>smashred_morphcuts,obj,gdsharp
@@ -24,7 +26,8 @@
 ; By D.Nidever  Jan 2017
 ;-
 
-pro smashred_morphcuts,obj,ind,fitstr,brightthresh=brightthresh0,nsigthresh=nsigthresh0,pl=pl,stp=stp
+pro smashred_morphcuts,obj,ind,fitstr,brightthresh=brightthresh0,nsigthresh=nsigthresh0,$
+                       astobj=astobj,astind=astind,pl=pl,stp=stp
 
 ; Apply morphological star/galaxy cuts
 
@@ -33,7 +36,8 @@ undefine,fitstr
   
 ; Not enough inputs
 if n_elements(obj) eq 0 then begin
-  print,'Syntax - smashred_morphcuts,obj,ind,fitstr,brightthresh=brightthresh,nsigthresh=nsigthresh,pl=pl,stp=stp'
+  print,'Syntax - smashred_morphcuts,obj,ind,fitstr,brightthresh=brightthresh,nsigthresh=nsigthresh,'
+  print,'                            astobj=astobj,astind=astind,pl=pl,stp=stp'
   return
 endif
 
@@ -141,6 +145,22 @@ interp,xarr,thresharr,obj[gd].g,sharpthresh1
 sharpthresh[gd] = sharpthresh1
 ; Apply the sharpness cut
 ind = where(abs(sharpdiff) lt sharpthresh,nind,comp=cind,ncomp=ncind)
+
+; ASTs
+nastobj = n_elements(astobj)
+if nastobj gt 0 then begin
+  astgd = where(astobj.g lt 50,nastgd)
+  astsharpdiff = astobj.sharp*0+99.99
+  astsharpdiff[astgd] = astobj[astgd].sharp - poly(astobj[astgd].g,sharpcoef)
+  ; Use 0.2 threshold at bright end                                                                                                                                                
+  ; at faint end use 2*sigma
+  astsharpthresh = astsharpdiff*0+1.0
+  ; Interpolate
+  INTERP,xarr,thresharr,astobj[astgd].g,astsharpthresh1
+  astsharpthresh[astgd] = astsharpthresh1
+  ; Apply the sharpness cut
+  astind = where(abs(astsharpdiff) lt astsharpthresh,nastind,comp=castind,ncomp=ncastind)
+endif
 
 ; Make some plots
 if keyword_set(pl) then begin

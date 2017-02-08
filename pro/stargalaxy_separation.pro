@@ -1,41 +1,21 @@
-pro stargalaxy_separation,field,version,deep=deep,redo=redo
+pro stargalaxy_separation,obj0,ind,astobj=astobj0,astind=astind
 
 ;; Make "star" catalogs.
 
-if n_elements(field) eq 0 then begin
-  print,'Syntax - stargalaxy_separation,field,version,deep=deep,redo=redo'
+undefine,ind
+
+nobj0 = n_elements(obj0)
+if nobj0 eq 0 then begin
+  print,'Syntax - stargalaxy_separation,obj,ind'
   return
 endif
 
-rootdir = smashred_rootdir()
-if n_elements(version) eq 0 then version='v5'
-catdir = rootdir+'cp/red/photred/catalogs/final/'+version+'/'
-if keyword_set(deep) then tag='_deep' else tag=''
-
-
-; Does the output file already exist
-outfile = catdir+'stars/'+field+'_allobj'+tag+'_stars.fits'
-if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
-  print,outfile,' exists and /redo not set'
-  return
-endif
-
-print,'Performing star/galaxy separation for field ',field
-if keyword_set(deep) then print,'Using "deep-only" catalog'
-
-;; Load the allobj file
-file = catdir+field+'_combined_allobj'+tag+'.fits.gz'
-if file_test(file) eq 0 then begin
-  print,file+' NOT FOUND'
-  return
-endif
-obj0 = mrdfits(file,1,/silent)
 tags = tag_names(obj0)
 
 ; Maybe only look at depthflag=2 or 3
   
 ;; Deredden
-obj = obj0
+;obj = obj0
 ;print,'NO DEREDDENING'
 ;print,'  Dereddening'
 ;magext = [4.239, 3.303, 2.285, 1.698, 1.263]
@@ -46,25 +26,34 @@ obj = obj0
 ;obj.z -= magext[4]*obj.ebv
 
 ;; Select the stars
-gdstars = where(abs(obj.sharp) lt 1 and obj.chi lt 2 and obj.prob gt 0.2 and $
-                obj.ndet gt 5 and obj.depthflag gt 1,ngdstars)
-obj = obj[gdstars]
+gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and obj0.prob gt 0.2 and $
+                obj0.ndet gt 5 and obj0.depthflag gt 1,ngdstars)
+obj = obj0[gdstars]
+
+; ASTs
+nastobj = n_elements(astobj0)
+if nastobj gt 0 then begin
+  gdast = where(abs(astobj0.sharp) lt 1 and astobj0.chi lt 2 and astobj0.prob gt 0.2 and $
+                  astobj0.ndet gt 5,ngdast)
+  ; ASTs only run on deep exposures, so no DEPTHFLAG column
+  ;                astobj0.ndet gt 5 and astobj0.depthflag gt 1,ngdast)
+  astobj = astobj0[gdast]
+endif
 
 ;; Morphology cuts
-smashred_morphcuts,obj,ind1,nsig=3
+SMASHRED_MORPHCUTS,obj,ind1,nsig=3,astobj=astobj,astind=astind1
 obj1 = obj[ind1]
+if nastobj gt 0 then astobj1=astobj[astind1]
   
 ;; Color-color cuts
-smashred_2cdcuts,obj1,ind2
+SMASHRED_2CDCUTS,obj1,ind2,aststr=astobj1,astind=astind2
 obj2 = obj1[ind2]
+if nastobj gt 0 then astobj2=astobj1[astind2]
 ; this cuts out some stars with g>24 on Field56
 
-; Write out pruned catalogs
-print,'Writing out pruned catalogs'
-if file_test(catdir+'stars/',/directory) eq 0 then file_mkdir,catdir+'stars/'
-file_delete,[outfile,outfile+'.gz'],/allow
-MWRFITS,obj2,outfile,/create
-spawn,['gzip',outfile],out,errout,/noshell   ; compress
+; Final indices
+ind = gdstars[ind1[ind2]]
+astind = gdast[astind1[astind2]]
 
 ;stop
 

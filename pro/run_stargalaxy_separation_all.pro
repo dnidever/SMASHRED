@@ -1,4 +1,4 @@
-pro stargalaxy_separation_all,field,version
+pro run_stargalaxy_separation_all,field,version
 
 ;; Make "star" catalogs.
 
@@ -11,13 +11,16 @@ redfields.field = strtrim(redfields.field,2)
 fields = redfields.field
 nfields = n_elements(fields)
 
+; Field118 crashed in make_stellar_locus.pro
+
 ;; Loop through the fields
-for i=0,nfields-1 do begin
+for i=76,nfields-1 do begin
+;for i=0,nfields-1 do begin
   ifield = fields[i]
   print,strtrim(i+1,2),' ',ifield
    
-  STARGALAXY_SEPARATION,ifield,version
-  STARGALAXY_SEPARATION,ifield,version,/deep
+  RUN_STARGALAXY_SEPARATION_SINGLE,ifield,version
+  RUN_STARGALAXY_SEPARATION_SINGLE,ifield,version,/deep
 
   ;stop
   

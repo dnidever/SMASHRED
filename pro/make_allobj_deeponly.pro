@@ -28,7 +28,7 @@ for i=0,nfiles-1 do begin
   allsrc = mrdfits(rootdir+'catalogs/final/'+version+'/'+ifield+'_combined_allsrc.fits.gz',1)
 
   ; Redo the average photometry, morphology parameters and coordinates
-  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/deeponly
+  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/deeponly
   SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj,/deeponly
 
   ; Write out new allobj file
