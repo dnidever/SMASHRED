@@ -47,6 +47,12 @@ for i=0,ndeep-1 do begin
   cpfiles = file_search(deepdir1+shfield+'/'+shfield+'-*_01*',count=ncpfiles)
   file_copy,cpfiles,fakedir1+shfield+'/'
 
+  ; Run fix_fitsheaders.pro, otherwise ADDSTAR won't run
+  print,' Running fix_fitsheaders'
+  outfitsfiles = fakedir1+shfield+'/'+file_basename(cpfiles)
+  FILE_CHMOD,outfitsfiles,'755'o
+  FIX_FITSHEADERS,outfitsfiles
+
   ; 3) Copy over apcor.lst and photred.setup files
   ;   cp apcor.lst ../../addfakes/Field71/apcor.lst.orig
   ;   cp photred.setup ../../addfakes/Field71/
