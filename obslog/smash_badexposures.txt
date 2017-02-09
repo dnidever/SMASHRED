@@ -56,6 +56,11 @@
 00380955	20141123	Field41	bad zeropoint and variability
 00380956	20141123	Field41	bad zeropoint and variability
 00380964	20141123	Field41	bad zeropoint and variability
+00380952        20141123        Field41 bad zeropoint and variability
+00380954        20141123        Field41 bad zeropoint and variability
+00380957        20141123        Field41 bad zeropoint and variability
+00380962        20141123        Field41 bad zeropoint and variability
+00380967        20141123        Field41 bad zeropoint and variability
 00380888	20141123	Field10	bad zeropoint and variability
 00380889	20141123	Field10	bad zeropoint and variability
 00380990	20141123	Field35	bad zeropoint and variability
@@ -140,8 +145,3 @@
 00588077        20161030        Field148 bad zeropoint and variability
 00588078        20161030        Field148 bad zeropoint and variability
 00588079        20161030        Field148 bad zeropoint and variability
-00380952        20161031        Field41 bad zeropoint and variability
-00380954        20161031        Field41 bad zeropoint and variability
-00380957        20161031        Field41 bad zeropoint and variability
-00380962        20161031        Field41 bad zeropoint and variability
-00380967        20161031        Field41 bad zeropoint and variability
