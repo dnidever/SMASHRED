@@ -23,6 +23,12 @@ for i=0,ndeep-1 do begin
     goto, BOMB
   endif
 
+  chipfile = rootdir+'catalogs/final/v5/'+ifield+'_combined_chips.fits.gz'
+  if file_test(chipfile) eq 0 then begin
+    print,chipfile,' NOT FOUND'
+    goto,BOMB
+  endif
+
   ; Get short field name
   deepdir1 = deepdirs[i]+'/'
   shdirs = file_search(deepdir1+'F*',/test_directory,count=nshdirs)
@@ -56,6 +62,28 @@ for i=0,ndeep-1 do begin
   print,' 4) Copy some fakered files'
   file_copy,fakedir+'Field100/'+['fakered.setup','fakered.batch','nocalib.trans'],fakedir1
 
+  ; Update fakered.setup with important photred.setup settings
+  ;  alftiletype, daopsfva, daofitradfwhm
+  READLINE,fakedir1+'photred.setup',photlines
+  READLINE,fakedir1+'fakered.setup',fakelines
+  photopts = ['alftiletype','daopsfva','daofitradfwhm']
+  nphotopts = n_elements(photopts)
+  for j=0,nphotopts-1 do begin
+    ind1 = where(stregex(photlines,photopts[j],/boolean,/fold_case) eq 1,nind1)
+    if nind1 gt 0 then begin
+      brkind = where(stregex(fakelines,'##### STAGES #####',/boolean,/fold_case) eq 1,nbrkind)
+      ; Put the line before the stages
+      if nbrkind gt 0 then begin
+        fakelines1 = fakelines[0:brkind[0]-1]
+        fakelines2 = fakelines[brkdind[0]:*]
+        fakelines = [faklines1, photlines[ind1[0]], fakelines2]
+      ; Put the line at the end
+      endif else begin
+        fakelines = [fakelines, photlines[ind1[0]]
+      endelse
+    endif
+  endfor  
+
   ; 5) Make fields file
   ;   F1T1  Field71
   print,' 5) Make "fields" file'
@@ -65,7 +93,7 @@ for i=0,ndeep-1 do begin
   ;   addfakes,'F1'
   print,' 6) Run addfakes.pro.'
   cd,fakedir1
-  addfakes,shfield
+  ADDFAKES,shfield
 
   ; 7) Add files to inlist
   ;   mkdir logs
