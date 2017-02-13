@@ -98,14 +98,16 @@ for i=0,n_elements(ufilter)-1 do begin
 
     ; Now copy in the values, ALLSRC only had "good" detections
     for k=0,nchind-1 do begin
-      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
-      if keyword_set(usecalib) then begin  ; calibrated phot
-        allobj[allsrc[ind].cmbindx].(magind) = allsrc[ind].cmag
-        allobj[allsrc[ind].cmbindx].(errind) = allsrc[ind].cerr
-      endif else begin                ; instrumental phot
-        allobj[allsrc[ind].cmbindx].(magind) = allsrc[ind].mag
-        allobj[allsrc[ind].cmbindx].(errind) = allsrc[ind].err
-      endelse
+      if chstr[chind[k]].nsrc gt 0 then begin
+        ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
+        if keyword_set(usecalib) then begin  ; calibrated phot
+          allobj[allsrc[ind].cmbindx].(magind) = allsrc[ind].cmag
+          allobj[allsrc[ind].cmbindx].(errind) = allsrc[ind].cerr
+        endif else begin                ; instrumental phot
+          allobj[allsrc[ind].cmbindx].(magind) = allsrc[ind].mag
+          allobj[allsrc[ind].cmbindx].(errind) = allsrc[ind].err
+        endelse
+      endif
     endfor
 
   ; Multiple exposures for this filter to average
@@ -115,14 +117,16 @@ for i=0,n_elements(ufilter)-1 do begin
     totalwt = dblarr(nallobj)
     totalfluxwt = dblarr(nallobj)
     for k=0,nchind-1 do begin
-      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
-      if keyword_set(usecalib) then begin  ; calibrated phot
-        totalwt[allsrc[ind].cmbindx] += 1.0d0/allsrc[ind].cerr^2
-        totalfluxwt[allsrc[ind].cmbindx] += 2.5118864d^allsrc[ind].cmag * (1.0d0/allsrc[ind].cerr^2)
-      endif else begin                ; instrumental phot 
-        totalwt[allsrc[ind].cmbindx] += 1.0d0/allsrc[ind].err^2
-        totalfluxwt[allsrc[ind].cmbindx] += 2.5118864d^allsrc[ind].mag * (1.0d0/allsrc[ind].err^2)
-      endelse
+      if chstr[chind[k]].nsrc gt 0 then begin
+        ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
+        if keyword_set(usecalib) then begin  ; calibrated phot
+          totalwt[allsrc[ind].cmbindx] += 1.0d0/allsrc[ind].cerr^2
+          totalfluxwt[allsrc[ind].cmbindx] += 2.5118864d^allsrc[ind].cmag * (1.0d0/allsrc[ind].cerr^2)
+        endif else begin                ; instrumental phot 
+          totalwt[allsrc[ind].cmbindx] += 1.0d0/allsrc[ind].err^2
+          totalfluxwt[allsrc[ind].cmbindx] += 2.5118864d^allsrc[ind].mag * (1.0d0/allsrc[ind].err^2)
+        endelse
+      endif
     endfor
     newflux = totalfluxwt/totalwt
     newmag = 2.50*alog10(newflux)
@@ -138,13 +142,15 @@ for i=0,n_elements(ufilter)-1 do begin
     totaldiff = dblarr(nallobj)
     numobs = lonarr(nallobj)
     for k=0,nchind-1 do begin
-      ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
-      if keyword_set(usecalib) then begin
-        totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].cmag)^2
-      endif else begin
-        totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].mag)^2
-      endelse
-      numobs[allsrc[ind].cmbindx]++
+      if chstr[chind[k]].nsrc gt 0 then begin
+        ind = lindgen(chstr[chind[k]].nsrc)+chstr[chind[k]].allsrcindx
+        if keyword_set(usecalib) then begin
+          totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].cmag)^2
+        endif else begin
+          totaldiff[allsrc[ind].cmbindx] += (newmag[allsrc[ind].cmbindx] - allsrc[ind].mag)^2
+        endelse
+        numobs[allsrc[ind].cmbindx]++
+      endif
     endfor
     newscatter = sqrt( totaldiff/(numobs>1) )
     if nbdmag gt 0 then newscatter[bdmag]=99.99

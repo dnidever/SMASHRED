@@ -133,10 +133,12 @@ totaldec = dblarr(nallobj)
 numobs = lonarr(nallobj)
 nchstr = n_elements(chstr)
 for k=0,nchstr-1 do begin
-  ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
-  totalra[allsrc[ind].cmbindx] += allsrc[ind].ra
-  totaldec[allsrc[ind].cmbindx] += allsrc[ind].dec
-  numobs[allsrc[ind].cmbindx]++
+  if chstr[k].nsrc gt 0 then begin
+    ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+    totalra[allsrc[ind].cmbindx] += allsrc[ind].ra
+    totaldec[allsrc[ind].cmbindx] += allsrc[ind].dec
+    numobs[allsrc[ind].cmbindx]++
+  endif
 endfor
 newra = totalra/(numobs>1)
 newdec = totaldec/(numobs>1)
@@ -149,9 +151,11 @@ if nbd gt 0 then newdec[bd]=999999.0
 totalradiff = dblarr(nallobj)
 totaldecdiff = dblarr(nallobj)
 for k=0,nchstr-1 do begin
-  ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
-  totalradiff[allsrc[ind].cmbindx] += (newra[allsrc[ind].cmbindx] - allsrc[ind].ra)^2
-  totaldecdiff[allsrc[ind].cmbindx] += (newdec[allsrc[ind].cmbindx] - allsrc[ind].dec)^2
+  if chstr[k].nsrc gt 0 then begin
+    ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+    totalradiff[allsrc[ind].cmbindx] += (newra[allsrc[ind].cmbindx] - allsrc[ind].ra)^2
+    totaldecdiff[allsrc[ind].cmbindx] += (newdec[allsrc[ind].cmbindx] - allsrc[ind].dec)^2
+  endif
 endfor
 newrascatter = sqrt( totalradiff/(numobs>1) ) * 3600 * cos(newdec/!radeg)
 newdecscatter = sqrt( totaldecdiff/(numobs>1) ) * 3600
@@ -173,9 +177,11 @@ allobj.decscatter = newdecscatter
 totalraerr = dblarr(nallobj)
 totaldecerr = dblarr(nallobj)
 for k=0,nchstr-1 do begin
-  ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
-  totalraerr[allsrc[ind].cmbindx] += allsrc[ind].raerr^2
-  totaldecerr[allsrc[ind].cmbindx] += allsrc[ind].decerr^2
+  if chstr[k].nsrc gt 0 then begin
+    ind = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+    totalraerr[allsrc[ind].cmbindx] += allsrc[ind].raerr^2
+    totaldecerr[allsrc[ind].cmbindx] += allsrc[ind].decerr^2
+  endif
 endfor
 ; take sqrt to finish the quadrature and 
 ; divide by N since we want the

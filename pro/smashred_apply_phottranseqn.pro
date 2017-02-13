@@ -91,70 +91,76 @@ WHILE (converge eq 0) do begin
     colsign = chstr[i].colsign
     nsrc = chstr[i].nsrc
 
-    ; The input magnitudes and errors
-    allsrcind = lindgen(chstr[i].nsrc)+chstr[i].allsrcindx
-    inmag = allsrc[allsrcind].mag
-    inerr = allsrc[allsrcind].err
+    ; We have some good data
+    if chstr[i].nsrc gt 0 then begin
+      ; The input magnitudes and errors
+      allsrcind = lindgen(chstr[i].nsrc)+chstr[i].allsrcindx
+      inmag = allsrc[allsrcind].mag
+      inerr = allsrc[allsrcind].err
 
-    ; Initializing some arrays
-    clr = fltarr(nsrc)*0.
-    clrerr = fltarr(nsrc)*0.
-    laststar = fltarr(nsrc)*0.
+      ; Initializing some arrays
+      clr = fltarr(nsrc)*0.
+      clrerr = fltarr(nsrc)*0.
+      laststar = fltarr(nsrc)*0.
 
-    ; Get the color information from ALLOBJ
-    colmagind = where(allobjtags eq strupcase(colband),ncolmagind)
-    colerrind = where(allobjtags eq strupcase(colband+'err'),ncolerrind)
-    colmag = allobj[allsrc[allsrcind].cmbindx].(colmagind[0])
-    colmagerr = allobj[allsrc[allsrcind].cmbindx].(colerrind[0])
+      ; Get the color information from ALLOBJ
+      colmagind = where(allobjtags eq strupcase(colband),ncolmagind)
+      colerrind = where(allobjtags eq strupcase(colband+'err'),ncolerrind)
+      colmag = allobj[allsrc[allsrcind].cmbindx].(colmagind[0])
+      colmagerr = allobj[allsrc[allsrcind].cmbindx].(colerrind[0])
 
-    ; MAGMASK, COLMASK, good photometry for mag and col
-    magmask = (inmag lt 50)
-    colmask = (inmag lt 50 and colmag lt 50)
+      ; MAGMASK, COLMASK, good photometry for mag and col
+      magmask = (inmag lt 50)
+      colmask = (inmag lt 50 and colmag lt 50)
 
-    ;#############################
-    ; Initial guess with zero color
-    ; Calculate transformed mags and errors
-    tempmag = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLESTAR(inmag,clr,chstr[i],magmask)
-    ;temperr = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLERR(inerr,clr,clrerr,chstr[i],magmask)
-
-    ; Inner while loop, converge with the color band we have
-    lastmag = tempmag
-    doneflag = 0
-    niter2 = 0
-    While (doneflag eq 0) do begin
-
-      ; Make the color
-      if colsign eq 1 then begin
-        clr = tempmag - colmag      
-      endif else begin
-        clr = colmag - tempmag
-      endelse
-      clrerr = sqrt( inerr^2 + colmagerr^2 )
-      ; Stars with bad color, set clr=0 and clerr=0
-      clr *= colmask
-      clrerr *= colmask
-
-      ; Calculate transformed mags again
+      ;#############################
+      ; Initial guess with zero color
+      ; Calculate transformed mags and errors
       tempmag = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLESTAR(inmag,clr,chstr[i],magmask)
+      ;temperr = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLERR(inerr,clr,clrerr,chstr[i],magmask)
 
-      ; Are we done?
-      absdiffmag = abs(tempmag-lastmag)
-      if max(absdiffmag) lt 0.0001 or niter2 gt 10 then doneflag=1
-      lastmag = tempmag   ; save the last values
+      ; Inner while loop, converge with the color band we have
+      lastmag = tempmag
+      doneflag = 0
+      niter2 = 0
+      While (doneflag eq 0) do begin
 
-      niter2++
-    Endwhile
+        ; Make the color
+        if colsign eq 1 then begin
+          clr = tempmag - colmag      
+        endif else begin
+          clr = colmag - tempmag
+        endelse
+        clrerr = sqrt( inerr^2 + colmagerr^2 )
+        ; Stars with bad color, set clr=0 and clerr=0
+        clr *= colmask
+        clrerr *= colmask
 
-    ; Calculate final errors
-    temperr = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLERR(inerr,clr,clrerr,chstr[i],magmask)
+        ; Calculate transformed mags again
+        tempmag = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLESTAR(inmag,clr,chstr[i],magmask)
 
-    ; Calculate the differences
-    chstr_maxdiff[i] = max(abs(tempmag-allsrc[allsrcind].cmag))
+        ; Are we done?
+        absdiffmag = abs(tempmag-lastmag)
+        if max(absdiffmag) lt 0.0001 or niter2 gt 10 then doneflag=1
+        lastmag = tempmag   ; save the last values
 
-    ; Stuff final values into CMAG/CERR columns of ALLSRC
-    allsrc[allsrcind].cmag = tempmag
-    allsrc[allsrcind].cerr = temperr
+        niter2++
+      Endwhile
 
+      ; Calculate final errors
+      temperr = SMASHRED_APPLY_PHOTTRANSEQN_SIMPLERR(inerr,clr,clrerr,chstr[i],magmask)
+
+      ; Calculate the differences
+      chstr_maxdiff[i] = max(abs(tempmag-allsrc[allsrcind].cmag))
+
+      ; Stuff final values into CMAG/CERR columns of ALLSRC
+      allsrc[allsrcind].cmag = tempmag
+      allsrc[allsrcind].cerr = temperr
+
+    ; No good source
+    endif else begin
+      chstr_maxdiff[i] = 0
+    endelse
   Endfor  ; chstr loop
 
   ; Now calculate the average mags for ALLOBJ

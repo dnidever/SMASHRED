@@ -41,7 +41,8 @@ if n_elements(field) eq 0 then begin
 endif
 
 ; Defaults
-if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
+if n_elements(reduxdir) eq 0 then reduxdir=SMASHRED_ROOTDIR()+'cp/red/photred/'
+;if n_elements(reduxdir) eq 0 then reduxdir='/data/smash/cp/red/photred/'
 if file_test(reduxdir,/directory) eq 0 then begin
   error = reduxdir+' NOT FOUND'
   if not keyword_set(silent) then print,error
@@ -126,10 +127,12 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
     undefine,expnew,expnewallsrcindx
     for j=0,nexpind-1 do begin
       ; Get the source data from CHSTR and ALLSRC
-      temp_allsrcindx = lindgen(chstr[expind[j]].nsrc)+chstr[expind[j]].allsrcindx
-      temp = allsrc[temp_allsrcindx]
-      push,expnew,temp         ; add to exposure "new" structure
-      push,expnewallsrcindx,temp_allsrcindx  ; allsrc index for this exposure
+      if chstr[expind[j]].nsrc gt 0 then begin
+        temp_allsrcindx = lindgen(chstr[expind[j]].nsrc)+chstr[expind[j]].allsrcindx
+        temp = allsrc[temp_allsrcindx]
+        push,expnew,temp         ; add to exposure "new" structure
+        push,expnewallsrcindx,temp_allsrcindx  ; allsrc index for this exposure
+      endif 
     endfor
 
     ;------------------------------
