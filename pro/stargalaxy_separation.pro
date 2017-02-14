@@ -26,15 +26,18 @@ tags = tag_names(obj0)
 ;obj.z -= magext[4]*obj.ebv
 
 ;; Select the stars
+depththresh = 1
+if max(obj0.depthflag) eq 1 then depththresh=0  ; in case only short exposures
 gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and obj0.prob gt 0.2 and $
-                obj0.ndet gt 5 and obj0.depthflag gt 1,ngdstars)
+                obj0.ndet gt 5 and obj0.depthflag gt depththresh,ngdstars)
 obj = obj0[gdstars]
 
 ; ASTs
 nastobj = n_elements(astobj0)
 if nastobj gt 0 then begin
+  ndet = astobj0.ndetu + astobj0.ndetg + astobj0.ndetr + astobj0.ndeti + astobj0.ndetz
   gdast = where(abs(astobj0.sharp) lt 1 and astobj0.chi lt 2 and astobj0.prob gt 0.2 and $
-                  astobj0.ndet gt 5,ngdast)
+                ndet gt 5,ngdast)
   ; ASTs only run on deep exposures, so no DEPTHFLAG column
   ;                astobj0.ndet gt 5 and astobj0.depthflag gt 1,ngdast)
   astobj = astobj0[gdast]
@@ -53,7 +56,7 @@ if nastobj gt 0 then astobj2=astobj1[astind2]
 
 ; Final indices
 ind = gdstars[ind1[ind2]]
-astind = gdast[astind1[astind2]]
+if nastobj gt 0 then astind = gdast[astind1[astind2]]
 
 ;stop
 

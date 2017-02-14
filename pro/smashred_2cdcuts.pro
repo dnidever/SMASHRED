@@ -203,7 +203,7 @@ for i=0,ncolor-1 do begin
 endfor
 
 ind = where(mask eq 1,nind)
-astind = where(astmask eq 1,nastind)
+if naststr gt 0 then astind = where(astmask eq 1,nastind)
 
 if keyword_set(pl) then begin
   ;gd = where(mask eq 1 and str.g lt 50 and str.i lt 50 and str.u lt 50,ngd)

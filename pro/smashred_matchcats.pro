@@ -9,7 +9,8 @@ if n_elements(field) eq 0 then begin
 endif
 
 if n_elements(version) eq 0 then version='v3'
-dir = '/data/smash/cp/red/photred/catalogs/final/'+version+'/'
+dir = smashred_rootdir()+'cp/red/photred/catalogs/final/'+version+'/'
+;dir = '/data/smash/cp/red/photred/catalogs/final/'+version+'/'
 
 print,'Running SMASHRED_MATCHCATS on ',field,' version=',version
 
@@ -44,7 +45,8 @@ xtra.id = allobj.id
 
 ; Restore the GAIA file
 print,'Matching with GAIA'
-gaiadir = '/data/smash/cp/red/photred/gaia/'
+gaiadir = smashred_rootdir()+'cp/red/photred/gaia/'
+;gaiadir = '/data/smash/cp/red/photred/gaia/'
 if file_test(gaiadir+field+'_gaia.fits.gz') eq 0 then begin
   print,'No GAIA file found for field ',field
   return
@@ -68,7 +70,8 @@ endif
 
 ; Restore the 2MASS file
 print,'Matching with 2MASS'
-tmassdir = '/data/smash/cp/red/photred/tmass/'
+tmassdir = smashred_rootdir()+'cp/red/photred/tmass/'
+;tmassdir = '/data/smash/cp/red/photred/tmass/'
 if file_test(tmassdir+field+'_tmass.fits.gz') eq 0 then begin
   print,'No 2MASS file found for field ',field
   return
@@ -96,7 +99,8 @@ endif
 
 ; Restore the WISE file
 print,'Matching with WISE'
-wisedir = '/data/smash/cp/red/photred/wise/'
+wisedir = smashred_rootdir()+'cp/red/photred/wise/'
+;wisedir = '/data/smash/cp/red/photred/wise/'
 if file_test(wisedir+field+'_wise.fits.gz') eq 0 then begin
   print,'No WISE file found for field ',field
   return

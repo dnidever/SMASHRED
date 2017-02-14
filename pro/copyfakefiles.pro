@@ -49,7 +49,7 @@ for i=0,ndeep-1 do begin
 
   ; Run fix_fitsheaders.pro, otherwise ADDSTAR won't run
   print,' Running fix_fitsheaders'
-  outfitsfiles = fakedir1+shfield+'/'+file_basename(cpfiles)
+  outfitsfiles = file_search(fakedir1+shfield+'/'+shfield+'-*_01.fits')
   FILE_CHMOD,outfitsfiles,'755'o
   FIX_FITSHEADERS,outfitsfiles
 
@@ -81,14 +81,15 @@ for i=0,ndeep-1 do begin
       ; Put the line before the stages
       if nbrkind gt 0 then begin
         fakelines1 = fakelines[0:brkind[0]-1]
-        fakelines2 = fakelines[brkdind[0]:*]
-        fakelines = [faklines1, photlines[ind1[0]], fakelines2]
+        fakelines2 = fakelines[brkind[0]:*]
+        fakelines = [fakelines1, photlines[ind1[0]], fakelines2]
       ; Put the line at the end
       endif else begin
-        fakelines = [fakelines, photlines[ind1[0]]
+        fakelines = [fakelines, photlines[ind1[0]]]
       endelse
     endif
   endfor  
+  WRITELINE,fakedir1+'fakered.setup',fakelines
 
   ; 5) Make fields file
   ;   F1T1  Field71

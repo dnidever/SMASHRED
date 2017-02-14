@@ -12,15 +12,19 @@ fields = redfields.field
 nfields = n_elements(fields)
 
 ; Field118 crashed in make_stellar_locus.pro
+; Field183 crashed because not all bands observed
+; Field184 crashed as well
+; Field185, 186, same
+; AHH, they have only depthflag=1
 
 ;; Loop through the fields
-for i=76,nfields-1 do begin
+for i=74,nfields-1 do begin
 ;for i=0,nfields-1 do begin
   ifield = fields[i]
   print,strtrim(i+1,2),' ',ifield
    
   RUN_STARGALAXY_SEPARATION_SINGLE,ifield,version
-  RUN_STARGALAXY_SEPARATION_SINGLE,ifield,version,/deep
+  RUN_STARGALAXY_SEPARATION_SINGLE,ifield,version,/deep,/doast
 
   ;stop
   

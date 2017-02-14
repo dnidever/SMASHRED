@@ -1,20 +1,20 @@
-pro run_stargalaxy_separation_single,field,version,deep=deep,redo=redo
+pro run_stargalaxy_separation_single,field,version,sversion=sversion,deep=deep,doast=doast,redo=redo
 
 ;; Make "star" catalogs.
 
 if n_elements(field) eq 0 then begin
-  print,'Syntax - run_stargalaxy_separation_single,field,version,deep=deep,redo=redo'
+  print,'Syntax - run_stargalaxy_separation_single,field,version,sversion=sversion,deep=deep,doast=doast,redo=redo'
   return
 endif
 
 rootdir = smashred_rootdir()
 if n_elements(version) eq 0 then version='v5'
+if n_elements(sversion) eq 0 then sversion='1'
 catdir = rootdir+'cp/red/photred/catalogs/final/'+version+'/'
 if keyword_set(deep) then tag='_deep' else tag=''
 
-
 ; Does the output file already exist
-outfile = catdir+'stars/'+field+'_allobj'+tag+'_stars.fits'
+outfile = catdir+'stars'+sversion+'/'+field+'_allobj'+tag+'_stars.fits'
 if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
   print,outfile,' exists and /redo not set'
   return
@@ -29,42 +29,37 @@ if file_test(file) eq 0 then begin
   print,file+' NOT FOUND'
   return
 endif
-obj0 = mrdfits(file,1,/silent)
-tags = tag_names(obj0)
+obj = mrdfits(file,1,/silent)
 
-; Maybe only look at depthflag=2 or 3
-  
-;; Deredden
-obj = obj0
-;print,'NO DEREDDENING'
-;print,'  Dereddening'
-;magext = [4.239, 3.303, 2.285, 1.698, 1.263]
-;obj.u -= magext[0]*obj.ebv
-;obj.g -= magext[1]*obj.ebv
-;obj.r -= magext[2]*obj.ebv
-;obj.i -= magext[3]*obj.ebv
-;obj.z -= magext[4]*obj.ebv
+; Doing ASTs
+if keyword_set(deep) and keyword_set(doast) then begin
+  astfile = catdir+'ast/'+field+'_complete.fits.gz'
+  if file_test(astfile) eq 1 then begin
+    print,'Running AST catalog through star/galaxy separation code'
+    astobj = MRDFITS(astfile,1,/silent)
+  endif else begin
+    print,astfile,' NOT FOUND'
+    undefine,astobj
+  endelse
+endif
 
-;; Select the stars
-gdstars = where(abs(obj.sharp) lt 1 and obj.chi lt 2 and obj.prob gt 0.2 and $
-                obj.ndet gt 5 and obj.depthflag gt 1,ngdstars)
-obj = obj[gdstars]
-
-;; Morphology cuts
-smashred_morphcuts,obj,ind1,nsig=3
-obj1 = obj[ind1]
-  
-;; Color-color cuts
-smashred_2cdcuts,obj1,ind2
-obj2 = obj1[ind2]
-; this cuts out some stars with g>24 on Field56
+STARGALAXY_SEPARATION,obj,ind,astobj=astobj,astind=astind
+obj2 = obj[ind]
 
 ; Write out pruned catalogs
 print,'Writing out pruned catalogs'
-if file_test(catdir+'stars/',/directory) eq 0 then file_mkdir,catdir+'stars/'
+if file_test(catdir+'stars'+sversion,/directory) eq 0 then file_mkdir,catdir+'stars'+sversion
 file_delete,[outfile,outfile+'.gz'],/allow
 MWRFITS,obj2,outfile,/create
 spawn,['gzip',outfile],out,errout,/noshell   ; compress
+
+; Write out pruned AST catalog
+if keyword_set(deep) and keyword_set(doast) and n_elements(astobj) gt 0 then begin
+  astobj2 = astobj[astind]
+  outastfile = catdir+'stars'+sversion+'/'+field+'_complete_stars.fits'
+  MWRFITS,astobj2,outastfile,/create
+  spawn,['gzip',outastfile],out,errout,/noshell   ; compress
+endif
 
 ;stop
 

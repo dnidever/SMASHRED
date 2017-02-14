@@ -101,6 +101,7 @@ for i=0,2 do begin
   bkspace = 0.3 ; 50
   gd = where( mag[*,1] lt 50 and mag[*,3] lt 50 and mag[*,mind[i]] lt 50 and $
               mag[*,1]-mag[*,3] gt gi0 and mag[*,1]-mag[*,3] lt gi1,ngd)
+  if ngd eq 0 then goto,BOMB
   xx = mag[gd,1]-mag[gd,3]
   yy = mag[gd,mind[i]]-mag[gd,3]
   colerr = sqrt( err[gd,mind[i]]^2 + err[gd,3]^2 )
@@ -157,7 +158,7 @@ for i=0,2 do begin
   tstr.n = ngd
 
   ;stop
-
+  BOMB:
 endfor
 
 tstr.cols[1] = gitemp ; fill in g-i color

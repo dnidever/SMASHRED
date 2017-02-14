@@ -96,11 +96,17 @@ for j=0,nchips-1 do begin
         overlapdata[count+1].overlap = overlap
 
         ; Get the overlapping sources
-        allind1 = lindgen(chstr[j].nsrc)+chstr[j].allsrcindx
-        allind2 = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
-        id1 = allsrc[allind1].fid
-        id2 = allsrc[allind2].fid
-        MATCH,id1,id2,mind1,mind2,count=nmatch,/sort
+        if chstr[j].nsrc gt 0 and chstr[k].nsrc gt 0 then begin
+          allind1 = lindgen(chstr[j].nsrc)+chstr[j].allsrcindx
+          allind2 = lindgen(chstr[k].nsrc)+chstr[k].allsrcindx
+          id1 = allsrc[allind1].fid
+          id2 = allsrc[allind2].fid
+          MATCH,id1,id2,mind1,mind2,count=nmatch,/sort
+
+        ; One of both of the chips have no sources
+        endif else begin
+          nmatch = 0
+        endelse
 
         ; We have matching sources
         undefine,magoff,magoffsig,magofferr,ngdmag
