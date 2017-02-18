@@ -55,7 +55,13 @@ spawn,['gzip',outfile],out,errout,/noshell   ; compress
 
 ; Write out pruned AST catalog
 if keyword_set(deep) and keyword_set(doast) and n_elements(astobj) gt 0 then begin
-  astobj2 = astobj[astind]
+  ;astobj2 = astobj[astind]
+  ; The ones that passed all of the cuts are the final "recovered"
+  ; artificial stars, leave the rest in there.
+  recovered = lonarr(n_elements(astobj))
+  recovered[astind] = 1
+  astobj2 = astobj
+  astobj2.recovered = recovered
   outastfile = catdir+'stars'+sversion+'/'+field+'_complete_stars.fits'
   MWRFITS,astobj2,outastfile,/create
   spawn,['gzip',outastfile],out,errout,/noshell   ; compress
