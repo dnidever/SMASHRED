@@ -48,6 +48,7 @@ for i=0,nfields-1 do begin
   if nind gt 1 then begin
     stop,'more than one night'
   endif
+  object = info[ind[0]].object   ; original object name
   info1 = info[ind[0]]
   indir = file_dirname(info1.file)+'/'
   outdir = rootdir+'deep/'+ifield+'/'
@@ -79,7 +80,10 @@ for i=0,nfields-1 do begin
 
   ; Create new "fields" file
   readcol,indir+'fields',shnames,lnames,format='A,A',/silent
-  gdname = where(lnames eq ifield,ngdname)
+  ;gdname = where(lnames eq ifield,ngdname)
+  ;if ngdname eq 0 then stop,ifield,' not found'
+  gdname = where(lnames eq object,gdname)
+  if ngdname eq 0 then stop,object,' not found'
   shnames1 = shnames[gdname[0]]
 
   ; Link to subdirectory with the data
