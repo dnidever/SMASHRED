@@ -3,7 +3,9 @@ pro checkwcsexp,expnum
 nexp = n_elements(expnum)
 for e=0,nexp-1 do begin
 
-  files = file_search(expnum[e]+'_??.fits',count=nfiles)
+  ;files = file_search(expnum[e]+'_??.fits',count=nfiles)
+  files = file_search(expnum[e]+'_[0-9][0-9].fits',count=nfiles)
+  if nfiles eq 0 then files = file_search(expnum[e]+'_[0-9].fits',count=nfiles)
   bd = where(stregex(files,'a.fits$',/boolean) eq 1 or stregex(files,'s.fits$',/boolean) eq 1,nbd)
   if nbd gt 0 then remove,bd,files
   if nfiles eq 0 then begin
