@@ -26,8 +26,10 @@ for e=0,nexp-1 do begin
     xyad,hdr,0,ysz,ra01,dec01
     xyad,hdr,xsz/2.,ysz/2.,rac,decc
 
-    ra0=ten(sxpar(hdr,'TELRA'))*360./24
-    dec0=ten(sxpar(hdr,'TELDEC'))
+    ra0=ten(sxpar(hdr,'TELRA',count=nra))*360./24
+    if nra eq 0 then ra0=ten(sxpar(hdr,'RA',count=nra))*360./24
+    dec0=ten(sxpar(hdr,'TELDEC',count=ndec))
+    if ndec eq 0 then dec00=ten(sxpar(hdr,'DEC',count=nra))
 
     if (i eq 0) then plot,[ra00,ra10,ra11,ra01,ra00]-ra0,[dec00,dec10,dec11,dec01,dec00]-dec0,xr=[-1.2,1.2]/cos(dec0*!pi/180),yr=[-1.2,1.2],xsty=1,ysty=1,tit=files[i] else $
       oplot,[ra00,ra10,ra11,ra01,ra00]-ra0,[dec00,dec10,dec11,dec01,dec00]-dec0
