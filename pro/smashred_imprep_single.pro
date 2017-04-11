@@ -21,7 +21,7 @@ if n_elements(file) eq 0 then begin
   print,'Syntax - smashred_imprep_single,file,redo=redo'
   return
 endif
-gd = where(stregex(file,'_ooi_',/boolean) eq 1,ngd)
+gd = where(stregex(file,'_?oi_',/boolean) eq 1,ngd)
 if ngd eq 0 then begin
   print,file,' is NOT an ooi file'
   return
@@ -56,8 +56,8 @@ print,file_basename(file),'  ',fstr.object,'  ',fstr.filter,'  ',$
 ;-------------------------------------------------------------
 imfile = fstr.file
 base = strmid(file_basename(imfile),0,17)
-maskfile = repstr(imfile,'ooi','ood')
-wtfile = repstr(imfile,'ooi','oow')
+maskfile = repstr(imfile,'oi','od')
+wtfile = repstr(imfile,'oi','ow')
 ; ood  calibrated dqmask
 ; ooi  calibrated image  (nextend=60)
 ; oow  calibrated weight
