@@ -13,7 +13,7 @@ for e=0,nexp-1 do begin
     continue
   endif
 
-  print,transpose(files)
+  ;print,transpose(files)
   for i=0,nfiles-1 do begin
     dum = strsplit(file_basename(files[i],'.fits'),'_',/extract)
     chip = reform(dum[1])
@@ -25,6 +25,13 @@ for e=0,nexp-1 do begin
     xyad,hdr,xsz,ysz,ra11,dec11
     xyad,hdr,0,ysz,ra01,dec01
     xyad,hdr,xsz/2.,ysz/2.,rac,decc
+    ; Get WCSFIT RMS
+    indrms = where(stregex(hdr,'HISTORY WCSFIT: RMS',/boolean) eq 1,nindrms)
+    if nindrms gt 0 then begin
+      dum = strsplit(hdr[indrms[0]],' ',/extract)
+      rms = float((strsplit(dum[2],'=',/extract))[1])
+    endif else rms = 9999.99
+    print,files[i],rms
 
     ra0=ten(sxpar(hdr,'TELRA',count=nra))*360./24
     if nra eq 0 then ra0=ten(sxpar(hdr,'RA',count=nra))
