@@ -151,7 +151,7 @@ stop
 print,'Step 3. Make the PHOTRED-ready split chip files'
 
 ; get info for c4d image files
-files = file_search('c4d_*_ooi*.fits*',count=nfiles)
+files = file_search('c4d_*_?oi*.fits*',count=nfiles)  ; ooi and poi
 if nfiles eq 0 then begin
   print,'No ARCHIVE image files to split.  Skipping to STACKING.'
   goto,dostack
