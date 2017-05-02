@@ -57,31 +57,31 @@ for i=0,nfiles-1 do begin
   if nuchips gt 0 then ucalibfrac = nucalib/float(nuchips) else ucalibfrac=1.0
   if ucalibfrac gt 0 then ucolor=orange
   if ucalibfrac gt 0.70 then ucolor = green
-  if nuchips gt 0 then ucalibflag=chipstr[ucalib[0]].zpcalibflag else ucalibflag=0
+  if nucalib gt 0 then ucalibflag=chipstr[ucalib[0]].zpcalibflag else ucalibflag=0
   gchip = where(chipstr.filter eq 'g',ngchips)
   gcalib = where(chipstr.filter eq 'g' and chipstr.calibrated eq 1,ngcalib)
   if ngchips gt 0 then gcalibfrac = ngcalib/float(ngchips) else gcalibfrac=1.0
   if gcalibfrac gt 0 then gcolor=orange
   if gcalibfrac gt 0.70 then gcolor = green
-  if ngchips gt 0 then gcalibflag=chipstr[gcalib[0]].zpcalibflag else gcalibflag=0
+  if ngcalib gt 0 then gcalibflag=chipstr[gcalib[0]].zpcalibflag else gcalibflag=0
   rchip = where(chipstr.filter eq 'r',nrchips)
   rcalib = where(chipstr.filter eq 'r' and chipstr.calibrated eq 1,nrcalib)
   if nrchips gt 0 then rcalibfrac = nrcalib/float(nrchips) else rcalibfrac=1.0
   if rcalibfrac gt 0 then rcolor=orange
   if rcalibfrac gt 0.70 then rcolor = green
-  if nrchips gt 0 then rcalibflag=chipstr[rcalib[0]].zpcalibflag else rcalibflag=0
+  if nrcalib gt 0 then rcalibflag=chipstr[rcalib[0]].zpcalibflag else rcalibflag=0
   ichip = where(chipstr.filter eq 'i',nichips)
   icalib = where(chipstr.filter eq 'i' and chipstr.calibrated eq 1,nicalib)
   if nichips gt 0 then icalibfrac = nicalib/float(nichips) else icalibfrac=1.0
   if icalibfrac gt 0 then icolor=orange
   if icalibfrac gt 0.70 then icolor = green
-  if nichips gt 0 then icalibflag=chipstr[icalib[0]].zpcalibflag else icalibflag=0
+  if nicalib gt 0 then icalibflag=chipstr[icalib[0]].zpcalibflag else icalibflag=0
   zchip = where(chipstr.filter eq 'z',nzchips)
   zcalib = where(chipstr.filter eq 'z' and chipstr.calibrated eq 1,nzcalib)
   if nzchips gt 0 then zcalibfrac = nzcalib/float(nzchips) else zcalibfrac=1.0
   if zcalibfrac gt 0 then zcolor=orange
   if zcalibfrac gt 0.70 then zcolor = green
-  if nzchips gt 0 then zcalibflag=chipstr[zcalib[0]].zpcalibflag else zcalibflag=0
+  if nzcalib gt 0 then zcalibflag=chipstr[zcalib[0]].zpcalibflag else zcalibflag=0
 
   if ucalibfrac gt 0 or gcalibfrac gt 0 or rcalibfrac gt 0 or icalibfrac gt 0 or zcalibfrac gt 0 then calarr[i]=1      ; partial
   if ucalibfrac eq 1 and gcalibfrac eq 1 and rcalibfrac eq 1 and icalibfrac eq 1 and zcalibfrac eq 1 then calarr[i]=2  ; full
