@@ -236,8 +236,7 @@ endfor
 ; 2.) Run on all the nights fitting everything individually
 ;------------------------------------------------------------
 print,'' & print,'2.) Run on all the nights fitting everything individually'
-SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,rejected=rejected0,/bootstrap,$
-                          noreject=noreject,noexpreject=noexpreject
+SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr0,fitstr0,resid=resid0,expstr=expstr0,rejected=rejected0,/bootstrap,noreject=noreject
 nmjds = n_elements(mstr0)
 uimjd = uniq(mstr0.mjd,sort(mstr0.mjd))
 umjd = mstr0[uimjd].mjd
@@ -285,7 +284,7 @@ chipstr = chipstr[gdchip]
 ;---------------------------------------------------------
 print,'' & print,'2.) Fixing colterm.  Redetermining zpterm and amterm'
 SOLVE_TRANSPHOT_ALLNIGHTS,arr,mstr_fixcolr,fitstr_fixcolr,fixcolr=chipstr,resid=resid_fixcolr,rejected=rejected_fixcolr,$
-                          /bootstrap,noreject=noreject,noexpreject=noexpreject
+                          /bootstrap,noreject=noreject
 
 ; Set PHOTOMETRIC tag
 MATCH,mstr_fixcolr.mjd,conditions.mjd,ind1,ind2
