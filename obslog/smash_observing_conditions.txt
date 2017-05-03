@@ -65,3 +65,4 @@
    64	57691	20161029	1	a very clear night of observations from the observers
    65	57692	20161030	0	clouds at the end of the night
    66	57693	20161031	0	overcast the first half of the night
+   67	57821	20170308	1	clear
