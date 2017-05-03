@@ -513,14 +513,12 @@ add_tag,fntstr,'color',colorname,fntstr
 add_tag,fntstr,'colband',colband,fntstr
 add_tag,fntstr,'colsign',colsign,fntstr
 
-stop
-
 ; -- FINAL OUTPUT --
 ; 1st extension: chip-level structure with color term (+err) and
 ;     zpterm (+err)
 ; 2nd extension: night-level structure with zpter (+err) and
 ;     amterm (+err) and photometric flag
-outfile = 'transphot_'+filter+'_eqns_201610.fits'
+outfile = 'transphot_'+filter+'_eqns_201703.fits'
 print,'Writing final photometric transformation equations to ',outfile
 print,'HDU1: chip+night information'
 print,'HDU2: unique chip-level information'
