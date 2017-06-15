@@ -540,7 +540,7 @@ MWRFITS,fchipstr,outfile,/silent
 MWRFITS,fntstr,outfile,/silent
 
 save,arr,fitstr0,fitstr_fixcolr,mstr_fixcolr,resid_fixcolr,rejected_fixcolr,$
-     expstr,fieldstr,file='solve_transphot_'+filter+'_resid_201610.dat'
+     expstr,fieldstr,file='solve_transphot_'+filter+'_resid_201703.dat'
 
 if keyword_set(stp) then stop
 
