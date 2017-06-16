@@ -1,4 +1,4 @@
-pro make_plots_final,version,showcalib=showcalib,redo=redo
+pro make_plots_final,version,fields=infields,showcalib=showcalib,redo=redo
 
 dir = smashred_rootdir()+'cp/red/photred/catalogs/'
 ;dir = '/data/smash/cp/red/photred/catalogs/'
@@ -13,6 +13,17 @@ files = file_search(dir+'final/'+version+'/*_combined_allobj.fits.gz',count=nfil
 ;files2 = file_search(dir+'inst/comb/*_combined_final_roughcal.fits.gz',count=nfiles2)
 ;if nfiles2 gt 0 then push,files,files2
 ;nfiles = n_elements(files)
+
+if n_elements(infields) gt 0 then begin
+  ffields = file_basename(files,'_combined_allobj.fits.gz')
+  MATCH,ffields,infields,ind1,ind2,/sort,count=nmatch
+  if nmatch eq 0 then begin
+    print,'No matches to input fields'
+    return
+  endif
+  files = files[ind1]
+  nfiles = n_elements(files)
+endfor
 
 smash = importascii('smash_fields_final.txt',/header)
 
