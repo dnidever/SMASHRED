@@ -23,7 +23,7 @@ if n_elements(infields) gt 0 then begin
   endif
   files = files[ind1]
   nfiles = n_elements(files)
-endfor
+endif
 
 smash = importascii('smash_fields_final.txt',/header)
 
