@@ -10,9 +10,9 @@ check.field = strtrim(check.field,2)
 ncheck = n_elements(check)
 smashred_getredinfo,info,/silent
 
-; 26 fields were calibrated and/or got new data
+; 25 fields were calibrated and/or got new data
 newfieldnum = [115, 117, 118, 121, 123, 130, 156, 158, 161, 164, 166, 167, 168,$
-               172, 183, 62, 63, 67, 69, 70, 74, 76, 85, 87, 92, 118]
+               172, 183, 62, 63, 67, 69, 70, 74, 76, 85, 87, 92]
 newfields = 'Field'+strtrim(newfieldnum,2)
 MATCH,check.field,newfields,ind1,ind2,/sort,count=nmatch
 fields = check.field

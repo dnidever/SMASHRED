@@ -25,7 +25,7 @@ if n_elements(infields) gt 0 then begin
   nfiles = n_elements(files)
 endif
 
-smash = importascii('smash_fields_final.txt',/header)
+smash = importascii('~/projects/SMASHRED/data/smash_fields_final.txt',/header)
 
 print,strtrim(nfiles,2),' files to process'
 
