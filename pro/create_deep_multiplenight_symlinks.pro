@@ -7,7 +7,8 @@ pro create_deep_multiplenight_symlinks
 
 rootdir = smashred_rootdir()+'cp/red/photred/'
 
-check = mrdfits(rootdir+'catalogs/pro/check_calibrated_v5.fits',1)
+;check = mrdfits(rootdir+'catalogs/pro/check_calibrated_v5.fits',1)
+check = mrdfits(rootdir+'catalogs/final/v5/check_calibrated_v5.fits',1)
 check.field = strtrim(check.field,2)
 ncheck = n_elements(check)
 smashred_getredinfo,info,/silent
@@ -37,11 +38,8 @@ for i=0,nfields-1 do begin
   if nind eq 1 then begin
     stop,'only one night'
   endif
-  object = info[ind[0]].object   ; original object name
-  info1 = info[ind[0]]
-  indir = file_dirname(info1.file)+'/'
-  outdir = rootdir+'deep/'+ifield+'/'
-  origfield = info1.object
+  nnight = nind
+  print,strtrim(i+1,2),'/',strtrim(nnight,2),' ',ifield,' ',strtrim(nnight,2),' '
 
   ;deep/Field110/F1/F1-00519030_01
   ;20160218/F2/F2-00519030_01
@@ -50,37 +48,59 @@ for i=0,nfields-1 do begin
   ;DATASUM comment line.
   ;All other files are identical except for the '.alf' and '.log' files.
 
+  ; Loop over nights
+  for j=0,nnight-1 do begin
+    info1 = info[ind[j]]
+    night1 = info1.night
+    fstr1 = *info1.fstr
+    chstr1 = mrdfits(info1.file,2,/silent)
+    nexp = n_elements(fstr1)
+    nch = n_elements(chstr1)
+
+
+    ; Loop over all chip files (for all exposures)
+    for k=0,nch-1 do begin
+      ; Files to create symlinks for
+      ;  33 files, everything except for .alf and .log
+      names = ['.als','.als.inp','.als.opt','.ap','.cmn.ap','.cmn.coo','.cmn.log','.cmn.lst',$
+               '.coo','.fits','.gaiawcs.head','.grp','.lst','.lst1','.lst1.chi','.lst2',$
+               '.lst2.chi','.nei','.nst','.opt','.plst','.plst.chi','.psf','.psf.log',$
+               '.psfini.ap','_cat.dat','_refcat.dat','_refcat_gaia.dat','a.als','a.als.inp',$
+               'a.ap','a.log','s.fits.fz']
+
+      ; Get the original and deep names
+      orignames = rootdir+night1+'/'+chstr1[k].field+'/'+chstr1[k].base+names
+      deepbase = repstr(chstr1[k].base,chstr1[k].field,'F1')
+      deepnames = rootdir+'deep/'+ifield+'/F1/'+deepbase+names
+
+      ; Check that the file sizes are the same
+      originfo = file_info(orignames)
+      deepinfo = file_info(deepnames)
+      szmismatch = where(originfo.size ne deepinfo.size,nszmismatch)
+      if nszmismatch gt 0 then stop,'size mismatch'
+
+      ; 1) Temporarily rename the file (e.g., ".name")
+      tempnames = file_dirname(deepnames)+'/.'+file_basename(deepnames)
+      FILE_MOVE,deepnames,tempnames
+      temptest = file_test(tempnames)
+      if min(temptest) eq 0 then stop,'problem with temp files'
+      ; 2) Create symlink
+      FILE_LINK,orignames,deepnames
+      ; 3) Check that the symlink worked and the file size, etc is correct
+      linkinfo = file_infor(deepnames)
+      szmismatch2 = where(originfo.size ne linkinfo.size or deepinfo.size ne linkinfo.size,nszmismatch2)
+      if nszmismatch2 gt 0 then stop,'link size mismatch'
+      ; 4) Delete original renamed temporary file
+      FILE_DELETE,tempnames
+
+      stop
+
+    endfor ; chip files loop
+  endfor  ; night loop
+
   stop
 
-  ; Link to summary.fits and final catalog
-  file_delete,outdir+ifield+'_summary.fits'
-  file_link,info1.file,outdir+ifield+'_summary.fits'
-  file_delete,outdir+ifield+'.fits.gz'
-  file_link,indir+origfield+'.fits.gz',outdir+ifield+'.fits.gz'
-
-  ; Link to apcor.lst and photred.setup file
-  if file_test(outdir+'apcor.lst') eq 0 then $
-    file_link,indir+'apcor.lst',outdir+'apcor.lst'
-  if file_test(outdir+'photred.setup') eq 0 then $
-    file_link,indir+'photred.setup',outdir+'photred.setup'
-
-  ; Create new "fields" file
-  readcol,indir+'fields',shnames,lnames,format='A,A',/silent
-  ;gdname = where(lnames eq ifield,ngdname)
-  ;if ngdname eq 0 then stop,ifield,' not found'
-  gdname = where(lnames eq object,gdname)
-  if ngdname eq 0 then stop,object,' not found'
-  shnames1 = shnames[gdname[0]]
-
-  ; Link to subdirectory with the data
-  if file_test(outdir+shnames1+'/') eq 0 then $
-    file_link,indir+shnames1+'/',outdir+shnames1+'/'
-
-  ;stop
-
-  BOMB:
-
-endfor
+endfor  ; field loop
 
 stop
 
