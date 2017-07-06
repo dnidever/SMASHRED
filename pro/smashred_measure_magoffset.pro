@@ -52,7 +52,6 @@ endif
 ; Add medoff tag
 ;add_tag,chstr,'magoffset',0.0,chstr
 
-
 ; Initialize overlapstr structure
 overlapdata_schema = {expnum1:'',chip1:0L,expnum2:'',chip2:0L,overlap:-1,magoff:99.99,magofferr:9.99,nmatch:-1L,primary:0B}
 overlapdata = replicate(overlapdata_schema,nchips*3)
@@ -177,6 +176,16 @@ overlapstr = {expnum:strtrim(chstr.expnum,2),chip:long(chstr.chip),noverlap:lona
 ; turn are indices into the overlapdata structure,
 ; e.g. data[index[ind0[i]:ind[i]]] gives the elements of the overlap
 ; data structure for the ith chip.
+
+
+; Deal with single exposure situation
+uiexp = uniq(chstr.expnum,sort(chstr.expnum))
+if n_elements(uiexp) eq 1 then begin
+  print,'Only ONE exposure.  No overlaps.'
+  overlapstr.data.magoff = 0.0
+  overlapstr.data.magofferr = 0.0
+  return
+endif
 
 ; Get reverse indices
 oid1 = strtrim(overlapdata.expnum1,2)+'-'+strtrim(overlapdata.chip1,2)

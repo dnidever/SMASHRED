@@ -99,13 +99,20 @@ CASE caltype of
   1:  begin
     print,' Setting photometric zeropoint using photometric DECam calibrated data'
     ; Set absolute zeropoint using photometry and/or anchor data
-    gdphot = where(chstr.photometric eq 1 and chstr.badsoln eq 0,ngdphot)
+    gdphot = where(chstr.photometric eq 1 and chstr.badsoln eq 0 and ubercalstr.magoff lt 50,ngdphot)
     ; Calculate median mag offset for photometric data
     ;  Use median, don't remove outliers, basically want mean of all
     ;  photometric data
-    zpmagoff = median(ubercalstr[gdphot].magoff)
-    sigmagoff = mad(ubercalstr[gdphot].magoff)
-    zpmagofferr = sigmagoff/sqrt(ngdphot)   ; std.dev. of mean
+    if ngdphot gt 0 then begin
+      zpmagoff = median([ubercalstr[gdphot].magoff])
+      sigmagoff = mad([ubercalstr[gdphot].magoff])
+      zpmagofferr = sigmagoff/sqrt(ngdphot)   ; std.dev. of mean
+    endif else begin
+      print,'No good offsets.'
+      zpmagoff = 0.0
+      sigmagoff = 0.0
+      zpmagofferr = 0.0
+    endelse
     ; Set the calibration type in CHSTR
     chstr.zpcalibflag = caltype
   end
