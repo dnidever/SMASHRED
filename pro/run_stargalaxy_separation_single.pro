@@ -8,14 +8,14 @@ if n_elements(field) eq 0 then begin
 endif
 
 rootdir = smashred_rootdir()
-if n_elements(version) eq 0 then version='v5'
+if n_elements(version) eq 0 then version='v6'
 if n_elements(sversion) eq 0 then sversion='1'
 catdir = rootdir+'cp/red/photred/catalogs/final/'+version+'/'
 if keyword_set(deep) then tag='_deep' else tag=''
 
 ; Does the output file already exist
 outfile = catdir+'stars'+sversion+'/'+field+'_allobj'+tag+'_stars.fits'
-if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
+if ((file_info(outfile)).exists eq 1 or (file_info(outfile+'.gz')).exists eq 1) and not keyword_set(redo) then begin
   print,outfile,' exists and /redo not set'
   return
 endif
@@ -64,6 +64,7 @@ if keyword_set(deep) and keyword_set(doast) and n_elements(astobj) gt 0 then beg
   astobj2.recovered = recovered
   outastfile = catdir+'stars'+sversion+'/'+field+'_complete_stars.fits'
   MWRFITS,astobj2,outastfile,/create
+  if file_test(outastfile+'.gz') eq 1 then file_delete,outastfile+'.gz',/allow
   spawn,['gzip',outastfile],out,errout,/noshell   ; compress
 endif
 

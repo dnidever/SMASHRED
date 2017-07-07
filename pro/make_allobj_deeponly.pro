@@ -17,7 +17,7 @@ for i=0,nfiles-1 do begin
   print,strtrim(i+1,2),' ',ifield
 
   outfile = rootdir+'catalogs/final/'+outversion+'/'+ifield+'_combined_allobj_deep.fits'
-  if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
+  if ((file_info(outfile)).exists eq 1 or (file_test(outfile+'.gz')).exists eq 1) and not keyword_set(redo) then begin
     print,outfile,' exists and /redo not set'
     goto,BOMB
   endif
