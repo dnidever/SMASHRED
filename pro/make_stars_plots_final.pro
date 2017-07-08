@@ -16,11 +16,12 @@ files = file_search(dir+'final/'+version+'/stars'+sversion+'/*_allobj_stars.fits
 ;if nfiles2 gt 0 then push,files,files2
 ;nfiles = n_elements(files)
 
-smash = importascii('smash_fields_final.txt',/header)
+smash = importascii('~/projects/SMASHRED/data/smash_fields_final.txt',/header)
 
 print,strtrim(nfiles,2),' files to process'
 
 ; Make the directory if it doesn't exist
+catdir = dir+'final/'+version+'/'
 outdir = dir+'plots/final/'+version+'/'
 if file_test(outdir,/directory) eq 0 then file_mkdir,outdir
 
@@ -45,7 +46,8 @@ for i=0,nfiles-1 do begin
   str = mrdfits(files[i],1)
 
   ; Load the CHIPS structure as well
-  chipfile = file_dirname(files[i])+'/'+field+'_combined_chips.fits.gz'
+  ;chipfile = file_dirname(files[i])+'/'+field+'_combined_chips.fits.gz'
+  chipfile = catdir+'/'+field+'_combined_chips.fits.gz'
   chipstr = mrdfits(chipfile,1)
 
   ; Figuring out how the zero-point was set
