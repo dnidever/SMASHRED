@@ -1,5 +1,3 @@
-pro smashred_imprep_single,file,redo=redo,nodiffmaskflag=nodiffmaskflag
-
 ;+
 ;
 ; SMASHRED_IMPREP_SINGLE
@@ -10,12 +8,16 @@ pro smashred_imprep_single,file,redo=redo,nodiffmaskflag=nodiffmaskflag
 ;  file   The CP ooi (calibrated image) file. c4d_140528_023354_ooi_g_v1.fits.fz
 ;  /nodiffmaskflag   Turn off the CP difference image masking flag
 ;                      which sometimes has problems.  Set by default.
+;  /nocompress       The final files won't be fpack compressed.
 ;  /redo  Redo/overwrite previous one.
 ; 
 ; OUTPUTS:
 ;  This gets CP-reduced images ready for PHOTRED/DAOPHOT
 ; 
 ;+ By D.Nidever  2015
+
+pro smashred_imprep_single,file,redo=redo,nodiffmaskflag=nodiffmaskflag,$
+                           nocompress=nocompress
 
 if n_elements(file) eq 0 then begin
   print,'Syntax - smashred_imprep_single,file,redo=redo'
@@ -251,11 +253,33 @@ for j=1,next do begin
   bd = where(strmid(newhead,0,5) eq 'BEGIN',nbd)
   if nbd gt 0 then newhead[bd]='COMMENT '+newhead[bd]
 
+  ; Put in FPACK parameters
+  if not keyword_set(nocompress) then begin
+    ; Remove all past FZ parameters
+    bd = where(strmid(newhead,0,2) eq 'FZ',nbd)
+    if nbd gt 0 then REMOVE,bd,newhead
+    sxaddpar,newhead,'FZALGOR','RICE_1'
+    sxaddpar,newhead,'FZQMETHD','SUBTRACTIVE_DITHER_1'
+    sxaddpar,newhead,'FZQVALUE',8
+    sxaddpar,newhead,'FZDTHRSD','CHECKSUM'
+  endif
+
   ; Write new image
   newfile = expnum+'_'+string(ccdnum,format='(I02)')+'.fits'
   ;;fits_write,newfile,newim,newhead
   print,'Writing ',newfile,' ',gain,' ',rdnoise
   mwrfits,newim,newfile,newhead,/create
+
+  ; Fpack compress
+  if not keyword_set(nocompress) then begin
+    SPAWN,['fpack',newfile],/noshell
+    if file_test(newfile+'.fz') eq 0 then begin
+      print,'ERROR: Failure creating '+newfile+'.fz'
+      retall
+    endif
+    ; Delete normal FITS file
+    FILE_DELETE,newfile
+  endif
 
   ;stop
 endfor
@@ -264,7 +288,6 @@ endfor
 if file_test(imfile) and file_test(imfile+'.fz') then file_delete,imfile,/verbose
 if file_test(maskfile) and file_test(maskfile+'.fz') then file_delete,maskfile,/verbose
 ;if file_test(wtfile) and file_test(wtfile+'.fz') then file_delete,wtfile,/verbose
-
 
 ;stop
 

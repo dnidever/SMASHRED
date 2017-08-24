@@ -23,7 +23,7 @@ for i=0,nfields-1 do begin
     cfa = 1
     userefcatname = refcatname
     if refcatname eq '2MASS-PSC' and cfa eq 1 then userefcatname='II/246'  ; cfa issue
-    refcatall = queryvizier(userefcatname,[ra,dec],1.5*60.,cfa=cfa,/allcolumns)
+    refcatall = QUERYVIZIER(userefcatname,[ra,dec],1.5*60.,cfa=cfa,/allcolumns)
     if size(refcatall,/type) ne 8 then begin
       print,'Problem with queryvizier.  Bombing'
       goto,bomb0
@@ -49,12 +49,15 @@ for i=0,nfields-1 do begin
   print,strtrim(nexpind,2),' exposures for this field'
   for j=0,nexpind-1 do begin
     fstr1 = fstr[expind[j]]
-    chipfiles = file_search(fstr1.newfile+'_[0-9][0-9].fits',count=nchipfiles)
+    chipfiles = file_search(fstr1.newfile+'_[0-9][0-9].'+['fits','fits.fz'],count=nchipfiles)
     ; Loop through the chip files for this exposure/field
     for k=0,nchipfiles-1 do begin
-      outfile1 = file_basename(chipfiles[k],'.fits')+'_refcat.dat'
+      if strmid(chipfiles[k],6,7,/reverse_offset) eq 'fits.fz' then ext='.fits.fz' else ext='.fits'
+      chipbase = file_basename(chipfiles[k],ext)
+      outfile1 = chipbase+'_refcat.dat'
       if file_test(outfile1) eq 0 or keyword_set(redo) then begin
-        head = headfits(chipfiles[k])
+        if ext eq '.fits.fz' then head=headfits(chipfiles[k],exten=1) else $
+          head = headfits(chipfiles[k])
         nx = sxpar(head,'naxis1')
         ny = sxpar(head,'naxis2')
         ;ra1 = double(sexig2ten(sxpar(head,'RA')))

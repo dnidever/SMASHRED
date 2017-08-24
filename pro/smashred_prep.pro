@@ -1,6 +1,37 @@
-pro smashred_prep,dir,nmulti=nmulti,keepstandards=keepstandards,refname=refname
+;+
+;
+; SMASHRED_PREP
+;
+; This program prepares CP DECam images for PHOTRED.
+;
+; INPUTS:
+;  dir              The directory of files to process.  By default it
+;                     uses the current directory.
+;  =nmulti          The number of processes to use when unpacking
+;                     files.  The default is nmulti=10.
+;  /keepstandards   Keep the standard star exposures.  By default
+;                     these are copied to the "standards/" directory.
+;  =refname         The name of the catalog to use for the WCS
+;                     reference catalog.  The default is "GAIA/GAIA".
+;  /nocompress      The default is to fpack compress the final FITS
+;                     files.  If /nocompress is set, then the files
+;                     are not compressed.
+;
+; OUTPUTS:
+;  The MEF CP files are split into one file per chip and the the mask
+;  image is used to set any "bad" pixels to a very high value.  The
+;  files are renamed with the file naming convention
+;  F#-EXPNUM_##.fits/.fz.  WCS reference catalogs are also downloaded
+;  and saved for each chip file.
+;
+; USAGE:
+;  IDL>smashred_prep,nmulti=5
+;
+; By D. Nidever  July 2015
+;-
 
-; Get "calibrated" images ready for PHOTRED
+pro smashred_prep,dir,nmulti=nmulti,keepstandards=keepstandards,refname=refname,$
+                  nocompress=nocompress
 
 ; STEPS:
 ; -rename tu to c4d
@@ -117,11 +148,15 @@ if not keyword_set(keepstandards) then begin
                   strmid(strupcase(fstr.object),0,1) eq 'E',nstdind)
   if nstdind gt 0 then begin
     print,'Moving ',strtrim(nstdind,2),' standard star field images to standards/'
-    writecol,-1,lindgen(nstdind)+1,'  '+fstr[stdind].file,'  '+fstr[stdind].object
+    WRITECOL,-1,lindgen(nstdind)+1,'  '+fstr[stdind].file,'  '+fstr[stdind].object
     if file_test('standards/') eq 0 then file_mkdir,'standards'
-    file_move,fstr[stdind].file,'standards/',/verbose
+    FILE_MOVE,fstr[stdind].file,'standards/',/verbose
     stdfstr = fstr[stdind]
-    remove,stdind,fstr
+    if nstdind eq nfiles then begin
+      print,'No more files to process'
+      return
+    endif
+    REMOVE,stdind,fstr
   endif else print,'No standard star field images to move.'
 endif else print,'Keeping standards'
 print,''
@@ -142,15 +177,17 @@ nfstr = n_elements(fstr)
 ;print,''
 ;nfstr = n_elements(fstr)
 
-print,'Check that everything is okay (i.e. remove test exposures).  Then type ".c" to continue.'
+; Double-check the results
+resp = ''
+read,'Check that everything is okay (i.e. remove test exposures).  Hit any key to continue or "s" to stop: ',resp
+if strlowcase(resp) eq 's' or strlowcase(resp) eq 'stop' then stop
 
-stop
 
 ; Step 3. Now make the PHOTRED-ready FITS files for the science exposures
 ;-------------------------------------------------------------------------
 print,'Step 3. Make the PHOTRED-ready split chip files'
 
-; get info for c4d image files
+; Get info for c4d image files
 files = file_search('c4d_*_?oi*.fits*',count=nfiles)  ; ooi and poi
 if nfiles eq 0 then begin
   print,'No ARCHIVE image files to split.  Skipping to STACKING.'
@@ -164,7 +201,9 @@ nfstr = n_elements(fstr)
 undefine,cmd,cmddir
 for i=0,nfstr-1 do begin
   if file_test(fstr[i].expnum+'_01.fits') eq 0 or keyword_set(redo) then begin
-    push,cmd,"smashred_imprep_single,'"+file_basename(fstr[i].file)+"'"
+    cmd1 = "smashred_imprep_single,'"+file_basename(fstr[i].file)+"'"
+    if keyword_set(nocompress) then cmd1+=",/nocompress"
+    push,cmd,cmd1
   endif else push,cmd,''
 endfor
 todo = where(cmd ne '',ntodo)
@@ -180,7 +219,8 @@ endif
 if file_test('orig',/directory) eq 0 then file_mkdir,'orig'
 for i=0,ntodo-1 do begin
   fstr1 = fstr[todo[i]]
-  chipfiles = file_search(fstr1.expnum+'_??.fits',count=nchipfiles)
+  if keyword_set(nocompress) then ext='.fits' else ext='.fits.fz'
+  chipfiles = file_search(fstr1.expnum+'_??'+ext,count=nchipfiles)
   ;if nchipfiles ge 60 then begin
   if nchipfiles ge 58 then begin  ; some exposures only have 58 for some reason
     print,strtrim(nchipfiles,2),' chip files for ',fstr1.expnum,'.  Moving ',fstr1.base,' to orig/'
@@ -282,15 +322,16 @@ WRITELINE,'fields',fieldstr.shname+'   '+fieldstr.name
 if not keyword_set(keepstandards) then begin
   print,''
   print,'Renaming the files'
+  if keyword_set(nocompress) then ext='.fits' else ext='.fits.fz'
   for i=0,nfstr-1 do begin
     ; This should get renamed
     if fstr[i].newfile ne '' then begin
-      files1 = file_search(fstr[i].expnum+'_*.fits',count=nfiles1)
+      files1 = file_search(fstr[i].expnum+'_*'+ext,count=nfiles1)
       if nfiles1 gt 0 then begin
         print,strtrim(i+1,2),'/',strtrim(nfstr,2),'  ',fstr[i].expnum,' -> ',fstr[i].newfile
         newfiles1 = fstr[i].shname+'-'+files1
         ;writecol,-1,files1,'  '+newfiles1
-        file_move,files1,newfiles1
+        FILE_MOVE,files1,newfiles1
       endif else print,'NO files for ',fstr[i].expnum
     endif
   endfor
@@ -351,17 +392,18 @@ save,fstr,fields,fieldstr,file='smashred_prep.dat'
 dowcs:
 print,'Step 6: Get astrometic catalogs'
 ;restore,'smashred_prep.dat'
-fieldstr = importascii('fields',fieldnames=['SHNAME','NAME'],fieldtypes=[7,7])
+fieldstr = IMPORTASCII('fields',fieldnames=['SHNAME','NAME'],fieldtypes=[7,7])
 nfields = n_elements(fieldstr)
 
-; get renamed split files, chip 1 only
+; Get renamed split files, chip 1 only
+if keyword_set(nocompress) then ext='.fits' else ext='.fits.fz'
 if not keyword_set(keepstandards) then begin
-  files = file_search('F*-*_01.fits',count=nfiles)
+  files = file_search('F*-*_01'+ext,count=nfiles)
   if nfiles eq 0 then begin
    print,'No RENAMED SPLIT/STACKED images to run WCS on.  Quitting.'
      return
   endif
-endif else files=file_search('*_01.fits',count=nfiles)
+endif else files=file_search('*_01'+ext,count=nfiles)
 SMASHRED_PREP_FILEINFO,fstr,files=files
 if keyword_set(keepstandards) then fstr.newfile=fstr.expnum
 
@@ -410,10 +452,11 @@ endif
 ;----------------------------------
 print,'Step 8. Creating PHOTRED WCS.inlist file'
 if file_test('logs',/directory) eq 0 then file_mkdir,'logs'
+if keyword_set(nocompress) then ext='.fits' else ext='.fits.fz'
 if keyword_set(sepfielddir) and not keyword_set(keepstandards) then begin
-  files = file_search('F*/F*-*_??.fits',/fully)
+  files = file_search('F*/F*-*_??'+ext,/fully)
 endif else begin
-  files = file_search('F*-*_??.fits',/fully)
+  files = file_search('F*-*_??'+ext,/fully)
 endelse
 writeline,'logs/WCS.inlist',files
 
@@ -427,8 +470,6 @@ print,'dt = ',strtrim(dt,2),' sec.'
 ; End logfile
 ;------------
 JOURNAL
-
-stop
 
 cd,origdir
 

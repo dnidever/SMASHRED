@@ -66,6 +66,7 @@ for i=0,nfiles-1 do begin
 
   ; Chip file
   endif else begin
+    if strmid(files[i],6,7,/reverse_offset) eq 'fits.fz' then head=headfits(files[i],exten=1)
     fstr[i].file = files[i]
     dum = strsplit(files[i],'_',/extract)
     fstr[i].expnum = dum[0]
