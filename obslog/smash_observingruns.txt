@@ -1,3 +1,5 @@
+Date (nights)          Telescope  Source                      Comments
+
 # Pre-Survey
 Dec 11+12, 2012 (2)       4-m    Shared Risk                   5 pilot fields 
 Mar 17-20, 2013 (4)       4-m    2013A-0411                    23 fields (griz)  
