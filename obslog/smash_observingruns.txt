@@ -1,0 +1,42 @@
+# Pre-Survey
+Dec 11+12, 2012 (2)       4-m    Shared Risk                   5 pilot fields 
+Mar 17-20, 2013 (4)       4-m    2013A-0411                    23 fields (griz)  
+Aug 8+9, 2013 (2 part)    4-m    Time from Saha Bulge project  clear, 3 fields\hspace{4.5cm}  
+
+# Survey Year 1
+Sep 7-10, 2013 (4)        0.9-m  NOAO survey                   bad weather, no data  
+Sep 11-13, 2013 (3)       0.9-m  Bought from SMARTS            bad weather, no data 
+Oct 21+22, 2013 (2 part)  0.9-m  Makeup for Sep 11-13          bad weather, no data  
+Jan 5-7, 2014 (3)         4-m    NOAO survey                   0.5 night lost, 10 fields 
+Jan 12+13, 2014 (2)       0.9-m  Makeup for Oct 21+22          2 nights photometric, 4 fields calibrated 
+Jan 19+20, 2014 (2 half)  4-m    DD time                       clear, riz for 6 fields
+Jan 21-28, 2014 (8 half)  4-m    Chilean time                  1 half night lost, 4 fields, 9 partials 
+Jan 29+30, 2014 (2 half)  4-m    DD time                       clear, ug for 8 pre-survey fields 
+Feb 13, 2014  (1 part)    4-m    Engineering                   clear, riz for 6 fields 
+Feb 14-23, 2014 (10)      0.9-m  NOAO survey                   9 nights photometric, 30 fields calibrated
+May 27-June 2, 2014 (7)   4-m    NOAO survey                   lost 1 night, 21 fields observed, ug for 
+                                                                  13 pre-survey fields, 3 extra fields 
+# Survey Year 2
+Sep 25-Oct 1, 2014 (7)    0.9-m  NOAO survey                   1 night photometric, 11 fields calibrated 
+Oct 11-12, 2014 (2)       4-m    Engineering                   some globular cluster calibration data   
+Nov 21-23, 2014 (3)       4-m    NOAO survey                   12 LMC/SMC main-body fields 
+Dec 17-18, 2014 (2)       4-m    NOAO survey                   8 LMC/SMC main-body fields 
+Mar 13-18, 2015 (5)       4-m    NOAO survey                   mostly clear, 21 finished, 4 partials 
+Mar 30-31, 2015 (2)       4-m    DD time                       deep, high-cadence data of Hydra II  
+Apr 26-Mar 2, 2015 (7)    0.9-m  NOAO survey                   4.5 nights photometric, 48 fields calibrated 
+
+# Survey Year 3
+Oct 25+27, 2015 (2)       4-m    DD time                       bad weather, no data  
+Nov 9, 2015 (1)           4-m    NOAO survey                   clear, 4 fields  
+Nov 23, 2015 (1)          4-m    DD time                       bad weather, long riz for 2 fields 
+Nov 27-29, 2015 (3)       0.9-m  Chilean time                  9 fields calibrated 
+Dec 5+6, 2015 (2)         4-m    NOAO survey                   8 fields, 7 are LMC/SMC main-body 
+Dec 23, 2015 (1)          4-m    Engineering                   no data
+Jan 1-6, 2016 (6)         4-m    NOAO survey                   4 nights lost, 3 finished, 2 partials  
+Feb 13-18, 2016 (6)       4-m    NOAO survey                   40 shallow LMC fields, 18 long fields 
+May 8-12, 2016 (5)        4-m    NOAO survey                   bad weather, no data 
+
+# Extension
+Oct 29-31, 2016 (3)       4-m    NOAO survey                   some photometric some not, 8 fields observed
+Mar 8, 2017 (part)        4-m    DD time                       Finished 1 field and calibration data for 25 fields
+Aug 4, 2017 (part)        4-m    DD time                       Calibration data for 3 fields
