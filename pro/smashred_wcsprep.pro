@@ -56,8 +56,14 @@ for i=0,nfields-1 do begin
       chipbase = file_basename(chipfiles[k],ext)
       outfile1 = chipbase+'_refcat.dat'
       if file_test(outfile1) eq 0 or keyword_set(redo) then begin
-        if ext eq '.fits.fz' then head=headfits(chipfiles[k],exten=1) else $
+        if ext eq '.fits.fz' then begin
+          head = headfits(chipfiles[k],exten=1)
+          ; Temporarily fix NAXIS1/2 values
+          sxaddpar,head,'NAXIS1',sxpar(head,'ZNAXIS1')
+          sxaddpar,head,'NAXIS2',sxpar(head,'ZNAXIS2')
+        endif else begin
           head = headfits(chipfiles[k])
+        endelse
         nx = sxpar(head,'naxis1')
         ny = sxpar(head,'naxis2')
         ;ra1 = double(sexig2ten(sxpar(head,'RA')))
