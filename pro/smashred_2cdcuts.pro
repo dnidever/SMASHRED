@@ -147,7 +147,11 @@ for i=0,ncolor-1 do begin
 
     ; Input colors
     astinpmagind1 = where(atags eq 'AST_'+strupcase(band1),nastinpmagind1)
+    if nastinpmagind1 eq 0 then $
+      astinpmagind1 = where(atags eq 'INP_'+strupcase(band1),nastinpmagind1)
     astinpmagind2 = where(atags eq 'AST_'+strupcase(band2),nastinpmagind2)
+    if nastinpmagind2 eq 0 then $
+      astinpmagind2 = where(atags eq 'INP_'+strupcase(band2),nastinpmagind2)
     astinpcol = aststr.(astinpmagind1) - aststr.(astinpmagind2)
 
     ; Don't use the color-color fits, just subtract the input color
