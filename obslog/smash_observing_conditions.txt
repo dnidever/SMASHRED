@@ -67,3 +67,4 @@
    66	57693	20161031	0	overcast the first half of the night
    67	57821	20170308	1	clear
    68	57970	20170804	1	clear
+   69	58087	20171129	1	clear
