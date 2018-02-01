@@ -100,10 +100,18 @@ FOR f=0,nfilters-1 do begin
     ;night = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
     ;file = reduxdir+night+'/'+strtrim(chstr1.field,2)+'/'+strtrim(chstr1.file,2)
     print,' ',strtrim(f+1,2),' ',strtrim(i+1,2),'/',strtrim(nind,2),' ',file
+    if file_test(file) eq 0 then file+='.fz'
     FITS_READ,file,im1,head1,message=error,/no_abort
     if error ne '' then stop,'PROBLEM loading '+file
     sz1 = size(im1)
     exptime = chstr1.exptime
+
+    ; Fix fpack header
+    if strmid(file,6,7,/reverse_offset) eq 'fits.fz' then begin
+        ; Fix the NAXIS1/2 values in the header
+        sxaddpar,head1,'NAXIS1',sxpar(head1,'ZNAXIS1')
+        sxaddpar,head1,'NAXIS2',sxpar(head1,'ZNAXIS2')
+     endif
 
     ; Perimeter pixels
     xperi = [lindgen(sz1[1]), lonarr(sz1[2]-2)+(sz1[1]-1), (sz1[1]-1)-lindgen(sz1[1]), lonarr(sz1[2]-2)]
