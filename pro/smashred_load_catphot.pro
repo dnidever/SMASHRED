@@ -269,8 +269,17 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ; Load the FITS header of the original chip file
       fitsfile = photdir+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
       ;fitsfile = reduxdir+night+'/'+field+'/'+strtrim(chstr[chind[j]].base,2)+'.fits'
+      if file_test(fitsfile) eq 0 then fitsfile+='.fz'
       if file_test(fitsfile) eq 0 then stop,fitsfile,' NOT FOUND'
-      head = headfits(fitsfile)
+      ; Load the FITS header
+      if strmid(fitsfile,6,7,/reverse_offset) eq 'fits.fz' then begin
+        head = HEADFITS(fitsfile,exten=1)
+        ; Fix the NAXIS1/2 values in the header
+        sxaddpar,head,'NAXIS1',sxpar(head,'ZNAXIS1')
+        sxaddpar,head,'NAXIS2',sxpar(head,'ZNAXIS2')
+      endif else begin
+        head = HEADFITS(fitsfile)
+      endelse
       ; Get the MJD for this exposure
       mjd = PHOTRED_GETMJD(fitsfile,'ctio')
 
