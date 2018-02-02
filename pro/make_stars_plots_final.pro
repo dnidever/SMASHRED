@@ -48,6 +48,10 @@ for i=0,nfiles-1 do begin
   ; Load the CHIPS structure as well
   ;chipfile = file_dirname(files[i])+'/'+field+'_combined_chips.fits.gz'
   chipfile = catdir+'/'+field+'_combined_chips.fits.gz'
+  if file_test(chipfile) eq 0 then begin
+    print,chipfile,' NOT FOUND'
+    goto,BOMB
+  endif
   chipstr = mrdfits(chipfile,1)
 
   ; Figuring out how the zero-point was set
