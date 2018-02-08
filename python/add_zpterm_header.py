@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # Find the record for this chip
     base = os.path.basename(fitsfile)
     base = os.path.splitext(os.path.splitext(base)[0])[0]
-    ind, = np.where(allchips['BASE'] == base)
+    ind, = np.where(np.char.strip(allchips['BASE']) == base)
     nind = len(ind)
     if nind == 0:
         print(base+" not found in "+chipfile)
