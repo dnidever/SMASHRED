@@ -54,7 +54,7 @@ endif
 ;  Only deep exposures
 if keyword_set(deeponly) then expind = where(fstr.exptime gt 100,nexpind)
 ;  Only short exposures
-if keyword_set(deeponly) then expind = where(fstr.exptime lt 100,nexpind)
+if keyword_set(shortonly) then expind = where(fstr.exptime lt 100,nexpind)
 
 ; Exposure loop
 for i=0,nexpind-1 do begin

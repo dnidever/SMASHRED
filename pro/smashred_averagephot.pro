@@ -78,7 +78,7 @@ for i=0,n_elements(ufilter)-1 do begin
     filtind = where(fstr.filter eq ufilter[i] and fstr.exptime gt 100,nfiltind)
     ; Chips for this filter
     chind = where(chstr.filter eq ufilter[i] and chstr.exptime gt 100,nchind)
-  endelse
+  endif
 
   ; Only SHORT exposures
   if keyword_set(shortonly) then begin
@@ -86,7 +86,7 @@ for i=0,n_elements(ufilter)-1 do begin
     filtind = where(fstr.filter eq ufilter[i] and fstr.exptime lt 100,nfiltind)
     ; Chips for this filter
     chind = where(chstr.filter eq ufilter[i] and chstr.exptime lt 100,nchind)
-  endelse
+  endif
 
   ; No exposures in this band, skip
   if nfiltind eq 0 then begin
