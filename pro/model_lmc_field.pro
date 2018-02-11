@@ -17,7 +17,8 @@ iobs += randomn(seed,n_elements(lmcsynth))*10.0^poly(iobs,icoef)
 
 undefine,dum,lmcim
 hess,gobs-iobs,gobs,dum,lmcim,dx=dx,dy=dy,xr=xr,yr=yr,/noplot
-lmcim *= par[5]  ; LMC scaling
+if n_elements(lmcim) eq 0 then lmcim=mwim*0   ; no points left
+lmcim *= par[5]                 ; LMC scaling
 
 ; Apply completeness
 im0 = (mwim + lmcim) * compim
@@ -36,9 +37,16 @@ pro model_lmc_field,field
 
 ; Model the hess diagram of an outer LMC field
 
-rootdir = smashred_rootdir()+'cp/red/photred/'
+;rootdir = smashred_rootdir()+'cp/red/photred/'
+rootdir = '/Users/nidever/smash/'
 if n_elements(version) eq 0 then version='v6'
-catdir = rootdir+'catalogs/final/'+version+'/'
+catdir = rootdir+'reduction/catalogs/final/'+version+'/'
+;mwdir = rootdir+'mwmodels/dartmouth/'
+mwdir = rootdir+'mwmodel/dartmouth/'
+;isodir = rootdir+'lmchalo/'
+isodir = rootdir+'cmdmodel/'
+outdir = rootdir+'lmchalo/'
+plotdir = rootdir+'lmchalo/plots/'
 
 ; Not enough inputs
 if n_elements(field) eq 0 then begin
@@ -63,13 +71,14 @@ ast = mrdfits(catdir+'ast/'+field+'_complete.fits.gz',1)
 ; MAYBE USE "DEEP" STARS CATALOG??
 
 ; Restore Thomas' model
-model = importascii(rootdir+'mwmodels/dartmouth/CMD_'+strlowcase(field),/header)
+model = importascii(mwdir+'CMD_'+strlowcase(field),/header)
 nmodel = n_elements(model)
 
 ; Restore the LMC synthetic isochrone
 ;synth = mrdfits(rootdir+'lmchalo/parsec_10gyr_-1.00_synth.fits.gz',1)
 ;synth = mrdfits(rootdir+'lmchalo/parsec_7gyr_-1.00_synth.fits.gz',1)
-synth = mrdfits(rootdir+'lmchalo/parsec_7gyr_-0.50_synth.fits.gz',1)
+;synth = mrdfits(isodir+'parsec_7gyr_-0.50_synth.fits.gz',1)
+synth = mrdfits(isodir+'parsec_5gyr_-1.00_synth.fits.gz',1)
 ; no distance modulus
 synth.gobs -= synth.dmod
 synth.iobs -= synth.dmod
@@ -157,6 +166,9 @@ magim = replicate(1,sz[1])#yarr
 ; 4 - lmcspread
 ; 5 - lmcscale
 
+; FIT MILKY WAY ONLY FIRST
+;--------------------------
+
 parinfo = replicate({limited:[1,0],limits:[0.0,0.0],fixed:0},6)
 initpars = [1.0,1.0,1.0,18.5,0.03,1.0]
 xx = findgen(sz[1])#replicate(1,sz[2])
@@ -169,16 +181,164 @@ parinfo[3:5].fixed = 1
 mask = float(colim gt 0.6 or magim lt 21.3)
 yy = obsim*mask
 fa = {mwmodel:mwmodel,lmcsynth:synth,compim:compim,dx:dx,dy:dy,xr:xr,yr:yr,gcoef:gcoef,icoef:icoef,smlen:smlen,mask:mask}
-mvpars = MPFITFUN('lmc_hess_model',xx,yy,err,initpars,functargs=fa,parinfo=parinfo,dof=dof,$
-                bestnorm=chisq,status=status,yfit=yfit)  ;,/quiet)
+mwpars = MPFITFUN('lmc_hess_model',xx,yy,err,initpars,functargs=fa,parinfo=parinfo,dof=dof,$
+                bestnorm=chisq,status=status,yfit=yfit,/quiet)
 
 zmax = max([yy,yfit])
-wset,0
-displayc,yy,xarr,yarr,/yflip,min=0,max=zmax
-wset,1
-displayc,yfit,xarr,yarr,/yflip,min=0,max=zmax
+;wset,0
+;displayc,yy,xarr,yarr,/yflip,min=0,max=zmax
+;wset,1
+;displayc,yfit,xarr,yarr,/yflip,min=0,max=zmax
 
-im = lmc_hess_model(xx,mwpars,_extra=fa)
+; Save the MW model CMDs
+setdisp
+!p.font = 0
+psfile1 = plotdir+field+'_mwmodelfit'
+ps_open,psfile1,/color,thick=4,/encap
+device,/inches,xsize=10,ysize=7.0
+xst = 0.30
+zmax = max([yy,yfit])
+charsize = 1.2
+y1 = 0.95
+;loadcol,3
+black = fsc_color('black',0)
+displayc,obsim*mask,xarr,yarr,/yflip,min=0,max=zmax,xtit='(g-i)!d0!n',ytit='g!d0!n',tit='Observed',$
+         posim=[0.08,0.08,0.08+xst,y1-0.10],poscol=[0.08,y1-0.02,0.08+xst,y1],charsize=charsize,maskv=0,maskc=255
+displayc,yfit,xarr,yarr,/yflip,min=0,max=zmax,xtit='(g-i)!d0!n',ytit=' ',tit='Model',/noerase,maskv=0,maskc=255,$
+         ytickformat='(A1)',posim=[0.08+xst+0.02,0.08,0.08+2*xst,y1-0.10],poscol=[0.08+xst+0.02,y1-0.02,0.08+2*xst,y1],charsize=charsize
+loadct,4,/silent
+black = fsc_color('black',0)
+white = fsc_color('white',255)
+sigim = (obsim*mask-yfit)/err * mask
+displayc,sigim,xarr,yarr,/yflip,min=-2,max=2,xtit='(g-i)!d0!n',ytit=' ',tit='(Observed-Model)/Error',/noerase,maskv=0,maskc=255,$         
+         ytickformat='(A1)',posim=[0.08+2*xst+0.02,0.08,0.08+3*xst,y1-0.10],poscol=[0.08+2*xst+0.02,y1-0.02,0.08+3*xst,y1],charsize=charsize
+xyouts,0.5,0.97,field+' -  ThinDiskScale='+stringize(mwpars[0],ndec=1)+'  ThickDiskScale='+stringize(mwpars[1],ndec=2)+$
+       '  HaloDiskScale='+stringize(mwpars[2],ndec=2),align=0.5,charsize=1.1,/norm
+ps_close
+ps2png,psfile1+'.eps',/eps
+spawn,['epstopdf',psfile1+'.eps'],/noshell
+
+; Remove the MW foreground model and get the residuals
+fa = {mwmodel:mwmodel,lmcsynth:synth,compim:compim,dx:dx,dy:dy,xr:xr,yr:yr,gcoef:gcoef,icoef:icoef,smlen:smlen}
+mwim = lmc_hess_model(xx,mwpars,_extra=fa)
+resim = obsim-mwim
+
+; Isochrone information
+restore,'~/smash/cmdmodel/cmd_model_iso.dat'
+fld = {glon:0.0,glat:0.0,area:1.0,gmin:12.0,gmax:25.0,gerr_coef:fltarr(4),ierr_coef:fltarr(4)}
+fld.gerr_coef = [-2.5,0.01]
+fld.ierr_coef = [-2.5,0.01]
+nage = n_elements(isoarr[*,0])
+nfeh = n_elements(isoarr[0,*])
+
+; Loop over age and [Fe/H] and fit the LMC
+fitstr = replicate({i:0,j:0,age:0.0,feh:0.0,pars:fltarr(6),chisq:0.0,rchisq:0.0,im:fltarr(nx,ny)},nage*nfeh)
+icnt = 0
+for i=0,nage-1 do begin
+  for j=0,nfeh-1 do begin
+     iage = isoarr[i,j].age
+     ifeh = isoarr[i,j].feh     
+     ; Get the synthetic isochrone
+     undefine,synthstr
+     iso = isoarr[i,j]
+     cmd_model_smash_synthphot,fld,1e5,20.0,iso,synthstr,0,count=cnt
+     synthstr = synthstr[0:cnt-1]
+     ; no distance modulus
+     synthstr.gobs -= synthstr.dmod
+     synthstr.iobs -= synthstr.dmod
+     synthstr.dmod = 0
+     print,'Age=',stringize(iage,ndec=1),'Gyr [Fe/H]=',stringize(ifeh,ndec=2)
+
+     ;; Hold the MW components fixed to zero
+     parinfo = replicate({limited:[1,0],limits:[0.0,0.0],fixed:0},6)
+     initpars = [0.0,0.0,0.0,18.5,0.03,1.0]
+     parinfo[0:2].fixed = 1
+     mask = float(colim lt 0.8 and magim gt 21.3)
+     xx = findgen(sz[1])#replicate(1,sz[2])
+     yy = resim * mask
+     err = sqrt(obsim)>1.0
+     fa = {mwmodel:mwmodel,lmcsynth:synthstr,compim:compim,dx:dx,dy:dy,xr:xr,yr:yr,gcoef:gcoef,icoef:icoef,smlen:smlen,mask:mask}
+     pars = MPFITFUN('lmc_hess_model',xx,yy,err,initpars,functargs=fa,parinfo=parinfo,dof=dof,$
+                     bestnorm=chisq,status=status,yfit=yfit,/quiet)
+     print,pars[3:5],' ',chisq
+
+     fitstr[icnt].i = i
+     fitstr[icnt].j = j
+     fitstr[icnt].age = iage
+     fitstr[icnt].feh = ifeh
+     fitstr[icnt].pars = pars
+     fitstr[icnt].chisq = chisq
+     fitstr[icnt].rchisq = chisq/(total(mask)-3)
+     fitstr[icnt].im = yfit
+     
+     if keyword_set(pl) then begin
+       zmax = max([yy,yfit])
+       wset,0
+       displayc,yy,xarr,yarr,/yflip,min=0,max=zmax
+       wset,1
+       displayc,yfit,xarr,yarr,/yflip,min=0,max=zmax
+     endif
+       
+     ;stop
+     icnt++
+  endfor
+endfor
+
+; Best model
+bestind = first_el(minloc(fitstr.chisq))
+beststr = fitstr[bestind]
+print,'Best model: Age=',stringize(beststr.age,ndec=1),' [Fe/H]=',stringize(beststr.feh,ndec=2)
+print,'Dmod=',stringize(beststr.pars[3],ndec=2),' Dspread=',stringize(beststr.pars[4],ndec=2),' Scale=',stringize(beststr.pars[5],ndec=2)
+;ngdpix = total(mask)
+;rchisq = beststr.chisq/ngdpix
+
+; Save the best model files
+beststr.pars[0:2] = mwpars[0:2]
+outfile = outdir+field+'_pars.fits'
+MWRFITS,beststr,outfile,/create
+print,'Writing best-fit parameters to ',outfile
+
+;zmax = max([resim,beststr.im])
+;wset,0
+;displayc,resim,xarr,yarr,/yflip,min=0,max=zmax
+;wset,1
+;displayc,beststr.im,xarr,yarr,/yflip,min=0,max=zmax
+
+; Save the CMDs
+setdisp
+!p.font = 0
+psfile2 = plotdir+field+'_modelfit'
+ps_open,psfile2,/color,thick=4,/encap
+device,/inches,xsize=10,ysize=7.0
+xst = 0.30
+zmax = max([resim*mask,beststr.im])
+charsize = 1.2
+y1 = 0.95
+;loadcol,3
+black = fsc_color('black',0)
+displayc,resim*mask,xarr,yarr,/yflip,min=0,max=zmax,xtit='(g-i)!d0!n',ytit='g!d0!n',tit='Observed (residual)',$
+         posim=[0.08,0.08,0.08+xst,y1-0.10],poscol=[0.08,y1-0.02,0.08+xst,y1],charsize=charsize,maskv=0,maskc=255
+displayc,beststr.im,xarr,yarr,/yflip,min=0,max=zmax,xtit='(g-i)!d0!n',ytit=' ',tit='Model',/noerase,maskv=0,maskc=255,$
+         ytickformat='(A1)',posim=[0.08+xst+0.02,0.08,0.08+2*xst,y1-0.10],poscol=[0.08+xst+0.02,y1-0.02,0.08+2*xst,y1],charsize=charsize
+loadct,4,/silent
+black = fsc_color('black',0)
+white = fsc_color('white',255)
+sigim = (resim*mask-beststr.im)/err * mask
+;displayc,resim*mask-beststr.im,xarr,yarr,/yflip,/z,xtit='(g-i)!d0!n',ytit=' ',tit='Observed-Model',/noerase,maskv=0,maskc=255,$
+displayc,sigim,xarr,yarr,/yflip,min=-2,max=2,xtit='(g-i)!d0!n',ytit=' ',tit='(Observed-Model)/Error',/noerase,maskv=0,maskc=255,$         
+         ytickformat='(A1)',posim=[0.08+2*xst+0.02,0.08,0.08+3*xst,y1-0.10],poscol=[0.08+2*xst+0.02,y1-0.02,0.08+3*xst,y1],charsize=charsize
+xyouts,0.5,0.97,field+' -  Age='+stringize(beststr.age,ndec=1)+'Gyr  [Fe/H]='+stringize(beststr.feh,ndec=2)+$
+       '  Dmod='+stringize(beststr.pars[3],ndec=2)+'  Dspread='+stringize(beststr.pars[4],ndec=2)+'  Scale='+stringize(beststr.pars[5],ndec=2)+$
+       '  chisq='+stringize(beststr.rchisq,ndec=2),align=0.5,charsize=1.1,/norm
+ps_close
+ps2png,psfile2+'.eps',/eps
+spawn,['epstopdf',psfile2+'.eps'],/noshell
+
+; Combine the two figures
+finalpdf = plotdir+field+'_cmdfits.pdf'
+cmd = 'gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile='+finalpdf+' '+psfile1+'.pdf '+psfile2+'.pdf'
+spawn,cmd
+print,'Final PDF is ',finalpdf
 
 stop
 
