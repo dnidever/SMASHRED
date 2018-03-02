@@ -11,6 +11,7 @@
 ;  allsrc  The structure with information for each source detection.
 ;  allobj  The structure with information for each unique object.
 ;  /deeponly   Only use the deep exposures.
+;  /shortonly  Only use the short exposures.
 ;  /alslowsnrcut   Downweight ALLSTAR S/N<5 sharp (short exposures)
 ;                    because are "bad".  Will keep the sharp if it
 ;                    is the only detection for that object.
@@ -27,12 +28,13 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error,alslowsnrcut=alslowsnrcut,deeponly=deeponly
+pro smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,error=error,alslowsnrcut=alslowsnrcut,deeponly=deeponly,$
+                               shortonly=shortonly
 
 ; Not enough inputs
 if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,alslowsnrcut=alslowsnrcut,deeponly=deeponly'
+  print,'Syntax - smashred_averagemorphcoord,fstr,chstr,allsrc,allobj,alslowsnrcut=alslowsnrcut,deeponly=deeponly,shortonly=shortonly'
   return
 endif
 
@@ -44,14 +46,16 @@ totprob = fltarr(nallobj) & numprob = lon64arr(nallobj)
 flag = intarr(nallobj) & numflag = lon64arr(nallobj)
 ; Exposures to use
 nfstr = n_elements(fstr)
-;  Only deep exposures
-if keyword_set(deeponly) then begin
-  expind = where(fstr.exptime gt 100,nexpind)
-;  All exposures
-endif else begin
+; All exposures
+if not keyword_set(deeponly) and not keyword_set(shortonly) then begin
   nexpind = nfstr
   expind = lindgen(nexpind)
-endelse
+endif
+;  Only deep exposures
+if keyword_set(deeponly) then expind = where(fstr.exptime gt 100,nexpind)
+;  Only short exposures
+if keyword_set(shortonly) then expind = where(fstr.exptime lt 100,nexpind)
+
 ; Exposure loop
 for i=0,nexpind-1 do begin
   gd = where(allobj.srcfindx[expind[i]] ge 0,ngd)
