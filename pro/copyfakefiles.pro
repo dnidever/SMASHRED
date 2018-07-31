@@ -1,8 +1,9 @@
-pro copyfakefiles,deepdirs
+pro copyfakefiles,deepdirs,version=version
 
 ; Copy the files needed to run FAKERED on the deep data
 rootdir = smashred_rootdir()+'cp/red/photred/'
 fakedir = rootdir+'addfakes/'
+if n_elements(version) eq 0 then version='v6'
 
 ndeepdirs = n_elements(deepdirs)
 if ndeepdirs eq 0 then $
@@ -25,7 +26,7 @@ for i=0,ndeep-1 do begin
     goto, BOMB
   endif
 
-  chipfile = rootdir+'catalogs/final/v5/'+ifield+'_combined_chips.fits.gz'
+  chipfile = rootdir+'catalogs/final/'+version+'/'+ifield+'_combined_chips.fits.gz'
   if file_test(chipfile) eq 0 then begin
     print,chipfile,' NOT FOUND'
     goto,BOMB
