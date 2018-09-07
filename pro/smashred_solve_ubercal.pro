@@ -146,7 +146,7 @@ nuchips = n_elements(uchips)
 chipdeltamagoff = fltarr(nuchips)
 chipdeltamagofferr = fltarr(nuchips)+9.99
 for k=0,nuchips-1 do begin
-  chind = where(ubercalstr.chip eq uchips[k],nchind)
+  chind = where(ubercalstr.chip eq uchips[k] and abs(rel_magoff) lt 10,nchind)
   if nchind gt 0 then begin
     chipdeltamagoff[k] = median([rel_magoff[chind]])
     chipdeltamagofferr[k] = mad([rel_magoff[chind]]) / sqrt(nchind)  ; error in mean
