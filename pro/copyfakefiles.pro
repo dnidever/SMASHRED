@@ -1,10 +1,13 @@
-pro copyfakefiles
+pro copyfakefiles,deepdirs,version=version
 
 ; Copy the files needed to run FAKERED on the deep data
 rootdir = smashred_rootdir()+'cp/red/photred/'
 fakedir = rootdir+'addfakes/'
+if n_elements(version) eq 0 then version='v6'
 
-deepdirs = file_search(rootdir+'deep/Field*',/test_directory,count=ndeepdirs)
+ndeepdirs = n_elements(deepdirs)
+if ndeepdirs eq 0 then $
+  deepdirs = file_search(rootdir+'deep/Field*',/test_directory,count=ndeepdirs)
 deepfields = file_basename(deepdirs)
 ndeep = ndeepdirs
 print,strtrim(ndeep,2),' deep fields to copy FAKERED files for'
@@ -23,7 +26,7 @@ for i=0,ndeep-1 do begin
     goto, BOMB
   endif
 
-  chipfile = rootdir+'catalogs/final/v5/'+ifield+'_combined_chips.fits.gz'
+  chipfile = rootdir+'catalogs/final/'+version+'/'+ifield+'_combined_chips.fits.gz'
   if file_test(chipfile) eq 0 then begin
     print,chipfile,' NOT FOUND'
     goto,BOMB
@@ -49,7 +52,9 @@ for i=0,ndeep-1 do begin
 
   ; Run fix_fitsheaders.pro, otherwise ADDSTAR won't run
   print,' Running fix_fitsheaders'
-  outfitsfiles = file_search(fakedir1+shfield+'/'+shfield+'-*_01.fits')
+  outfitsfiles = file_search(fakedir1+shfield+'/'+shfield+'-*_01.fits',count=noutfitsfiles)
+  if noutfitsfiles eq 0 then $
+    outfitsfiles = file_search(fakedir1+shfield+'/'+shfield+'-*_01.fits.fz',count=noutfitsfiles)
   FILE_CHMOD,outfitsfiles,'755'o
   FIX_FITSHEADERS,outfitsfiles
 

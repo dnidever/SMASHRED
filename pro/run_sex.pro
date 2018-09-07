@@ -31,7 +31,8 @@ if file_test(sdir,/directory) eq 0 then file_mkdir,sdir
 file_chmod,sdir,'755'o
 
 ; Copy the default files
-file_copy,'/datalab/users/dnidever/nsc/instcal/default.'+['config','param','conv','nnw'],sdir,/allow,/over
+;file_copy,'/datalab/users/dnidever/nsc/instcal/default.'+['config','param','conv','nnw'],sdir,/allow,/over
+file_copy,'/dl1/users/dnidever/nsc/instcal/default.'+['config','param','conv','nnw'],sdir,/allow,/over
 cd,current=curdir
 cd,sdir
 

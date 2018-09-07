@@ -13,6 +13,7 @@
 ;  /usecalib  Average the calibrated photometry (CMAG/CERR).  The default
 ;               is to use the instrumental photometry (MAG/ERR).
 ;  /deeponly  Only use deep exposures.
+;  /shortonly Only use short exposures.
 ;  /silent    Don't print anything to the screen.
 ;
 ; OUTPUTS:
@@ -25,12 +26,12 @@
 ; By D.Nidever  March 2016
 ;-
 
-pro smashred_averagephot,fstr,chstr,allsrc,allobj,usecalib=usecalib,deeponly=deeponly,error=error,silent=silent
+pro smashred_averagephot,fstr,chstr,allsrc,allobj,usecalib=usecalib,deeponly=deeponly,shortonly=shortonly,error=error,silent=silent
 
 ; Not enough inputs
 if n_elements(fstr) eq 0 or n_elements(chstr) eq 0 or n_elements(allsrc) eq 0 or n_elements(allobj) eq 0 then begin
   error = 'Not enough inputs'
-  print,'Syntax - smashred_averagephot,fstr,chstr,allstr,allobj,usecalib=usecalib,deeponly=deeponly,error=error,silent=silent'
+  print,'Syntax - smashred_averagephot,fstr,chstr,allstr,allobj,usecalib=usecalib,deeponly=deeponly,shortonly=shortonly,error=error,silent=silent'
   return
 endif
 
@@ -55,29 +56,43 @@ if keyword_set(usecalib) then begin
 endif
 
 ; Combine photometry from same filter
-if not keyword_set(silent) then if keyword_set(deeponly) then print,'Combining all of the DEEP photometry' else $
-    print,'Combining all of the photometry'
+if not keyword_set(silent) then begin
+  if keyword_set(deeponly) then print,'Combining all of the DEEP photometry'
+  if keyword_set(shortonly) then print,'Combining all of the SHORT photometry'
+  if not keyword_set(deeponly) and not keyword_set(shortonly) then print,'Combining all of the photometry'
+endif
 
 for i=0,n_elements(ufilter)-1 do begin
 
-  ; Using all exposures
-  if not keyword_set(deeponly) then begin
+  ; Using ALL exposures
+  if not keyword_set(deeponly) and not keyword_set(shortonly) then begin
     ; Number of exposures for this filter
     filtind = where(fstr.filter eq ufilter[i],nfiltind)
     ; Chips for this filter
     chind = where(chstr.filter eq ufilter[i],nchind)
+  endif
 
-  ; Only deep exposures
-  endif else begin
+  ; Only DEEP exposures
+  if keyword_set(deeponly) then begin
     ; Number of exposures for this filter
     filtind = where(fstr.filter eq ufilter[i] and fstr.exptime gt 100,nfiltind)
     ; Chips for this filter
     chind = where(chstr.filter eq ufilter[i] and chstr.exptime gt 100,nchind)
-  endelse
+  endif
+
+  ; Only SHORT exposures
+  if keyword_set(shortonly) then begin
+    ; Number of exposures for this filter
+    filtind = where(fstr.filter eq ufilter[i] and fstr.exptime lt 100,nfiltind)
+    ; Chips for this filter
+    chind = where(chstr.filter eq ufilter[i] and chstr.exptime lt 100,nchind)
+  endif
 
   ; No exposures in this band, skip
   if nfiltind eq 0 then begin
-    if keyword_set(deeponly) then cmt='deep ' else cmt=''
+    cmt = ''
+    if keyword_set(deeponly) then cmt='deep '
+    if keyword_set(shortonly) then cmt='short '
     print,'No '+cmt+'exposures in filter='+ufilter[i]
     goto,BOMB
   endif

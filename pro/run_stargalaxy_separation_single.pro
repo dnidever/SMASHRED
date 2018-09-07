@@ -9,7 +9,7 @@ endif
 
 rootdir = smashred_rootdir()
 if n_elements(version) eq 0 then version='v6'
-if n_elements(sversion) eq 0 then sversion='1'
+if n_elements(sversion) eq 0 then sversion='2'
 catdir = rootdir+'cp/red/photred/catalogs/final/'+version+'/'
 if keyword_set(deep) then tag='_deep' else tag=''
 
