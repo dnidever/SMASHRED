@@ -28,7 +28,10 @@ tags = tag_names(obj0)
 ;; Select the stars
 depththresh = 1
 if max(obj0.depthflag) eq 1 then depththresh=0  ; in case only short exposures
-gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and obj0.prob gt 0.2 and $
+;gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and obj0.prob gt 0.2 and $
+;; stars1 had the PROB cut but it was removing lots of bright stars,
+;; probably because of the brighter-fatter effect.
+gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and $
                 obj0.ndet gt 5 and obj0.depthflag gt depththresh,ngdstars)
 obj = obj0[gdstars]
 
