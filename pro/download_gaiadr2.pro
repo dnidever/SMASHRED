@@ -31,7 +31,7 @@ endif else begin
   rar = range(chips.ra)*cos(cendec/!radeg)*1.1 > 2.3
 endelse
 print,field,' ',cenra,cendec,rar,decr
-rad = 0.1 ;1.8
+rad = 1.8
 
 pylines = 'python -c "from dl import authClient as ac, queryClient as qc, helpers;'+$
           "token=ac.login('dnidever');"+$
