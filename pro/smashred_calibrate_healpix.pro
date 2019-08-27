@@ -238,7 +238,7 @@ For c=0,ninfo-1 do begin
     ;; Updating the allsrc CHIPINDX with a lookup table
     newchipindx = lonarr(norigchstr1)-1
     newchipindx[gdch] = lindgen(ngd)
-    allsrc.chipindx = newchipindx[allsrc.chipindx]
+    allsrc1.chipindx = newchipindx[allsrc1.chipindx]
 
     ;; Remove some exposures
     ui = uniq(chstr1.expnum,sort(chstr1.expnum))
