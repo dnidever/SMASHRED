@@ -2,7 +2,7 @@ pro download_gaiadr2,field,redo=redo
 
 outdir = '/dl1/users/dnidever/smash/cp/red/photred/gaiadr2/'
 outfile = outdir+field+'_gaiadr2.fits'
-if file_test(outfile) eq 1 and not keyword_set(redo) then begin
+if (file_test(outfile) eq 1 or file_test(outfile+'.gz') eq 1) and not keyword_set(redo) then begin
   print,outfile,' EXISTS and /redo not set'
   return
 endif
@@ -46,5 +46,8 @@ endif
 print,outfile
 hd = headfits(outfile,exten=1)
 print,strtrim(sxpar(hd,'naxis2'),2),' GAIADR2 sources'
+
+;; Compress the file
+spawn,['gzip',outfile],/noshell
 
 end
