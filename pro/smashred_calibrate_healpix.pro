@@ -233,7 +233,7 @@ For c=0,ninfo-1 do begin
 
     ;; Only keep chips that overlap
     norigchstr1 = n_elements(chstr1)
-    gdch = where(chstr1.overlap eq 1 or chstr1.nsrc le 0,ngd)
+    gdch = where(chstr1.overlap eq 1 and chstr1.nsrc gt 0,ngd)
     chstr1 = chstr1[gdch]
     ;; Updating the allsrc CHIPINDX with a lookup table
     newchipindx = lonarr(norigchstr1)-1

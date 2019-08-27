@@ -372,8 +372,6 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       src.raindiv = ra
       src.decindiv = dec
 
-;if chstr[chind[j]].field eq 'F7' and chstr[chind[j]].chip eq 39 and chstr[chind[j]].expnum eq '00272103' then stop,'CHECK THIS ONE!!!'
-
       ; Get GAIA-calibrated coordinates
       ;--------------------------------
       if mjd lt 57691 then begin
@@ -448,6 +446,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
       ROTSPHCEN,src.ra,src.dec,buffer.cenra,buffer.cendec,lon,lat,/gnomic
       ROI_CUT,buffer.lon,buffer.lat,lon,lat,ind,cutind,fac=1000,/silent
       nmatch = n_elements(cutind)
+      if nmatch eq 1 then dum=where(cutind ge 0,nmatch)
       if nmatch eq 0 then begin
         print,'  No sources are inside the boundary. Skipping'
         undefine,src
@@ -481,7 +480,7 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
         undefine,new
         nallsrc = n_elements(allsrc)  
       endif
-if chstr[chind[j]].field eq 'F12' and chstr[chind[j]].chip eq 16 and chstr[chind[j]].expnum eq '00518847' then stop,'CHECK THIS ONE!!!' 
+
       ; Add SRC to ALLSRC structure
       if nsrc gt 0 then allsrc[cur_allsrc_indx:cur_allsrc_indx+nsrc-1] = src
 
@@ -493,6 +492,13 @@ if chstr[chind[j]].field eq 'F12' and chstr[chind[j]].chip eq 16 and chstr[chind
     BOMB:
   endfor  ;; individual ast/phot files
 
+  ;; No sources left
+  if cur_allsrc_indx eq 0 then begin
+    print,'No sources left'
+    undefine,chstr
+    undefine,allsrc
+    return
+  endif
 
   ; Pruning extra ALLSRC elements
   if nallsrc gt cur_allsrc_indx then allsrc = allsrc[0:cur_allsrc_indx-1]
