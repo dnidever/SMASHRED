@@ -311,7 +311,7 @@ SMASHRED_CROSSMATCH,strtrim(pix,2),fstr,chstr,allsrc,allobj,reduxdir=reduxdir,re
 
 ;; Apply the HEALPix boundary cut (without buffer)
 ANG2PIX_RING,nside,(90-allobj.dec)/radeg,allobj.ra/radeg,ipring      
-gdobj = where(ipring eq pix,ngdobj)
+gdobj = where(ipring eq pix,ngdobj,comp=bdobj,ncomp=nbdobj)
 print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 ; allobj.srcindx    points to allsrc
 ; allobj.srcfindx   points to allsrc
@@ -324,6 +324,72 @@ print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 ; what if whole exposures are removed?
 ; need an array that translates old srcindex to new srcindex
 ; check nsc_instcal_combine.pro at end where it does this same thing
+
+stop
+
+;; Some objects to remove
+if nbdobj gt 0 then begin
+  print,'Updating structures'
+  ;; Get index array of ALLSRC elements to remove
+  srctorem = lonarr(total(allobj[bdobj].ndet))
+  cnt = 0L
+  for i=0,nbdobj-1 do begin
+    ndet = allobj[bdobj[i]].ndet
+    ind = allobj[bdobj[i]].srcindx[0:ndet-1]
+    srctorem[cnt:cnt+ndet-1] = ind
+    cnt += ndet
+  endfor
+stop
+  gdsrc = lindgen(n_elements(allsrc))
+  REMOVE,srctorem,gdsrc
+  ngdsrc = n_elements(gdsrc)
+  ;; Update NSRC in CHSTR
+  for i=0,n_elements(torem)-1 do chstr[allsrc[torem[i]].chipindx].nsrc--
+  ;; Chips we need to remove
+  bdch = where(chstr.nsrc le 0,nbdch,comp=gdch,ncomp=ngdch)
+  if nbdch gt 0 then begin
+    ;; Indices into the new CHSTR structure using old index
+    newchstrindx = lonarr(n_elements(chstr))-1
+    newchstrindx[gdch] = lindgen(ngdch)
+    ;; Update CHIPINDX in ALLSRC, only for rows we are keeping
+    allsrc[gdsrc].chipindx = newchstrindx[allsrc[gdsrc].chipindx]
+    ;; Update NCHIPS in FSTR
+    for k=0,nbdch-1 do begin
+      MATCH,chstr[bdch[k]].expnum,fstr.expnum,ind1,ind2,/sort,count=nmatch
+      fstr[ind2].nchips--
+    endfor
+  endif
+stop
+  ;; Update CMBINDX in ALLSRC
+  ;;   Indices into the new ALLOBJ using old index
+  newallobjindx = lonarr(n_elements(allobj))-1
+  newallobjindx[gdobj] = lindgen(ngdobj)
+  allsrc[gdsrc].cmbindx = newallobjindx[allsrc[gdsrc].cmbindx]
+  ;; Update ALLSRCINDX in CHSTR
+  sich = sort(chstr.allsrcindx)  ; chstr are not sorted
+  newallsrcindx = [0,long(total(chstr[si].nsrc,/cum))]
+  newallsrcindx = newallsrcindx[0:n_elements(chstr)-1]
+  chstr.allsrcindx = newallsrcindx
+  ;; Exposures to remove
+  bdfstr = where(fstr.nchips le 0,nbdfstr,comp=gdfstr,ncomp=ngdfstr)
+  ;; Update SRCFINDX in ALLOBJ
+  if nbdfstr gt 0 then begin
+    ;; shift them over
+    oldsrcfindx = allobj.srcfindx
+    allobj.srcfindx = -1
+    for k=0,ngdfstr-1 do allobj.srcfindx[k]=oldsrcfindx[gdfstr[k],*]
+    undefine,oldsrcfindx
+  endif
+stop
+  ;; Remove the rows from all structures
+  REMOVE,bdobj,allobj
+  REMOVE,srctorem,allsrc
+  if nbdch gt 0 then REMOVE,bdch,chstr
+  if nbdfstr gt 0 then REMOVE,bdfstr,fstr
+
+  stop
+
+endif
 
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
@@ -338,12 +404,12 @@ print,'Calculating average morphology and coordinate parameters'
 SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
 
 ; Compute exposure map
-print,'Computing the exposure maps'
-SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
+;print,'Computing the exposure maps'
+;SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
 
 ; Set non-detections based on the exposure map
-print,'Setting non-detections based on the exposure maps'
-SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
+;print,'Setting non-detections based on the exposure maps'
+;SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
 
 ; Calculate extinction
 print,'Getting SFD E(B-V) extinctions'
@@ -365,11 +431,11 @@ if keyword_set(compress) then begin
   spawn,['gzip','-f',outfile+'_chips.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_allsrc.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_allobj.fits'],out,errout,/noshell
-  spawn,['gzip','-f',outfile+'_expmap.fits'],out,errout,/noshell
+  ;spawn,['gzip','-f',outfile+'_expmap.fits'],out,errout,/noshell
 endif
 
 ; Make bright allobj catalog
-SMASHRED_MAKE_BRIGHTCAT,pix,redo=redo,dir=outputdir
+SMASHRED_MAKE_BRIGHTCAT,strtrim(pix,2),redo=redo,dir=outputdir
 
 ; Print processing time
 dt = systime(1)-t0
