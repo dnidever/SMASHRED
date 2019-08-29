@@ -45,10 +45,9 @@ dirs = strarr(ngroups)+tmpdir
 
 ;stop
 
-;; Run the jobs
 ;PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='rebin',/hyperthread,/idle,wait=1,nmulti=nmulti
 
-;stop
+stop
 
 MAKE_REBIN_LMC_HEADER,tilehead
 nx = sxpar(tilehead,'NAXIS1')
@@ -58,10 +57,13 @@ step = sxpar(tilehead,'CDELT1')
 fim = fltarr(nx,ny)
 num = bytarr(nx,ny)
 
+head_adxy,tilehead,chstr1.ra,chstr1.dec,xch,ych,/deg
+
 ;; Now stack them all up
 outfiles = basedir+'rebin/'+filter+'/'+chstr1.file+'.gz'
 for i=0,ng-1 do begin
   if i mod 100 eq 0 then print,i
+  if xch[i] lt 6000 or ych[i] gt 4000 then goto,BOMB
   if file_test(outfiles[i]) eq 1 then begin
     fits_read,outfiles[i],im1,head1
     ;; I messed up the names the first time

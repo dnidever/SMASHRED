@@ -83,7 +83,7 @@ for i=0,nfiles-1 do begin
   ;subim = im-backgim
   subim = im-median(backgim)
 
-  ;; Mask bad part of Chip 31
+  ; Mask bad part of Chip 31
   ;if (chip eq 31) and (mjd gt 56660) then begin
   ;  ; X: 1-1024 okay
   ;  ; X: 1025-2049 bad
