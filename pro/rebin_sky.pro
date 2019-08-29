@@ -14,6 +14,7 @@ ny = sz[2]
   ;-- Compute background image --
 
   ; Computing sky level and sigma
+  gdpix = where(im lt satlim*0.90 and im ne 0.0,ngdpix)
   photred_sky,im,skymode,skysig1,highbad=satlim*0.95,/silent
   if skysig1 lt 0.0 then skysig1 = mad(im[gdpix])
   if skysig1 lt 0.0 then skysig1 = mad(im)

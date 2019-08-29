@@ -78,10 +78,18 @@ for i=0,nfiles-1 do begin
 
   ;; Subtract the background
 
+  ;; Computing sky level and sigma
+  gdpix = where(im lt satlim*0.90 and im ne 0.0,ngdpix)
+  photred_sky,im,skymode,skysig1,highbad=satlim*0.95,/silent
+  if skysig1 lt 0.0 then skysig1 = mad(im[gdpix])
+  if skysig1 lt 0.0 then skysig1 = mad(im)
+
   ;-- Compute background image --
-  rebin_sky,im,backgim
+  ;rebin_sky,im,backgim
   ;subim = im-backgim
-  subim = im-median(backgim)
+  ;subim = im-median(backgim)
+  subim = im
+  subim[gdpix] = im[gdpix]-skymode
 
   ; Mask bad part of Chip 31
   ;if (chip eq 31) and (mjd gt 56660) then begin

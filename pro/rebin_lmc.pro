@@ -63,7 +63,8 @@ head_adxy,tilehead,chstr1.ra,chstr1.dec,xch,ych,/deg
 outfiles = basedir+'rebin/'+filter+'/'+chstr1.file+'.gz'
 for i=0,ng-1 do begin
   if i mod 100 eq 0 then print,i
-  if xch[i] lt 6000 or ych[i] gt 4000 then goto,BOMB
+  if xch[i] lt 6000 or xch[i] gt 7000 or ych[i] lt 9000 or ych[i] gt 10000 then goto,BOMB
+  ;if xch[i] lt 6000 or ych[i] gt 4000 then goto,BOMB
   if file_test(outfiles[i]) eq 1 then begin
     fits_read,outfiles[i],im1,head1
     ;; I messed up the names the first time
@@ -94,6 +95,9 @@ for i=0,ng-1 do begin
     fluxcorr = 10^(0.4*magcorr)
     im1 /= fluxcorr
 
+    print,strtrim(i+1,2),' ',file_basename(outfiles[i]),' ',chstr1[i].exptime,' ',fluxcorr
+
+    ;if xch[i] gt 6400 and xch[i] lt 6800 and ych[i] gt 9460 and ych[i] lt 9760 then stop,'check 30dor image'
 
     ;; Add it to the big arrays
     fim[xlo:xhi,ylo:yhi] += im1
@@ -108,7 +112,10 @@ endfor
 ;; Take the average
 fim /= (num>1)
 
-displayc,fim,/log,min=0,/xflip
+setdisp
+displayc,fim,/log,min=1,/xflip
+
+stop
 
 outfile = basedir+'rebin/smash_lmc_'+filter+'.fits'
 print,'Writing final image to ',outfile
