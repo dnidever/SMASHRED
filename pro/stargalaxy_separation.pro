@@ -28,10 +28,18 @@ tags = tag_names(obj0)
 ;; Select the stars
 depththresh = 1
 if max(obj0.depthflag) eq 1 then depththresh=0  ; in case only short exposures
+; STARS1
 ;gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and obj0.prob gt 0.2 and $
 ;; stars1 had the PROB cut but it was removing lots of bright stars,
 ;; probably because of the brighter-fatter effect.
+; STARS2
+;gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and $
+;                obj0.ndet gt 5 and obj0.depthflag gt depththresh,ngdstars)
+; The PROB cut was useful to remove faint galaxies. Figured out a way
+; to cut the galaxies and keep the bright stars.
+; STARS3
 gdstars = where(abs(obj0.sharp) lt 1 and obj0.chi lt 2 and $
+                (obj0.prob gt 0.2 or (obj0.prob lt 0.008 and obj0.g lt 22.8)) and $
                 obj0.ndet gt 5 and obj0.depthflag gt depththresh,ngdstars)
 obj = obj0[gdstars]
 
@@ -39,7 +47,8 @@ obj = obj0[gdstars]
 nastobj = n_elements(astobj0)
 if nastobj gt 0 then begin
   ;ndet = astobj0.ndetu + astobj0.ndetg + astobj0.ndetr + astobj0.ndeti + astobj0.ndetz
-  gdast = where(abs(astobj0.sharp) lt 1 and astobj0.chi lt 2 and astobj0.prob gt 0.2 and $
+  gdast = where(abs(astobj0.sharp) lt 1 and astobj0.chi lt 2 and $
+                (astobj0.prob gt 0.2 or (astobj0.prob lt 0.008 and astobj0.g lt 22.8)) and $
                 astobj0.ndet gt 5,ngdast)
   ; ASTs only run on deep exposures, so no DEPTHFLAG column
   ;                astobj0.ndet gt 5 and astobj0.depthflag gt 1,ngdast)
