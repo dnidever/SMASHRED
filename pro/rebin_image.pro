@@ -1,37 +1,47 @@
 pro rebin_image,file
 
-file = '/dl1/users/dnidever/smash/cp/red/photred/20160101/F1/F1-00507800_01.fits.fz'
+;file = '/dl1/users/dnidever/smash/cp/red/photred/20160101/F1/F1-00507800_01.fits.fz'
+;file = '/dl1/users/dnidever/smash/cp/red/photred/20160218/F8/F8-00518838_01.fits.fz'
+
+if n_elements(file) eq 0 then begin
+  print,'Syntax - rebin_image,file'
+  return
+endif
+
+print,file
+
+outdir = '/dl1/users/dnidever/smash/cp/red/photred/rebin/'
 
 ;; Make the final WCS and header
 ;; USE MAGELLANIC STREAM COORDINATES
 ;; -8 < MLON < +7
-;; -8 < MLAT < +7.5
+;; -10 < MLAT < +7.5
 ;; at 5" resolution that is 10800 x 11160 pixels
 nx = 10800L
-ny = 11300L
+ny = 12800L
 xref = 5900L
-yref = 7500L
+yref = 9000L
 ;cenmlon = -0.5
 ;cenmlat = -0.25
 step = 5.0d0 / 3600.0d0  ; 5"
 cenra = 81.90d0
 cendec = -69.87d0
-MKHDR,head,fltarr(5,5)
-SXADDPAR,head,'NAXIS1',nx
-SXADDPAR,head,'CDELT1',step
-SXADDPAR,head,'CRPIX1',xref+1L
-SXADDPAR,head,'CRVAL1',cenra
-SXADDPAR,head,'CTYPE1','RA---TAN'
-SXADDPAR,head,'NAXIS2',ny
-SXADDPAR,head,'CDELT2',step
-SXADDPAR,head,'CRPIX2',yref+1L
-SXADDPAR,head,'CRVAL2',cendec
-SXADDPAR,head,'CTYPE2','DEC--TAN'
+MKHDR,tilehead,fltarr(5,5)
+SXADDPAR,tilehead,'NAXIS1',nx
+SXADDPAR,tilehead,'CDELT1',step
+SXADDPAR,tilehead,'CRPIX1',xref+1L
+SXADDPAR,tilehead,'CRVAL1',cenra
+SXADDPAR,tilehead,'CTYPE1','RA---TAN'
+SXADDPAR,tilehead,'NAXIS2',ny
+SXADDPAR,tilehead,'CDELT2',step
+SXADDPAR,tilehead,'CRPIX2',yref+1L
+SXADDPAR,tilehead,'CRVAL2',cendec
+SXADDPAR,tilehead,'CTYPE2','DEC--TAN'
 ;x1 = scale_vector(findgen(100),0,nx-1)
 ;y1 = scale_vector(findgen(100),0,ny-1)
 ;xx = x1#replicate(1,100)
 ;yy = replicate(1,100)#y1
-;head_xyad,head,xx,yy,ra,dec,/deg
+;head_xyad,tilehead,xx,yy,ra,dec,/deg
 ;glactc,ra,dec,2000.0,glon,glat,1,/deg
 ;gal2mag,glon,glat,mlon,mlat
 ;print,minmax(mlon)
@@ -49,7 +59,14 @@ fits_read,file,im,head
 sz = size(im)
 nx = sz[1]
 ny = sz[2]
-mask = (im gt 59000L)
+gmask = (im lt 59000L)
+
+;; Use Gaia head if possible
+gheadfile = dir+base+'.gaiawcs.head'
+if file_test(gheadfile) eq 1 then begin
+  head0 = head
+  READLINE,gheadfile,head
+endif
 
 ;; Load the subtracted image if it exists
 sfile = dir+base+'s.fits.fz'
@@ -93,29 +110,53 @@ if nbd2 gt 0 then (backgim2)(bd2) = !values.f_nan
 sm = (400 < (nx/2.0) ) < (ny/2.0)
 backgim2 = smooth(backgim2,[sm,sm],/edge_truncate,/nan,missing=skymode)
 
-subim = im-backgim2
+;; Maybe fit a simple linear model to the background image
+
+;subim = im-backgim2
+subim = im-median(backgim2)
 
 ;; Rebin
 nx2 = nx/bin
 ny2 = ny/bin
-im2 = REBIN(subim[0:nx2*bin-1,0:ny2*bin-1],nx2,ny2)
-
-;; Mask
-
-stop
+im2 = REBIN(subim[0:nx2*bin-1,0:ny2*bin-1]*gmask[0:nx2*bin-1,0:ny2*bin-1],nx2,ny2)
+gpix2 = REBIN(float(gmask[0:nx2*bin-1,0:ny2*bin-1]),nx2,ny2)
+b = where(gpix2 eq 0,nb)
+if nb gt 0 then gpix2[b]=1
+;; Correct rebined/average image for masked pixels
+;; im2 = Sum(image)/Nbin^2
+;; gpix2 = Sum(good pixels)/Nbin^2
+;; we want Sum(image)/Sum(good pixels)
+im2 /= gpix2
 
 ;; Interpolate on final grid
-xx = findgen(sz1[1])#replicate(1,sz1[2])
-yy = replicate(1,sz1[1])#findgen(sz1[2])
-xyad,head1b,xx,yy,ra,dec
-glactc,ra,dec,2000.0,glon1b,glat1b,1,/deg
-TRIANGULATE, glon1b, glat1b, tr, b
-limits = [min(gl), min(gb), max(gl), max(gb)]
-steps = [sxpar(head,'CDELT1'), sxpar(head,'CDELT2')]
-im = TRIGRID(glon1b,glat1b,reform(cube1b[*,*,i]), tr, steps,limits,missing=0.0)
+x1 = findgen(nx2)*bin+bin/2
+y1 = findgen(ny2)*bin+bin/2
+xx = x1 # replicate(1,ny2)
+yy = replicate(1,nx2) # y1
+HEAD_XYAD,head,xx,yy,ra,dec,/deg
+HEAD_ADXY,tilehead,ra,dec,newx,newy,/deg
+TRIANGULATE, newx, newy, tr, b
+limits = [floor(min(newx)), floor(min(newy)), ceil(max(newx)), ceil(max(newy))]
+steps = [1.0,1.0]
+im = TRIGRID(newx,newy,im2, tr, steps,limits,missing=0.0)
+im = float(im)
 bd = where(finite(im) eq 0,nbd)
 if nbd gt 0 then im[bd]=0
 
-stop
+filter = sxpar(head,'filter')
+filt = strmid(filter,0,1)
+
+MKHDR,newhead,im
+sxaddpar,newhead,'XLO',limits[0]
+sxaddpar,newhead,'XHI',limits[1]
+sxaddpar,newhead,'YLO',limits[2]
+sxaddpar,newhead,'YHI',limits[3]
+
+;; Save
+outfile = outdir+filt+'/'+base+'.fits'
+print,'Writing to ',outfile
+MWRFITS,im,outfile,newhead,/create
+
+;stop
 
 end
