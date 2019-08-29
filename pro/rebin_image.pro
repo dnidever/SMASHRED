@@ -148,8 +148,8 @@ filt = strmid(filter,0,1)
 
 MKHDR,newhead,im
 sxaddpar,newhead,'XLO',limits[0]
-sxaddpar,newhead,'XHI',limits[1]
-sxaddpar,newhead,'YLO',limits[2]
+sxaddpar,newhead,'YLO',limits[1]
+sxaddpar,newhead,'XHI',limits[2]
 sxaddpar,newhead,'YHI',limits[3]
 
 ;; Save
