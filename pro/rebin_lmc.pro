@@ -25,6 +25,8 @@ files = basedir+chstr1.night+'/'+chstr1.field+'/'+chstr1.file+'.fz'
 cmd = 'rebin_image,"'+files+'"'
 dirs = strarr(n_elements(cmd))+tmpdir
 
+stop
+
 PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='rebin',/hyperthread,/idle,wait=1,nmulti=nmulti
 
 stop
