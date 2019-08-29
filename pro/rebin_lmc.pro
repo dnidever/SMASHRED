@@ -35,41 +35,6 @@ files = basedir+chstr1.night+'/'+chstr1.field+'/'+chstr1.file+'.fz'
 gdeep = where(chstr1.exptime gt 200,ngdeep)
 files[gdeep] = basedir+'deep/'+chstr1[gdeep].smash_field+'/'+chstr1[gdeep].field+'/'+chstr1[gdeep].file+'.fz'
 
-;; Missing exposures
-; F1-00517156_62.fits
-; F1-00517157_48.fits
-; F1-00517158_47.fits
-; F1-00388968_46.fits
-; F1-00388969_50.fits
-; F1-00388970_46.fits
-; F1-00517150_47.fits
-; F1-00517151_45.fits
-; F1-00517152_54.fits
-; F1-00380954_56.fits
-; F1-00588440_52.fits
-; F1-00588441_34.fits
-; F1-00588442_54.fits
-; F1-00500085_42.fits
-; F1-00500086_38.fits
-; F1-00500087_42.fits
-; F1-00518184_57.fits
-; F1-00518185_22.fits
-; F1-00518186_38.fits
-; F1-00422218_53.fits
-; F1-00422219_37.fits 
-; F1-00422220_43
-; F4-00701545_40
-
-; The HOLE
-; F1-00517156_28.fits F1-00517156_35.fits F1-00517158_35.fits F1-00517158_42.fits
-; Field29, 20160213
-
-; It looks like there are a number of summary files that have errors
-; Field29 says it's F1 but it's actually F3,  and some of the numbers
-; are different.  They are wrong in the
-; catalogs/final/v6/Field29_combined_chips.fits.gz file  AHH, of
-; course!  This is from the DEEP processing.
-
 ;; Put them in groups
 npergroup = 20
 ngroups = ceil(float(ng)/npergroup)
@@ -78,11 +43,12 @@ for i=0,ngroups-1 do cmd[i] = 'rebin_image,["'+strjoin(files[i*npergroup:((i+1)*
 if keyword_set(redo) then cmd+=',/redo'
 dirs = strarr(ngroups)+tmpdir
 
-stop
+;stop
 
-PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='rebin',/hyperthread,/idle,wait=1,nmulti=nmulti
+;; Run the jobs
+;PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='rebin',/hyperthread,/idle,wait=1,nmulti=nmulti
 
-stop
+;stop
 
 MAKE_REBIN_LMC_HEADER,tilehead
 nx = sxpar(tilehead,'NAXIS1')
@@ -93,7 +59,7 @@ fim = fltarr(nx,ny)
 num = bytarr(nx,ny)
 
 ;; Now stack them all up
-outfiles = basedir+'rebin/'+filter+'/'+chstr1.file
+outfiles = basedir+'rebin/'+filter+'/'+chstr1.file+'.gz'
 for i=0,ng-1 do begin
   if i mod 100 eq 0 then print,i
   if file_test(outfiles[i]) eq 1 then begin
