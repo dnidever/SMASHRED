@@ -17,7 +17,7 @@ nmulti = 20
 badexp = importascii('/home/dnidever/projects/SMASHRED/obslog/smash_badexposures.txt',/header)
 
 ;; Pick chips inside this limit
-filter = 'g'
+;filter = 'g'
 glactc,chstr.ra,chstr.dec,2000.0,glon,glat,1,/deg
 gal2mag,glon,glat,mlon,mlat
 g = where(mlon ge -8.1 and mlon le 7.2 and mlat ge -10.0 and mlat le 7.6 and chstr.filter eq filter and $
