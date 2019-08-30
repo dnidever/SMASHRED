@@ -233,11 +233,11 @@ For c=0,ninfo-1 do begin
 
     ;; Only keep chips that overlap
     norigchstr1 = n_elements(chstr1)
-    gdch = where(chstr1.overlap eq 1 and chstr1.nsrc gt 0,ngd)
+    gdch = where(chstr1.overlap eq 1 and chstr1.nsrc gt 0,ngdch)
     chstr1 = chstr1[gdch]
     ;; Updating the allsrc CHIPINDX with a lookup table
     newchipindx = lonarr(norigchstr1)-1
-    newchipindx[gdch] = lindgen(ngd)
+    newchipindx[gdch] = lindgen(ngdch)
     allsrc1.chipindx = newchipindx[allsrc1.chipindx]
 
     ;; Remove some exposures
@@ -325,26 +325,24 @@ print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 ; need an array that translates old srcindex to new srcindex
 ; check nsc_instcal_combine.pro at end where it does this same thing
 
-stop
-
 ;; Some objects to remove
 if nbdobj gt 0 then begin
   print,'Updating structures'
   ;; Get index array of ALLSRC elements to remove
-  srctorem = lonarr(total(allobj[bdobj].ndet))
+  nbdsrc = long(total(allobj[bdobj].ndet))
+  bdsrc = lonarr(nbdsrc)
   cnt = 0L
   for i=0,nbdobj-1 do begin
     ndet = allobj[bdobj[i]].ndet
     ind = allobj[bdobj[i]].srcindx[0:ndet-1]
-    srctorem[cnt:cnt+ndet-1] = ind
+    bdsrc[cnt:cnt+ndet-1] = ind
     cnt += ndet
   endfor
-stop
   gdsrc = lindgen(n_elements(allsrc))
-  REMOVE,srctorem,gdsrc
+  REMOVE,bdsrc,gdsrc
   ngdsrc = n_elements(gdsrc)
   ;; Update NSRC in CHSTR
-  for i=0,n_elements(torem)-1 do chstr[allsrc[torem[i]].chipindx].nsrc--
+  for i=0,nbdsrc-1 do chstr[allsrc[bdsrc[i]].chipindx].nsrc--
   ;; Chips we need to remove
   bdch = where(chstr.nsrc le 0,nbdch,comp=gdch,ncomp=ngdch)
   if nbdch gt 0 then begin
@@ -359,7 +357,6 @@ stop
       fstr[ind2].nchips--
     endfor
   endif
-stop
   ;; Update CMBINDX in ALLSRC
   ;;   Indices into the new ALLOBJ using old index
   newallobjindx = lonarr(n_elements(allobj))-1
@@ -367,12 +364,25 @@ stop
   allsrc[gdsrc].cmbindx = newallobjindx[allsrc[gdsrc].cmbindx]
   ;; Update ALLSRCINDX in CHSTR
   sich = sort(chstr.allsrcindx)  ; chstr are not sorted
-  newallsrcindx = [0,long(total(chstr[si].nsrc,/cum))]
+  newallsrcindx = [0,long(total(chstr[sich].nsrc,/cum))]
   newallsrcindx = newallsrcindx[0:n_elements(chstr)-1]
-  chstr.allsrcindx = newallsrcindx
+  chstr[sich].allsrcindx = newallsrcindx
+  ;; Update SRCINDX/SRCFINDX in ALLOBJ
+  ;;   srcindx
+  srcindx = allobj.srcindx
+  newallsrcindx = lonarr(n_elements(allsrc))-1
+  newallsrcindx[gdsrc] = lindgen(ngdsrc)
+  g = where(srcindx ge 0,ng)
+  srcindx[g] = newallsrcindx[srcindx[g]]
+  allobj.srcindx = srcindx
+  ;;  srcfindx
+  srcfindx = allobj.srcfindx
+  g = where(srcfindx ge 0,ng)
+  srcfindx[g] = newallsrcindx[srcfindx[g]]
+  allobj.srcfindx = srcfindx
   ;; Exposures to remove
   bdfstr = where(fstr.nchips le 0,nbdfstr,comp=gdfstr,ncomp=ngdfstr)
-  ;; Update SRCFINDX in ALLOBJ
+  ;; Shifting SRCFINDX rows in ALLOBJ
   if nbdfstr gt 0 then begin
     ;; shift them over
     oldsrcfindx = allobj.srcfindx
@@ -380,15 +390,11 @@ stop
     for k=0,ngdfstr-1 do allobj.srcfindx[k]=oldsrcfindx[gdfstr[k],*]
     undefine,oldsrcfindx
   endif
-stop
   ;; Remove the rows from all structures
   REMOVE,bdobj,allobj
-  REMOVE,srctorem,allsrc
+  REMOVE,bdsrc,allsrc
   if nbdch gt 0 then REMOVE,bdch,chstr
   if nbdfstr gt 0 then REMOVE,bdfstr,fstr
-
-  stop
-
 endif
 
 print,'-----------------------------------------------'
@@ -436,6 +442,21 @@ endif
 
 ; Make bright allobj catalog
 SMASHRED_MAKE_BRIGHTCAT,strtrim(pix,2),redo=redo,dir=outputdir
+
+; Make DEEP allobj catalog
+;   redo the average photometry, morphology parameters and coordinates
+SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/deeponly
+SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj,/deeponly
+deepoutfile = outfile+'_allobj_deep.fits'
+print,'Writing deep to ',deepoutfile
+file_delete,[deepoutfile,deepoutfile+'.gz'],/allow
+MWRFITS,allobj,deepoutfile,/create
+spawn,['gzip',deepoutfile],out,errout,/noshell
+
+;; Crossmatching with other catalogs
+;SMASHRED_MATCHCATS_GAIADR2
+;; Do smashred_matchcats_gaiadr2.pro
+
 
 ; Print processing time
 dt = systime(1)-t0
