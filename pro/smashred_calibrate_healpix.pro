@@ -144,7 +144,16 @@ if n_elements(sumfiles) gt 0 then begin
   SMASHRED_GETREDINFO,info,sumfiles=sumfiles,/silent
 endif else begin
   SMASHRED_GETREDINFO,allinfo,/silent
+  ;; Only keep the fields in the main bodies
+  mfields = mrdfits(reduxdir+'smash_chips_mc.fits.gz',2,/silent)
+  mfields = strtrim(mfields.name,2)
+  findex = create_index(allinfo.field)
+  MATCH,findex.value,mfields,ind1,ind2,/sort,count=nmatch
+  undefine,keep
+  for k=0,nmatch-1 do push,keep,findex.index[findex.lo[ind1[k]]:findex.hi[ind1[k]]]
+  allinfo = allinfo[keep]
   nallinfo = n_elements(allinfo)
+  print,'Keeping ',strtrim(nallinfo,2),' summary files for ',strtrim(n_elements(mfields),2),' main body fields'
   NEIGHBOURS_RING,nside,pix,neipix,nneipix
   keep = lonarr(nallinfo)
   ;; Find sumfiles that overlap this pixel or neighbors
