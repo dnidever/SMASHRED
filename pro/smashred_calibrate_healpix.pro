@@ -411,11 +411,11 @@ SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
 
 ; Compute exposure map
 ;print,'Computing the exposure maps'
-;SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
+SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
 
 ; Set non-detections based on the exposure map
 ;print,'Setting non-detections based on the exposure maps'
-;SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
+SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
 
 ; Calculate extinction
 print,'Getting SFD E(B-V) extinctions'
@@ -444,11 +444,14 @@ endif
 SMASHRED_MAKE_BRIGHTCAT,strtrim(pix,2),redo=redo,dir=outputdir
 
 ;; Make a CMD figure
+setdisp
+!p.font = 0
 plotdir = outputdir+'/plots/'
 if file_test(plotdir,/directory) eq 0 then file_mkdir,plotdir
 file = plotdir+strtrim(pix,2)+'_cmd'
 ps_open,file,/color,thick=4,/encap
-hess,allobj.g-allobj.i,allobj.g,dx=0.02,dy=0.05,xr=[-1,3],yr=[25,13],xs=1,ys=1,xtit='g-i',ytit='g',tit=strtrim(pix,2),charsize=1.2
+device,/inches,xsize=8.5,ysize=9.5
+hess,allobj.g-allobj.i,allobj.g,dx=0.02,dy=0.05,xr=[-1,3],yr=[26,13],xtit='g-i',ytit='g',tit=strtrim(pix,2),charsize=1.2,/log
 ps_close
 ps2png,file+'.eps',/eps
 
@@ -462,8 +465,26 @@ file_delete,[deepoutfile,deepoutfile+'.gz'],/allow
 MWRFITS,allobj,deepoutfile,/create
 spawn,['gzip',deepoutfile],out,errout,/noshell
 
+; Make SHORT allobj file
+gdshort = where(fstr.exptime lt 100,ngdshort)
+if ngdshort lt n_elements(fstr) then begin
+  ;; Redo the average photometry, morphology parameters and coordinates
+  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/shortonly
+  SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj,/shortonly
+  ;; Write out new allobj file
+  shortoutfile = outfile+'_allobj_short.fits'
+  print,'Writing to ',shortoutfile
+  file_delete,[shortoutfile,shortoutfile+'.gz'],/allow
+  MWRFITS,allobj,shortoutfile,/create
+  spawn,['gzip',shortoutfile],out,errout,/noshell
+;; Only short exposures, just create link
+endif else begin
+  print,'Only short exopsures.  Just creating link.'
+  FILE_LINK,outputdir+ifield+'_combined_allobj.fits.gz',outfile+'_allobj.fits.gz'
+endelse
+
 ;; Crossmatching with other catalogs
-SMASHRED_MATCHCATS_GAIADR2,strrim(pix,2),version=version,redo=redo
+SMASHRED_MATCHCATS_GAIADR2,strtrim(pix,2),version=version,redo=redo
 
 ; Print processing time
 dt = systime(1)-t0
