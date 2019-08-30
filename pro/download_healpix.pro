@@ -8,7 +8,7 @@ tmpdir = reduxdir+'catalogs/final/'+version+'/tmp/'
 
 nside = 64
 radeg = 180.0d0 / !dpi
-nmulti = 10
+nmulti = 20
 
 ;; Load the chip structures for the LMC and SMC main body fields
 lchstr = mrdfits(reduxdir+'smash_chips_lmc.fits.gz',1)
@@ -56,15 +56,17 @@ npix = n_elements(pix)
 print,strtrim(npix,2),' HEALpix to run'
 
 ;; Create the commands
-cmd = 'download_tmass,'+strtrim(pix,2)+',/compress'
-cmd += 'download_gaiadr2,'+strtrim(pix,2)+',/compress'
-cmd += 'download_galex,'+strtrim(pix,2)+',/compress'
-cmd += 'download_wise,'+strtrim(pix,2)+',/compress'
+cmd = strarr(npix*4)
+ind = lindgen(npix)
+cmd[ind*4] = "download_tmass,'"+strtrim(pix,2)+"',/compress"
+cmd[ind*4+1] = "download_gaiadr2,'"+strtrim(pix,2)+"',/compress"
+cmd[ind*4+2] = "download_galex,'"+strtrim(pix,2)+"',/compress"
+cmd[ind*4+3] ="download_wise,'"+strtrim(pix,2)+"',/compress"
 dirs = strarr(n_elements(cmd))+tmpdir
 
 stop
 
-PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='getxmatch',/hyperthread,/idle,nmulti=nmulti,wait=10
+PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='getxmatch',/hyperthread,/idle,nmulti=nmulti,wait=1
 
 
 stop
