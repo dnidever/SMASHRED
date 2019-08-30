@@ -463,9 +463,7 @@ MWRFITS,allobj,deepoutfile,/create
 spawn,['gzip',deepoutfile],out,errout,/noshell
 
 ;; Crossmatching with other catalogs
-;SMASHRED_MATCHCATS_GAIADR2
-;; Do smashred_matchcats_gaiadr2.pro
-
+SMASHRED_MATCHCATS_GAIADR2,strrim(pix,2),version=version,redo=redo
 
 ; Print processing time
 dt = systime(1)-t0
