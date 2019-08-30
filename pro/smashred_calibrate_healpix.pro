@@ -443,6 +443,15 @@ endif
 ; Make bright allobj catalog
 SMASHRED_MAKE_BRIGHTCAT,strtrim(pix,2),redo=redo,dir=outputdir
 
+;; Make a CMD figure
+plotdir = outputdir+'/plots/'
+if file_test(plotdir,/directory) eq 0 then file_mkdir,plotdir
+file = plotdir+strtrim(pix,2)+'_cmd'
+ps_open,file,/color,thick=4,/encap
+hess,allobj.g-allobj.i,allobj.g,dx=0.02,dy=0.05,xr=[-1,3],yr=[25,13],xs=1,ys=1,xtit='g-i',ytit='g',tit=strtrim(pix,2),charsize=1.2
+ps_close
+ps2png,file+'.eps',/eps
+
 ; Make DEEP allobj catalog
 ;   redo the average photometry, morphology parameters and coordinates
 SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/deeponly
