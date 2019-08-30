@@ -411,11 +411,11 @@ SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
 
 ; Compute exposure map
 ;print,'Computing the exposure maps'
-;SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
+SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
 
 ; Set non-detections based on the exposure map
 ;print,'Setting non-detections based on the exposure maps'
-;SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
+SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
 
 ; Calculate extinction
 print,'Getting SFD E(B-V) extinctions'
@@ -437,7 +437,7 @@ if keyword_set(compress) then begin
   spawn,['gzip','-f',outfile+'_chips.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_allsrc.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_allobj.fits'],out,errout,/noshell
-  ;spawn,['gzip','-f',outfile+'_expmap.fits'],out,errout,/noshell
+  spawn,['gzip','-f',outfile+'_expmap.fits'],out,errout,/noshell
 endif
 
 ; Make bright allobj catalog
