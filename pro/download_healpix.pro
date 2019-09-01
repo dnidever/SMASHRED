@@ -62,11 +62,26 @@ print,strtrim(npix,2),' HEALpix to run'
 ;cmd[ind*4+1] = "download_gaiadr2,'"+strtrim(pix,2)+"'"
 ;cmd[ind*4+2] = "download_galex,'"+strtrim(pix,2)+"'"
 ;cmd[ind*4+3] ="download_wise,'"+strtrim(pix,2)+"'"
-cmd = strarr(npix*2)
+allcmd = strarr(npix*2)
 ind = lindgen(npix)
-cmd[ind*2] = "download_gaiadr2,'"+strtrim(pix,2)+"'"
-cmd[ind*2+1] = "download_galex,'"+strtrim(pix,2)+"'"
-dirs = strarr(n_elements(cmd))+tmpdir
+allcmd[ind*2] = "download_gaiadr2,'"+strtrim(pix,2)+"'"
+allcmd[ind*2+1] = "download_galex,'"+strtrim(pix,2)+"'"
+alldirs = strarr(n_elements(cmd))+tmpdir
+
+;; Parcel out the jobs
+spawn,'hostname',out,errout,/noshell
+hostname = (strsplit(out[0],' ',/extract))[0]
+thishost = first_el(strsplit(hostname,'.',/extract))
+hosts = ['hulk','thing']
+nhosts = n_elements(hosts)
+torun = lindgen(nallcmd)
+nperhost = nallcmd/nhosts
+for i=0,nhosts-1 do $
+  if stregex(thishost,hosts[i],/boolean) eq 1 then torun=torun[i*nperhost:(i+1)*nperhost-1]
+ntorun = n_elements(torun)
+cmd = allcmd[torun]
+dirs = alldirs[torun]
+print,'Running ',strtrim(n_elements(torun),2),' on ',thishost
 
 stop
 
