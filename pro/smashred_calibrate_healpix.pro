@@ -144,7 +144,16 @@ if n_elements(sumfiles) gt 0 then begin
   SMASHRED_GETREDINFO,info,sumfiles=sumfiles,/silent
 endif else begin
   SMASHRED_GETREDINFO,allinfo,/silent
+  ;; Only keep the fields in the main bodies
+  mfields = mrdfits(reduxdir+'smash_chips_mc.fits.gz',2,/silent)
+  mfields = strtrim(mfields.name,2)
+  findex = create_index(allinfo.field)
+  MATCH,findex.value,mfields,ind1,ind2,/sort,count=nmatch
+  undefine,keep
+  for k=0,nmatch-1 do push,keep,findex.index[findex.lo[ind1[k]]:findex.hi[ind1[k]]]
+  allinfo = allinfo[keep]
   nallinfo = n_elements(allinfo)
+  print,'Keeping ',strtrim(nallinfo,2),' summary files for ',strtrim(n_elements(mfields),2),' main body fields'
   NEIGHBOURS_RING,nside,pix,neipix,nneipix
   keep = lonarr(nallinfo)
   ;; Find sumfiles that overlap this pixel or neighbors
@@ -233,11 +242,11 @@ For c=0,ninfo-1 do begin
 
     ;; Only keep chips that overlap
     norigchstr1 = n_elements(chstr1)
-    gdch = where(chstr1.overlap eq 1 and chstr1.nsrc gt 0,ngd)
+    gdch = where(chstr1.overlap eq 1 and chstr1.nsrc gt 0,ngdch)
     chstr1 = chstr1[gdch]
     ;; Updating the allsrc CHIPINDX with a lookup table
     newchipindx = lonarr(norigchstr1)-1
-    newchipindx[gdch] = lindgen(ngd)
+    newchipindx[gdch] = lindgen(ngdch)
     allsrc1.chipindx = newchipindx[allsrc1.chipindx]
 
     ;; Remove some exposures
@@ -301,7 +310,7 @@ fstr = allfstr
 chstr = allchstr
 undefine,allfstr,allchstr
 
-stop
+;stop
 
 print,'---------------------------------------------------------------------'
 print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
@@ -311,7 +320,7 @@ SMASHRED_CROSSMATCH,strtrim(pix,2),fstr,chstr,allsrc,allobj,reduxdir=reduxdir,re
 
 ;; Apply the HEALPix boundary cut (without buffer)
 ANG2PIX_RING,nside,(90-allobj.dec)/radeg,allobj.ra/radeg,ipring      
-gdobj = where(ipring eq pix,ngdobj)
+gdobj = where(ipring eq pix,ngdobj,comp=bdobj,ncomp=nbdobj)
 print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 ; allobj.srcindx    points to allsrc
 ; allobj.srcfindx   points to allsrc
@@ -324,6 +333,78 @@ print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 ; what if whole exposures are removed?
 ; need an array that translates old srcindex to new srcindex
 ; check nsc_instcal_combine.pro at end where it does this same thing
+
+;; Some objects to remove
+if nbdobj gt 0 then begin
+  print,'Updating structures'
+  ;; Get index array of ALLSRC elements to remove
+  nbdsrc = long(total(allobj[bdobj].ndet))
+  bdsrc = lonarr(nbdsrc)
+  cnt = 0L
+  for i=0,nbdobj-1 do begin
+    ndet = allobj[bdobj[i]].ndet
+    ind = allobj[bdobj[i]].srcindx[0:ndet-1]
+    bdsrc[cnt:cnt+ndet-1] = ind
+    cnt += ndet
+  endfor
+  gdsrc = lindgen(n_elements(allsrc))
+  REMOVE,bdsrc,gdsrc
+  ngdsrc = n_elements(gdsrc)
+  ;; Update NSRC in CHSTR
+  for i=0,nbdsrc-1 do chstr[allsrc[bdsrc[i]].chipindx].nsrc--
+  ;; Chips we need to remove
+  bdch = where(chstr.nsrc le 0,nbdch,comp=gdch,ncomp=ngdch)
+  if nbdch gt 0 then begin
+    ;; Indices into the new CHSTR structure using old index
+    newchstrindx = lonarr(n_elements(chstr))-1
+    newchstrindx[gdch] = lindgen(ngdch)
+    ;; Update CHIPINDX in ALLSRC, only for rows we are keeping
+    allsrc[gdsrc].chipindx = newchstrindx[allsrc[gdsrc].chipindx]
+    ;; Update NCHIPS in FSTR
+    for k=0,nbdch-1 do begin
+      MATCH,chstr[bdch[k]].expnum,fstr.expnum,ind1,ind2,/sort,count=nmatch
+      fstr[ind2].nchips--
+    endfor
+  endif
+  ;; Update CMBINDX in ALLSRC
+  ;;   Indices into the new ALLOBJ using old index
+  newallobjindx = lonarr(n_elements(allobj))-1
+  newallobjindx[gdobj] = lindgen(ngdobj)
+  allsrc[gdsrc].cmbindx = newallobjindx[allsrc[gdsrc].cmbindx]
+  ;; Update ALLSRCINDX in CHSTR
+  sich = sort(chstr.allsrcindx)  ; chstr are not sorted
+  newallsrcindx = [0,long(total(chstr[sich].nsrc,/cum))]
+  newallsrcindx = newallsrcindx[0:n_elements(chstr)-1]
+  chstr[sich].allsrcindx = newallsrcindx
+  ;; Update SRCINDX/SRCFINDX in ALLOBJ
+  ;;   srcindx
+  srcindx = allobj.srcindx
+  newallsrcindx = lonarr(n_elements(allsrc))-1
+  newallsrcindx[gdsrc] = lindgen(ngdsrc)
+  g = where(srcindx ge 0,ng)
+  srcindx[g] = newallsrcindx[srcindx[g]]
+  allobj.srcindx = srcindx
+  ;;  srcfindx
+  srcfindx = allobj.srcfindx
+  g = where(srcfindx ge 0,ng)
+  srcfindx[g] = newallsrcindx[srcfindx[g]]
+  allobj.srcfindx = srcfindx
+  ;; Exposures to remove
+  bdfstr = where(fstr.nchips le 0,nbdfstr,comp=gdfstr,ncomp=ngdfstr)
+  ;; Shifting SRCFINDX rows in ALLOBJ
+  if nbdfstr gt 0 then begin
+    ;; shift them over
+    oldsrcfindx = allobj.srcfindx
+    allobj.srcfindx = -1
+    for k=0,ngdfstr-1 do allobj.srcfindx[k]=oldsrcfindx[gdfstr[k],*]
+    undefine,oldsrcfindx
+  endif
+  ;; Remove the rows from all structures
+  REMOVE,bdobj,allobj
+  REMOVE,bdsrc,allsrc
+  if nbdch gt 0 then REMOVE,bdch,chstr
+  if nbdfstr gt 0 then REMOVE,bdfstr,fstr
+endif
 
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
@@ -338,11 +419,11 @@ print,'Calculating average morphology and coordinate parameters'
 SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
 
 ; Compute exposure map
-print,'Computing the exposure maps'
+;print,'Computing the exposure maps'
 SMASHRED_COMPUTE_EXPMAP,strtrim(pix,2),chstr,redo=redo,outputdir=outputdir
 
 ; Set non-detections based on the exposure map
-print,'Setting non-detections based on the exposure maps'
+;print,'Setting non-detections based on the exposure maps'
 SMASHRED_SET_NONDETECTIONS,strtrim(pix,2),allobj,dir=outputdir
 
 ; Calculate extinction
@@ -369,7 +450,50 @@ if keyword_set(compress) then begin
 endif
 
 ; Make bright allobj catalog
-SMASHRED_MAKE_BRIGHTCAT,pix,redo=redo,dir=outputdir
+SMASHRED_MAKE_BRIGHTCAT,strtrim(pix,2),redo=redo,dir=outputdir
+
+;; Make a CMD figure
+setdisp
+!p.font = 0
+plotdir = outputdir+'/plots/'
+if file_test(plotdir,/directory) eq 0 then file_mkdir,plotdir
+file = plotdir+strtrim(pix,2)+'_cmd'
+ps_open,file,/color,thick=4,/encap
+device,/inches,xsize=8.5,ysize=9.5
+hess,allobj.g-allobj.i,allobj.g,dx=0.02,dy=0.05,xr=[-1,3],yr=[26,13],xtit='g-i',ytit='g',tit=strtrim(pix,2),charsize=1.2,/log
+ps_close
+ps2png,file+'.eps',/eps
+
+; Make DEEP allobj catalog
+;   redo the average photometry, morphology parameters and coordinates
+SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/deeponly
+SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj,/deeponly
+deepoutfile = outfile+'_allobj_deep.fits'
+print,'Writing deep to ',deepoutfile
+file_delete,[deepoutfile,deepoutfile+'.gz'],/allow
+MWRFITS,allobj,deepoutfile,/create
+spawn,['gzip',deepoutfile],out,errout,/noshell
+
+; Make SHORT allobj file
+gdshort = where(fstr.exptime lt 100,ngdshort)
+if ngdshort lt n_elements(fstr) then begin
+  ;; Redo the average photometry, morphology parameters and coordinates
+  SMASHRED_AVERAGEPHOT,fstr,chstr,allsrc,allobj,/usecalib,/shortonly
+  SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj,/shortonly
+  ;; Write out new allobj file
+  shortoutfile = outfile+'_allobj_short.fits'
+  print,'Writing to ',shortoutfile
+  file_delete,[shortoutfile,shortoutfile+'.gz'],/allow
+  MWRFITS,allobj,shortoutfile,/create
+  spawn,['gzip',shortoutfile],out,errout,/noshell
+;; Only short exposures, just create link
+endif else begin
+  print,'Only short exopsures.  Just creating link.'
+  FILE_LINK,outputdir+ifield+'_combined_allobj.fits.gz',outfile+'_allobj.fits.gz'
+endelse
+
+;; Crossmatching with other catalogs
+SMASHRED_MATCHCATS_GAIADR2,strtrim(pix,2),version=version,redo=redo
 
 ; Print processing time
 dt = systime(1)-t0

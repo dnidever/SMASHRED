@@ -528,6 +528,15 @@ Endif else begin
 
 Endelse
 
+;; Update NCHIPS in FSTR
+fstr = *info.fstr
+for k=0,n_elements(fstr)-1 do begin
+  MATCH,fstr[k].expnum,chstr.expnum,ind1,ind2,/sort,count=nmatch
+  fstr[k].nchips = nmatch
+endfor
+info.fstr = ptr_new(fstr)
+
+
 ;stop
 
 end

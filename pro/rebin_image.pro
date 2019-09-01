@@ -67,54 +67,38 @@ for i=0,nfiles-1 do begin
     backgim_large = sim
   endif else backgim_large = im
 
+  ;; Try to fix background for Chip 31
+  if (chip eq 31) and (mjd gt 56660) then begin
+    med1 = median(im[0:1024,*])
+    med2 = median(im[1025:*,*])
+    rebin_sky,im[1025:*,*],sky2
+    im[0:1024,*] -= med1
+    im[1025:*,*] -= sky2
+  endif
+
   ;; Subtract the background
 
-  ;-- Compute background image --
-
-  ; Computing sky level and sigma
+  ;; Computing sky level and sigma
+  gdpix = where(im lt satlim*0.90 and im ne 0.0,ngdpix)
   photred_sky,im,skymode,skysig1,highbad=satlim*0.95,/silent
   if skysig1 lt 0.0 then skysig1 = mad(im[gdpix])
   if skysig1 lt 0.0 then skysig1 = mad(im)
 
-  ; First pass, no clipping (except for saturated pixels)
-  ;backgim_large = im
-  ; Set saturated pixels to NaN so they won't be used in the smoothing
-  bdpix = where(backgim_large gt satlim*0.95,nbdpix)
-  if nbdpix gt 0 then backgim_large[bdpix] = !values.f_nan
-  sm = (400 < (nx/2.0) ) < (ny/2.0)
-  backgim_large = smooth(backgim_large,[sm,sm],/edge_truncate,/nan,missing=skymode)
+  ;-- Compute background image --
+  ;rebin_sky,im,backgim
+  ;subim = im-backgim
+  ;subim = im-median(backgim)
+  subim = im
+  subim[gdpix] = im[gdpix]-skymode
 
-  ; Second pass, use clipping, and first estimate of background
-  backgim1 = im
-  ; Setting hi/low pixels to NaN, they won't be used for the smoothing
-  ;bd = where(abs(im-skymode) gt 2.0*skysig1,nbd)
-  bd1 = where(abs(backgim1-backgim_large) gt 3.0*skysig1,nbd1)
-  if nbd1 gt 0 then (backgim1)(bd1) = !values.f_nan 
-  sm = (400 < (nx/2.0) ) < (ny/2.0)
-  backgim1 = smooth(backgim1,[sm,sm],/edge_truncate,/nan,missing=skymode)
-
-  ; Third pass, use better estimate of background
-  backgim2 = im
-  ; Setting hi/low pixels to NaN, they won't be used for the smoothing
-  ;bd = where(abs(im-skymode) gt 2.0*skysig1,nbd)
-  bd2 = where(abs(backgim2-backgim1) gt 3.0*skysig1,nbd2)
-  if nbd2 gt 0 then (backgim2)(bd2) = !values.f_nan 
-  sm = (400 < (nx/2.0) ) < (ny/2.0)
-  backgim2 = smooth(backgim2,[sm,sm],/edge_truncate,/nan,missing=skymode)
-
-  ;; Maybe fit a simple linear model to the background image
-
-  ;subim = im-backgim2
-  subim = im-median(backgim2)
-
-  ;; Mask bad part of Chip 31
-  if (chip eq 31) and (mjd gt 56660) then begin
-    ; X: 1-1024 okay
-    ; X: 1025-2049 bad
-    print,'Masking bad half of chip 1'
-    im[1025:*,*] = 0
-    gmask[1025:*,*] = 0 
-  endif
+  ; Mask bad part of Chip 31
+  ;if (chip eq 31) and (mjd gt 56660) then begin
+  ;  ; X: 1-1024 okay
+  ;  ; X: 1025-2049 bad
+  ;  print,'Masking bad half of chip 1'
+  ;  im[1025:*,*] = 0
+  ;  gmask[1025:*,*] = 0 
+  ;endif
 
   ;; Rebin
   nx2 = nx/bin

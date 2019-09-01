@@ -54,11 +54,11 @@ if file_test(gaiadir+field+'_gaiadr2.fits.gz') eq 0 then begin
   return
 endif
 gaia = MRDFITS(gaiadir+field+'_gaiadr2.fits.gz',1)
-SRCMATCH,allobj.ra,allobj.dec,gaia.ra_icrs,gaia.de_icrs,0.5,ind1,ind2,/sph,count=nmatch
+SRCMATCH,allobj.ra,allobj.dec,gaia.ra,gaia.dec,0.5,ind1,ind2,/sph,count=nmatch
 print,strtrim(nmatch,2),' GAIADR2 matches'
 if nmatch gt 0 then begin
   xtra[ind1].gaia_match = 1
-  xtra[ind1].gaia_source = gaia[ind2].source
+  xtra[ind1].gaia_source = gaia[ind2].source_id
   xtra[ind1].gaia_ra = gaia[ind2].ra
   xtra[ind1].gaia_dec = gaia[ind2].dec
   xtra[ind1].gaia_raerr = gaia[ind2].ra_error
