@@ -1,4 +1,4 @@
-pro download_wise,field,redo=redo,compress=compress
+pro download_wise,field,redo=redo
 
 outdir = '/dl1/users/dnidever/smash/cp/red/photred/wise/'
 outfile = outdir+field+'_wise.fits'
@@ -51,6 +51,6 @@ wise = queryvizier('ALLWISE',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
 print,strtrim(n_elements(wise),2),' ALLWISE sources found'
 
 MWRFITS,wise,outfile,/create
-if keyword_set(compress) then spawn,['gzip',outfile],/noshell
+spawn,['gzip','-f',outfile],/noshell
 
 end

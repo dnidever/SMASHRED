@@ -1,4 +1,4 @@
-pro download_tmass,field,redo=redo,compress=compress
+pro download_tmass,field,redo=redo
 
 outdir = '/dl1/users/dnidever/smash/cp/red/photred/tmass/'
 outfile = outdir+field+'_tmass.fits'
@@ -51,6 +51,6 @@ tmass = queryvizier('II/246',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
 print,strtrim(n_elements(tmass),2),' 2MASS sources found'
 
 MWRFITS,tmass,outfile,/create
-if keyword_set(compress) then spawn,['gzip',outfile],/noshell
+spawn,['gzip','-f',outfile],/noshell
 
 end

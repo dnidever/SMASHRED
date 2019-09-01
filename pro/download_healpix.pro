@@ -56,12 +56,16 @@ npix = n_elements(pix)
 print,strtrim(npix,2),' HEALpix to run'
 
 ;; Create the commands
-cmd = strarr(npix*4)
+;cmd = strarr(npix*4)
+;ind = lindgen(npix)
+;cmd[ind*4] = "download_tmass,'"+strtrim(pix,2)+"'"
+;cmd[ind*4+1] = "download_gaiadr2,'"+strtrim(pix,2)+"'"
+;cmd[ind*4+2] = "download_galex,'"+strtrim(pix,2)+"'"
+;cmd[ind*4+3] ="download_wise,'"+strtrim(pix,2)+"'"
+cmd = strarr(npix*2)
 ind = lindgen(npix)
-cmd[ind*4] = "download_tmass,'"+strtrim(pix,2)+"',/compress"
-cmd[ind*4+1] = "download_gaiadr2,'"+strtrim(pix,2)+"',/compress"
-cmd[ind*4+2] = "download_galex,'"+strtrim(pix,2)+"',/compress"
-cmd[ind*4+3] ="download_wise,'"+strtrim(pix,2)+"',/compress"
+cmd[ind*2] = "download_gaiadr2,'"+strtrim(pix,2)+"'"
+cmd[ind*2+1] = "download_galex,'"+strtrim(pix,2)+"'"
 dirs = strarr(n_elements(cmd))+tmpdir
 
 stop
