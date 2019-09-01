@@ -56,8 +56,25 @@ npix = n_elements(pix)
 print,strtrim(npix,2),' HEALpix to run'
 
 ;; Create the commands
-cmd = 'smashred_calibrate_healpix,'+strtrim(pix,2)+',version="v6"'
-dirs = strarr(npix)+tmpdir
+allcmd = 'smashred_calibrate_healpix,'+strtrim(pix,2)+',version="v6"'
+alldirs = strarr(npix)+tmpdir
+nallcmd = n_elements(allcmd)
+
+;; Parcel out the jobs
+spawn,'hostname',out,errout,/noshell
+hostname = (strsplit(out[0],' ',/extract))[0]
+thishost = first_el(strsplit(hostname,'.',/extract))
+hosts = ['hulk','thing']
+nhosts = n_elements(hosts)
+torun = lindgen(nallcmd)
+nperhost = nallcmd/nhosts
+for i=0,nhosts-1 do $
+  if stregex(thishost,hosts[i],/boolean) eq 1 then torun=torun[i*nperhost:(i+1)*nperhost-1]
+ntorun = n_elements(torun)
+cmd = allcmd[torun]
+dirs = alldirs[torun]
+print,'Running ',strtrim(n_elements(torun),2),' on ',thishost
+
 
 stop
 
