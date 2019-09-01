@@ -310,7 +310,7 @@ fstr = allfstr
 chstr = allchstr
 undefine,allfstr,allchstr
 
-stop
+;stop
 
 print,'---------------------------------------------------------------------'
 print,'--- STEP 2. Crossmatch all of the sources and build ALLSRC/ALLOBJ ---'
