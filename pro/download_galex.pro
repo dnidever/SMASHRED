@@ -54,5 +54,6 @@ galex = queryvizier('II/312/ais',[cenra,cendec],[rar*60,decr*60],/cfa,/all)
 print,strtrim(n_elements(galex),2),' Galex sources found'
 
 MWRFITS,galex,outfile,/create
+spawn,['gzip','-f',outfile],/noshell
 
 end

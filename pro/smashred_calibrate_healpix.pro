@@ -489,7 +489,7 @@ if ngdshort lt n_elements(fstr) then begin
 ;; Only short exposures, just create link
 endif else begin
   print,'Only short exopsures.  Just creating link.'
-  FILE_LINK,outputdir+ifield+'_combined_allobj.fits.gz',outfile+'_allobj.fits.gz'
+  FILE_LINK,outputdir+strtrim(pix,2)+'_combined_allobj.fits.gz',outfile+'_allobj_short.fits.gz'
 endelse
 
 ;; Crossmatching with other catalogs

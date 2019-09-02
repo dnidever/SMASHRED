@@ -49,12 +49,13 @@ endelse
 
 pylines = 'python -c "from dl import authClient as ac, queryClient as qc, helpers;'+$
           "token=ac.login('dnidever');"+$
+          "qc.set_timeout_request(10000);"+$
           "res=qc.query(token,sql='select * from gaia_dr2.gaia_source where q3c_radial_query(ra,dec,"+$
            stringize(cenra,ndec=5)+","+stringize(cendec,ndec=5)+","+stringize(rad,ndec=3)+")');"+$
           "df = helpers.utils.convert(res,'table'); df.write('"+outfile+"')"+'"'
 spawn,pylines,out,errout
 if file_test(outfile) eq 0 then begin
-  print,outfile,' NOT FOUND'
+  print,outfile,' NOT FOUND. Something went wrong.'
   return
 endif
 print,outfile
