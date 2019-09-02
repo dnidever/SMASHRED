@@ -21,8 +21,8 @@ badexp = importascii('/home/dnidever/projects/SMASHRED/obslog/smash_badexposures
 glactc,chstr.ra,chstr.dec,2000.0,glon,glat,1,/deg
 gal2mag,glon,glat,mlon,mlat
 g = where(mlon ge -20.5 and mlon le -10.5 and mlat ge -16.6 and mlat le -6.0 and chstr.filter eq filter,ng)
-;          chstr.smash_field ne 'Field19' and chstr.smash_field ne 'Field26' and chstr.smash_field ne 'Field25' and $
-;          chstr.smash_field ne 'Field65' and chstr.smash_field ne 'Field60',ng)
+          chstr.smash_field ne 'Field1' and chstr.smash_field ne 'Field2' and chstr.smash_field ne 'Field176' and $
+          chstr.smash_field ne 'Field13' and chstr.smash_field ne 'Field19',ng)
 ;; some are getting cut off at the bottom!
 chstr1 = chstr[g]
 chstr1.night = strtrim(chstr1.night,2)
@@ -43,9 +43,9 @@ for i=0,ngroups-1 do cmd[i] = 'rebin_image,["'+strjoin(files[i*npergroup:((i+1)*
 if keyword_set(redo) then cmd+=',/redo'
 dirs = strarr(ngroups)+tmpdir
 
-;stop
+stop
 
-;PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='rebin',/hyperthread,/idle,wait=1,nmulti=nmulti
+PBS_DAEMON,cmd,dirs,jobs=jobs,prefix='rebin',/hyperthread,/idle,wait=1,nmulti=nmulti
 
 ;stop
 
