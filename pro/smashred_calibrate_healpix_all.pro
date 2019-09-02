@@ -60,6 +60,25 @@ allcmd = 'smashred_calibrate_healpix,'+strtrim(pix,2)+',version="v6"'
 alldirs = strarr(npix)+tmpdir
 nallcmd = n_elements(allcmd)
 
+;; Randomize
+rnd = sort(randomu(0,nallcmd))
+pix = pix[rnd]
+allcmd = allcmd[rnd]
+alldirs = alldirs[rnd]
+
+;; Check for previous successes
+outfiles = reduxdir+'catalogs/final/'+version+'/'+strtrim(pix,2)+'_combined_allobj.fits.gz'
+test = file_test(outfiles)
+bd = where(test eq 1,nbd,comp=gd,ncomp=ngd)
+if nbd gt 0 then begin
+  print,'Removing ',strtrim(nbd,2),' previous successes'
+  allpix = pix
+  pix = allpix[gd]
+  allcmd = allcmd[gd]
+  alldirs = alldirs[gd]
+  nallcmd = n_elements(allcmd)
+endif
+
 ;; Parcel out the jobs
 spawn,'hostname',out,errout,/noshell
 hostname = (strsplit(out[0],' ',/extract))[0]
