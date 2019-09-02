@@ -117,26 +117,47 @@ if file_test(wisedir+field+'_wise.fits.gz') eq 0 then begin
   return
 endif
 wise = MRDFITS(wisedir+field+'_wise.fits.gz',1)
-SRCMATCH,allobj.ra,allobj.dec,wise.raj2000,wise.dej2000,0.5,ind1,ind2,/sph,count=nmatch
+SRCMATCH,allobj.ra,allobj.dec,wise.ra,wise.dec,0.5,ind1,ind2,/sph,count=nmatch
 print,strtrim(nmatch,2),' WISE matches'
 if nmatch gt 0 then begin
   xtra[ind1].wise_match = 1
-  xtra[ind1].wise_id = wise[ind2].allwise
-  xtra[ind1].wise_ra = wise[ind2].raj2000
-  xtra[ind1].wise_dec = wise[ind2].dej2000
-  xtra[ind1].wise_raerr = wise[ind2].eemaj
-  xtra[ind1].wise_decerr = wise[ind2].eemin
-  xtra[ind1].wise_w1mag = wise[ind2].w1mag
-  xtra[ind1].wise_w1err = wise[ind2].e_w1mag
-  xtra[ind1].wise_w2mag = wise[ind2].w2mag
-  xtra[ind1].wise_w2err = wise[ind2].e_w2mag
-  xtra[ind1].wise_w3mag = wise[ind2].w3mag
-  xtra[ind1].wise_w3err = wise[ind2].e_w3mag
-  xtra[ind1].wise_w4mag = wise[ind2].w4mag
-  xtra[ind1].wise_w4err = wise[ind2].e_w4mag
-  xtra[ind1].wise_qph = wise[ind2].qph
-  dist = sphdist(allobj[ind1].ra,allobj[ind1].dec,wise[ind2].raj2000,wise[ind2].dej2000,/deg)*3600.0d0
-  xtra[ind1].wise_matchdist = dist
+  ;; from queryvizier
+  if tag_exist(wise,'RAJ2000') then begin
+    xtra[ind1].wise_id = wise[ind2].allwise
+    xtra[ind1].wise_ra = wise[ind2].raj2000
+    xtra[ind1].wise_dec = wise[ind2].dej2000
+    xtra[ind1].wise_raerr = wise[ind2].eemaj
+    xtra[ind1].wise_decerr = wise[ind2].eemin
+    xtra[ind1].wise_w1mag = wise[ind2].w1mag
+    xtra[ind1].wise_w1err = wise[ind2].e_w1mag
+    xtra[ind1].wise_w2mag = wise[ind2].w2mag
+    xtra[ind1].wise_w2err = wise[ind2].e_w2mag
+    xtra[ind1].wise_w3mag = wise[ind2].w3mag
+    xtra[ind1].wise_w3err = wise[ind2].e_w3mag
+    xtra[ind1].wise_w4mag = wise[ind2].w4mag
+    xtra[ind1].wise_w4err = wise[ind2].e_w4mag
+    xtra[ind1].wise_qph = wise[ind2].qph
+    dist = sphdist(allobj[ind1].ra,allobj[ind1].dec,wise[ind2].raj2000,wise[ind2].dej2000,/deg)*3600.0d0
+    xtra[ind1].wise_matchdist = dist
+  ;; some datalab
+  endif else begin
+    xtra[ind1].wise_id = wise[ind2].designation
+    xtra[ind1].wise_ra = wise[ind2].ra
+    xtra[ind1].wise_dec = wise[ind2].dec
+    xtra[ind1].wise_raerr = wise[ind2].sigra
+    xtra[ind1].wise_decerr = wise[ind2].sigdec
+    xtra[ind1].wise_w1mag = wise[ind2].w1mpro
+    xtra[ind1].wise_w1err = wise[ind2].w1sigmpro
+    xtra[ind1].wise_w2mag = wise[ind2].w2mpro
+    xtra[ind1].wise_w2err = wise[ind2].w2sigmpro
+    xtra[ind1].wise_w3mag = wise[ind2].w3mpro
+    xtra[ind1].wise_w3err = wise[ind2].w3sigmpro
+    xtra[ind1].wise_w4mag = wise[ind2].w4mpro
+    xtra[ind1].wise_w4err = wise[ind2].w4sigmpro
+    xtra[ind1].wise_qph = wise[ind2].ph_qual
+    dist = sphdist(allobj[ind1].ra,allobj[ind1].dec,wise[ind2].ra,wise[ind2].dec,/deg)*3600.0d0
+    xtra[ind1].wise_matchdist = dist
+  endelse
 endif
 
 ; Change any NANs to 9999.0
