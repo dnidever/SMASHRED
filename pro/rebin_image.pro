@@ -1,4 +1,4 @@
-pro rebin_image,files,redo=redo
+pro rebin_image,files,redo=redo,lmc=lmc
 
 ;file = '/dl1/users/dnidever/smash/cp/red/photred/20160101/F1/F1-00507800_01.fits.fz'
 ;file = '/dl1/users/dnidever/smash/cp/red/photred/20160218/F8/F8-00518838_01.fits.fz'
@@ -11,7 +11,11 @@ endif
 
 outdir = '/dl1/users/dnidever/smash/cp/red/photred/rebin/'
 
-MAKE_REBIN_LMC_HEADER,tilehead
+if keyword_set(lmc) then begin
+  MAKE_REBIN_LMC_HEADER,tilehead
+endif else begin
+  MAKE_REBIN_SMC_HEADER,tilehead
+endelse
 nx = sxpar(tilehead,'NAXIS1')
 ny = sxpar(tilehead,'NAXIS2')
 step = sxpar(tilehead,'CDELT1')
