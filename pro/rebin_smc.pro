@@ -20,7 +20,7 @@ badexp = importascii('/home/dnidever/projects/SMASHRED/obslog/smash_badexposures
 ;filter = 'g'
 glactc,chstr.ra,chstr.dec,2000.0,glon,glat,1,/deg
 gal2mag,glon,glat,mlon,mlat
-g = where(mlon ge -20.5 and mlon le -10.5 and mlat ge -16.6 and mlat le -6.0 and chstr.filter eq filter,ng)
+g = where(mlon ge -20.5 and mlon le -10.5 and mlat ge -16.6 and mlat le -6.0 and chstr.filter eq filter and $
           chstr.smash_field ne 'Field1' and chstr.smash_field ne 'Field2' and chstr.smash_field ne 'Field176' and $
           chstr.smash_field ne 'Field13' and chstr.smash_field ne 'Field19',ng)
 ;; some are getting cut off at the bottom!
