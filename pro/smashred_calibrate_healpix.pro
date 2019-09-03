@@ -294,6 +294,10 @@ For c=0,ninfo-1 do begin
     ;push,allsrc,allsrc1
   endif
 Endfor ; catalog loop
+if count_allfstr eq 0 then begin
+  print,'No exposures for this healpix'
+  return
+endif
 ;; Trim extra elements
 if count_allfstr lt nallfstr then allfstr=allfstr[0:count_allfstr-1]
 if count_allchstr lt nallchstr then allchstr=allchstr[0:count_allchstr-1]
