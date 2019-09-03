@@ -7,10 +7,10 @@ pro make_rebin_smc_header,tilehead
 ;; at 5" resolution that is 10800 x 11160 pixels
 
 ;; about 7 deg in dec and ~8 deg in ra
-nx = 5800L
-ny = 5100L
-xref = 2900L
-yref = 2550L
+nx = 6200L
+ny = 5300L
+xref = 2500L
+yref = 2900L
 ;cenmlon = -0.5
 ;cenmlat = -0.25
 step = 5.0d0 / 3600.0d0  ; 5"
@@ -27,15 +27,20 @@ SXADDPAR,tilehead,'CDELT2',step
 SXADDPAR,tilehead,'CRPIX2',yref+1L
 SXADDPAR,tilehead,'CRVAL2',cendec
 SXADDPAR,tilehead,'CTYPE2','DEC--TAN'
-x1 = scale_vector(findgen(100),0,nx-1)
-y1 = scale_vector(findgen(100),0,ny-1)
-xx = x1#replicate(1,100)
-yy = replicate(1,100)#y1
-head_xyad,tilehead,xx,yy,ra,dec,/deg
-glactc,ra,dec,2000.0,glon,glat,1,/deg
-gal2mag,glon,glat,mlon,mlat
-print,minmax(mlon)
-print,minmax(mlat)
+
+;head_adxy,tilehead,chstr.ra,chstr.dec,x,y,/deg
+;plotc,x,y,ps=3,/xflip,xr=[-1000,8000],yr=[-1000,6000],xs=1,ys=1,charsize=1.5   
+;oplot,[0,nx-1,nx-1,0,0],[0,0,ny-1,ny-1,0],co=250 
+
+;x1 = scale_vector(findgen(100),0,nx-1)
+;y1 = scale_vector(findgen(100),0,ny-1)
+;xx = x1#replicate(1,100)
+;yy = replicate(1,100)#y1
+;head_xyad,tilehead,xx,yy,ra,dec,/deg
+;glactc,ra,dec,2000.0,glon,glat,1,/deg
+;gal2mag,glon,glat,mlon,mlat
+;print,minmax(mlon)
+;print,minmax(mlat)
 
 ;stop
 
