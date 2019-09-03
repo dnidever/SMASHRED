@@ -209,10 +209,10 @@ endfor
 ; Print out some statistics of the offsets
 gd = where(overlapstr.data.magoff lt 50 and overlapstr.data.overlap eq 1 and overlapstr.data.primary eq 1,ngd)
 if not keyword_set(silent) then begin
-  print,ngd,' mag offsets','med=',median(overlapstr.data[gd].magoff),'rms=',$
-        mad(overlapstr.data[gd].magoff),format='(I5,A12,A5,F11.6,A5,F11.6)'
-  print,'',' errors','med=',median(overlapstr.data[gd].magofferr),'rms=',$
-        mad(overlapstr.data[gd].magofferr),format='(A5,A12,A5,F11.6,A5,F11.6)'
+  print,ngd,' mag offsets','med=',median([overlapstr.data[gd].magoff]),'rms=',$
+        mad([overlapstr.data[gd].magoff]),format='(I5,A12,A5,F11.6,A5,F11.6)'
+  print,'',' errors','med=',median([overlapstr.data[gd].magofferr]),'rms=',$
+        mad([overlapstr.data[gd].magofferr]),format='(A5,A12,A5,F11.6,A5,F11.6)'
 endif
 
 ;stop

@@ -158,7 +158,7 @@ CASE caltype of
     gdphot1 = where(mallobj.(magind) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4 and $
                    mallobj.(errind) lt 0.05 and molapallobj.(oerrind) lt 0.05,ngdphot1)
     ; Remove outliers
-    medmagdiff = median(magdiff[gdphot1])
+    medmagdiff = median([magdiff[gdphot1]])
     sigmagdiff = mad(magdiff[gdphot1])
     gdphot = where(mallobj.(magind) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4 and $
                    mallobj.(errind) lt 0.05 and molapallobj.(oerrind) lt 0.05 and $
@@ -181,8 +181,8 @@ CASE caltype of
     SRCMATCH,allobj.ra,allobj.dec,str.ra,str.dec,1.0,ind1,ind2,/sph,count=nmatch
     if nmatch eq 0 then stop,'NO MATCHES FROM OVERLAPPING FIELDS. SOMETHING IS VERY WRONG!!!'
     ; Remove astrometric offset and refit
-    raoff = median(allobj[ind1].ra-str[ind2].ra)
-    decoff = median(allobj[ind1].dec-str[ind2].dec)
+    raoff = median([allobj[ind1].ra-str[ind2].ra])
+    decoff = median([allobj[ind1].dec-str[ind2].dec])
     sig = sqrt(mean( ((allobj[ind1].ra-str[ind2].ra-raoff)*3600.*cos(median(str.dec)/!radeg))^2 + (allobj[ind1].dec-str[ind2].dec-decoff)^2 ))
     dcr = 0.5 > 2.5*sig < 1.0   ; use smaller matching radius
     SRCMATCH,allobj.ra,allobj.dec,str.ra+raoff,str.dec+decoff,dcr,ind1,ind2,/sph,count=nmatch
@@ -219,8 +219,8 @@ CASE caltype of
     'z': colrange=[0.2,2.0]
     else: colrange=[-100,100]
     endcase
-    medmagdiff = median(magdiff[gdphot1])
-    sigmagdiff = mad(magdiff[gdphot1])
+    medmagdiff = median([magdiff[gdphot1]])
+    sigmagdiff = mad([magdiff[gdphot1]])
     gdphot = where(mallobj.(magind) lt 50 and abs(mallobj.sharp) lt 1 and mallobj.chi lt 4 and $
                    mallobj.(errind) lt 0.05 and finite(mstr.(omagind)) eq 1 and $
                    mstr.g-mstr.i ge colrange[0] and mstr.g-mstr.i le colrange[1] and finite(mstr.g-mstr.i) eq 1 and $
@@ -271,7 +271,7 @@ CASE caltype of
     ; Calculate median mag offset for photometric data
     ;  Use median, don't remove outliers, basically want mean of all
     ;  photometric data
-    zpmagoff = median(ubercalstr.magoff)
+    zpmagoff = median([ubercalstr.magoff])
     zpmagofferr = 0.0
     ; Set the calibration type in CHSTR
     chstr.zpcalibflag = 0

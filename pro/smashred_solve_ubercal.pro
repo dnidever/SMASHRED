@@ -40,6 +40,13 @@ ubercalstr = replicate({expnum:'',chip:-1L,magoff:0.0,magofferr:0.0,noverlap:-1L
 ubercalstr.expnum = overlapstr.expnum
 ubercalstr.chip = overlapstr.chip
 
+; No overlaps
+if n_elements(overlapstr.expnum) eq 1 and overlapstr.noverlap[0] le 0 then begin
+  print,'No overlaps'
+  ubercalstr = {expnum:overlapstr.expnum,chip:long(overlapstr.chip),magoff:0.0,magofferr:0.0,noverlap:0L,flag:-1}
+  return
+endif
+
 ; Now iterate to put them all on the same system
 data = overlapstr.data
 count = 0
