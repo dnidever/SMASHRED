@@ -24,6 +24,11 @@ bin = round(step*3600/0.262)
 print,'Bin size = ',strtrim(bin,2),' pixels'
 satlim = 60000L
 
+;; Load the list of image to mask
+maskstr = importascii('/home/dnidever/projects/SMASHRED/data/image_mask.txt',/header,/silent)
+add_tag,maskstr,'base','',maskstr
+maskstr.base = file_basename(maskstr.filename,'.fits.fz')
+
 ;; File loop
 for i=0,nfiles-1 do begin
 
@@ -52,6 +57,19 @@ for i=0,nfiles-1 do begin
   sz = size(im)
   nx = sz[1]
   ny = sz[2]
+
+  ;; Mask bad parts
+  MATCH,maskstr.base,base,ind1,ind2,/sort,count=nmatch
+  if nmatch gt 0 then begin
+    maskstr1 = maskstr[ind1]
+    xx = findgen(nx)#replicate(1,ny)
+    yy = replicate(1,nx)#findgen(ny)
+    bd = where(abs(yy-(xx*maskstr1.slope+maskstr1.offset)) le maskstr1.width*0.5,nbd)
+    if nbd gt 0 then im[bd]=60000.
+    print,'Masking ',strtrim(nbd,2),' bad pixels'
+  endif
+
+  ;; Good pixel mask
   gmask = (im lt 59000L)
 
   dateobs = sxpar(head,'DATE-OBS')
@@ -72,12 +90,15 @@ for i=0,nfiles-1 do begin
   endif else backgim_large = im
 
   ;; Try to fix background for Chip 31
-  if (chip eq 31) and (mjd gt 56660) then begin
-    med1 = median(im[0:1024,*])
-    med2 = median(im[1025:*,*])
-    rebin_sky,im[1025:*,*],sky2
-    im[0:1024,*] -= med1
-    im[1025:*,*] -= sky2
+  ;if (chip eq 31) and (mjd gt 56660) then begin
+  if (chip eq 31) and (mjd gt 56400) then begin
+    xoff = 1024
+    if nx eq 2032 then xoff=1015
+    med1 = median(im[0:xoff,*])
+    med2 = median(im[xoff+1:*,*])
+    rebin_sky,im[xoff+1:*,*],sky2
+    im[0:xoff,*] -= med1
+    im[xoff+1:*,*] -= sky2
   endif
 
   ;; Subtract the background
@@ -127,13 +148,13 @@ for i=0,nfiles-1 do begin
   TRIANGULATE, newx, newy, tr, b
   limits = [floor(min(newx)), floor(min(newy)), ceil(max(newx)), ceil(max(newy))]
   steps = [1.0,1.0]
-  im = TRIGRID(newx,newy,im2, tr, steps,limits,missing=0.0)
-  im = float(im)
-  bd = where(finite(im) eq 0,nbd)
-  if nbd gt 0 then im[bd]=0
+  fim = TRIGRID(newx,newy,im2, tr, steps,limits,missing=0.0)
+  fim = float(fim)
+  bd = where(finite(fim) eq 0,nbd)
+  if nbd gt 0 then fim[bd]=0
 
 
-  MKHDR,newhead,im
+  MKHDR,newhead,fim
   sxaddpar,newhead,'XLO',limits[0]
   sxaddpar,newhead,'YLO',limits[1]
   sxaddpar,newhead,'XHI',limits[2]
@@ -141,7 +162,7 @@ for i=0,nfiles-1 do begin
 
   ;; Save
   print,'Writing to ',outfile
-  MWRFITS,im,outfile,newhead,/create
+  MWRFITS,fim,outfile,newhead,/create
   spawn,['gzip','-f',outfile],/noshell
 
   BOMB:
