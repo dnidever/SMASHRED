@@ -94,20 +94,42 @@ for i=0,nfiles-1 do begin
   if (chip eq 31) and (mjd gt 56400) then begin
     xoff = 1024
     if nx eq 2032 then xoff=1015
+
+    ;; OLD WAY
+    ;med1 = median(im[0:xoff,*])
+    ;med2 = median(im[xoff+1:*,*])
+    ;im[0:xoff,*] -= med1
+    ;rebin_sky,im[xoff+1:*,*],sky2
+    ;im[xoff+1:*,*] -= sky2
+
+    ;; Good half of chip31
+    photred_sky,im[0:xoff,*],sky1,sig1,highbad=satlim*0.95,/histback,/silent
     med1 = median(im[0:xoff,*])
-    med2 = median(im[xoff+1:*,*])
-    rebin_sky,im[xoff+1:*,*],sky2
-    im[0:xoff,*] -= med1
-    im[xoff+1:*,*] -= sky2
+    im[0:xoff,*] -= sky1 ;med1
+    ;; Bad half of chip31
+    ;;  get background image for bad portion
+    rebin_sky,im[xoff+1:*,*],skyim2
+    im[xoff+1:*,*] -= skyim2
+    photred_sky,im[xoff+1:*,*],sky2,sig2,highbad=satlim*0.95,/histback,/silent
+    im[xoff+1:*,*] -= sky2  
   endif
 
   ;; Subtract the background
 
   ;; Computing sky level and sigma
   gdpix = where(im lt satlim*0.90 and im ne 0.0,ngdpix)
-  photred_sky,im,skymode,skysig1,highbad=satlim*0.95,/silent
+  photred_sky,im,skymode,skysig1,highbad=satlim*0.95,/histback,/silent
   if skysig1 lt 0.0 then skysig1 = mad(im[gdpix])
   if skysig1 lt 0.0 then skysig1 = mad(im)
+
+  ;;; Use histogram around median to get mode
+  ;gd = where(abs(im-skymode) lt 4*skysig1,ngd)
+  ;hist = histogram(im[gd],bin=skysig1/40,locations=xhist)
+  ;xhist2 = scale_vector(findgen(1000),min(xhist),max(xhist))
+  ;interp,xhist,hist,xhist2,hist2
+  ;bestind = first_el(maxloc(hist2))
+  ;skymode1 = skymode  ; save original one
+  ;skymode = xhist2[bestind]
 
   ;-- Compute background image --
   ;rebin_sky,im,backgim
