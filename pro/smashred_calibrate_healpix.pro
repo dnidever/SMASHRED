@@ -326,6 +326,7 @@ SMASHRED_CROSSMATCH,strtrim(pix,2),fstr,chstr,allsrc,allobj,reduxdir=reduxdir,re
 ANG2PIX_RING,nside,(90-allobj.dec)/radeg,allobj.ra/radeg,ipring      
 gdobj = where(ipring eq pix,ngdobj,comp=bdobj,ncomp=nbdobj)
 print,strtrim(ngdobj,2),' fall inside the healpix boundary'
+;goto,photcalib
 ; allobj.srcindx    points to allsrc
 ; allobj.srcfindx   points to allsrc
 ; allsrc.fid        is the object name   doesn't matter
@@ -342,10 +343,10 @@ print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 if nbdobj gt 0 then begin
   print,'Updating structures'
   ;; Get index array of ALLSRC elements to remove
-  nbdsrc = long(total(allobj[bdobj].ndet))
-  bdsrc = lonarr(nbdsrc)
+  nbdsrc = long64(total(allobj[bdobj].ndet))
+  bdsrc = lon64arr(nbdsrc)-1
   cnt = 0L
-  for i=0,nbdobj-1 do begin
+  for i=0LL,nbdobj-1 do begin
     ndet = allobj[bdobj[i]].ndet
     ind = allobj[bdobj[i]].srcindx[0:ndet-1]
     bdsrc[cnt:cnt+ndet-1] = ind
@@ -355,36 +356,42 @@ if nbdobj gt 0 then begin
   REMOVE,bdsrc,gdsrc
   ngdsrc = n_elements(gdsrc)
   ;; Update NSRC in CHSTR
-  for i=0,nbdsrc-1 do chstr[allsrc[bdsrc[i]].chipindx].nsrc--
+  ;for i=0LL,nbdsrc-1 do chstr[allsrc[bdsrc[i]].chipindx].nsrc--
+  chstr[allsrc[bdsrc].chipindx].nsrc--    ;; this is faster
   ;; Chips we need to remove
   bdch = where(chstr.nsrc le 0,nbdch,comp=gdch,ncomp=ngdch)
   if nbdch gt 0 then begin
+    print,strtrim(nbdch,2),' chips with no sources to be removed'
     ;; Indices into the new CHSTR structure using old index
     newchstrindx = lonarr(n_elements(chstr))-1
     newchstrindx[gdch] = lindgen(ngdch)
     ;; Update CHIPINDX in ALLSRC, only for rows we are keeping
     allsrc[gdsrc].chipindx = newchstrindx[allsrc[gdsrc].chipindx]
     ;; Update NCHIPS in FSTR
-    for k=0,nbdch-1 do begin
+    for k=0L,nbdch-1 do begin
       MATCH,chstr[bdch[k]].expnum,fstr.expnum,ind1,ind2,/sort,count=nmatch
+      if nmatch eq 0 then stop,'NO match of bad chip in FSTR'
       fstr[ind2].nchips--
     endfor
   endif
   ;; Update CMBINDX in ALLSRC
   ;;   Indices into the new ALLOBJ using old index
-  newallobjindx = lonarr(n_elements(allobj))-1
-  newallobjindx[gdobj] = lindgen(ngdobj)
+  newallobjindx = lon64arr(n_elements(allobj))-1
+  newallobjindx[gdobj] = l64indgen(ngdobj)
   allsrc[gdsrc].cmbindx = newallobjindx[allsrc[gdsrc].cmbindx]
   ;; Update ALLSRCINDX in CHSTR
+  ;newallsrcindx = lon64arr(n_elements(allsrc))-1
+  ;newallsrcindx[gdsrc] = l64indgen(ngdsrc)
+  ;chstr[gdch].allsrcindx = newallsrcindx[chstr[gdch].allsrcindx]
   sich = sort(chstr.allsrcindx)  ; chstr are not sorted
-  newallsrcindx = [0,long(total(chstr[sich].nsrc,/cum))]
+  newallsrcindx = [0,long64(total(chstr[sich].nsrc,/cum,/integer))]
   newallsrcindx = newallsrcindx[0:n_elements(chstr)-1]
   chstr[sich].allsrcindx = newallsrcindx
   ;; Update SRCINDX/SRCFINDX in ALLOBJ
   ;;   srcindx
   srcindx = allobj.srcindx
-  newallsrcindx = lonarr(n_elements(allsrc))-1
-  newallsrcindx[gdsrc] = lindgen(ngdsrc)
+  newallsrcindx = lon64arr(n_elements(allsrc))-1
+  newallsrcindx[gdsrc] = l64indgen(ngdsrc)
   g = where(srcindx ge 0,ng)
   srcindx[g] = newallsrcindx[srcindx[g]]
   allobj.srcindx = srcindx
@@ -397,10 +404,11 @@ if nbdobj gt 0 then begin
   bdfstr = where(fstr.nchips le 0,nbdfstr,comp=gdfstr,ncomp=ngdfstr)
   ;; Shifting SRCFINDX rows in ALLOBJ
   if nbdfstr gt 0 then begin
+    print,strtrim(nbdfstr,2),' exposures to be removed'
     ;; shift them over
     oldsrcfindx = allobj.srcfindx
     allobj.srcfindx = -1
-    for k=0,ngdfstr-1 do allobj.srcfindx[k]=oldsrcfindx[gdfstr[k],*]
+    for k=0L,ngdfstr-1 do allobj.srcfindx[k]=oldsrcfindx[gdfstr[k],*]
     undefine,oldsrcfindx
   endif
   ;; Remove the rows from all structures
@@ -413,10 +421,11 @@ endif
 print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
+photcalib:
+stop
 info[0].field = strtrim(pix,2)
 SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
                    outputdir=outputdir
-
 
 ; Compute average morphology and coordinate values
 print,'Calculating average morphology and coordinate parameters'
