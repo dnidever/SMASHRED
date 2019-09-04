@@ -25,7 +25,7 @@ print,'Bin size = ',strtrim(bin,2),' pixels'
 satlim = 60000L
 
 ;; Load the list of image to mask
-maskstr = importascii('/home/dnidever/projects/SMASHRED/data/image_mask.txt',/header,/silent)
+maskstr = importascii('/home/dnidever/projects/SMASHRED/data/image_mask.txt',/header,/silent,comment='#')
 add_tag,maskstr,'base','',maskstr
 maskstr.base = file_basename(maskstr.filename,'.fits.fz')
 
@@ -61,7 +61,7 @@ for i=0,nfiles-1 do begin
   ;; Mask bad parts
   MATCH,maskstr.base,base,ind1,ind2,/sort,count=nmatch
   if nmatch gt 0 then begin
-    maskstr1 = maskstr[ind1]
+    maskstr1 = maskstr[ind1[0]]
     xx = findgen(nx)#replicate(1,ny)
     yy = replicate(1,nx)#findgen(ny)
     bd = where(abs(yy-(xx*maskstr1.slope+maskstr1.offset)) le maskstr1.width*0.5,nbd)
