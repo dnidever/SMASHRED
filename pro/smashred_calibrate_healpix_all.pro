@@ -83,7 +83,7 @@ endif
 spawn,'hostname',out,errout,/noshell
 hostname = (strsplit(out[0],' ',/extract))[0]
 thishost = first_el(strsplit(hostname,'.',/extract))
-hosts = ['hulk','thing']
+hosts = ['hulk','thing','gp09']
 nhosts = n_elements(hosts)
 torun = lindgen(nallcmd)
 nperhost = nallcmd/nhosts
