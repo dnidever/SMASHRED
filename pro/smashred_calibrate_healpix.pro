@@ -422,7 +422,7 @@ print,'-----------------------------------------------'
 print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
 photcalib:
-stop
+
 info[0].field = strtrim(pix,2)
 SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
                    outputdir=outputdir
