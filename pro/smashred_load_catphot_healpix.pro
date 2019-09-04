@@ -216,7 +216,9 @@ If file_test(outfile) eq 0 or keyword_set(redo) then begin
 
     ;; Check if this chip is in the healpix boundary
     for k=0,nchind-1 do begin
-      hd1 = PHOTRED_READFILE(chstr[chind[k]].photdir+'/'+chstr[chind[k]].field+'/'+chstr[chind[k]].file+'.fz',exten=1,/header)
+      file1 = chstr[chind[k]].photdir+'/'+chstr[chind[k]].field+'/'+chstr[chind[k]].file
+      if strmid(file1,2,3,/reverse_offset) ne '.fz' then file1+='.fz'
+      hd1 = PHOTRED_READFILE(file1,exten=1,/header)
       sxaddpar,hd1,'NAXIS1',sxpar(hd1,'ZNAXIS1') ; Fix the NAXIS1/2 values in the header
       sxaddpar,hd1,'NAXIS2',sxpar(hd1,'ZNAXIS2')
       nx = sxpar(hd1,'naxis1')
