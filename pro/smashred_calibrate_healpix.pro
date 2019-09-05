@@ -483,7 +483,8 @@ if file_test(plotdir,/directory) eq 0 then file_mkdir,plotdir
 file = plotdir+strtrim(pix,2)+'_cmd'
 ps_open,file,/color,thick=4,/encap
 device,/inches,xsize=8.5,ysize=9.5
-hess,allobj.g-allobj.i,allobj.g,dx=0.02,dy=0.05,xr=[-1,3],yr=[26,13],xtit='g-i',ytit='g',tit=strtrim(pix,2),charsize=1.2,/log,/noplot
+undefine,dum,im
+hess,allobj.g-allobj.i,allobj.g,dum,im,dx=0.02,dy=0.05,xr=[-1,3],yr=[26,13],/noplot,xarr=xarr,yarr=yarr
 displayc,im,xarr,yarr,/yflip,xtit='g-i',ytit='g',tit=strtrim(pix,2),charsize=1.2,/log
 ps_close
 ps2png,file+'.eps',/eps
