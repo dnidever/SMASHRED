@@ -80,6 +80,8 @@ refmagind = where(tags eq strupcase(filters[reffiltind]),nrefmagind)
 gd = where(mask eq 1 and (allobj.(refmagind) le maglim),ngd)
 print,strtrim(ngd,2),' bright stars'
 
+if ngd eq 0 then return
+
 ; Make new output structure
 schema_new = {id:'',ra:0.0d0,dec:0.0d0,u:0.0,uerr:0.0,g:0.0,gerr:0.0,r:0.0,rerr:0.0,$
               i:0.0,ierr:0.0,z:0.0,zerr:0.0,chi:0.0,sharp:0.0,prob:0.0,ebv:0.0}
