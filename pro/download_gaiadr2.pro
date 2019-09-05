@@ -64,7 +64,7 @@ endelse
 
 
 tablename = 'gaia_dr2.gaia_source'
-cols = 'source_id,ra,ra_error,dec,dec_error,pmra,pmra_error,pmdec,pmdec_error,phot_g_mean_flux,phot_g_mean_flux_error,'+$
+cols = 'source_id,ra,ra_error,dec,dec_error,pmra,pmra_error,pmdec,pmdec_error,parallax,parallax_error,phot_g_mean_flux,phot_g_mean_flux_error,'+$
        'phot_g_mean_mag,phot_bp_mean_mag,phot_bp_mean_flux,phot_bp_mean_flux_error,'+$
        'phot_rp_mean_mag,phot_rp_mean_flux,phot_rp_mean_flux_error'
 server = 'gp04.datalab.noao.edu'
@@ -89,6 +89,6 @@ file_delete,tmpfile,/allow
 print,strtrim(n_elements(ref),2),' GAIADR2 sources'
 
 ;; Compress the file
-spawn,['gzip',outfile],/noshell
+spawn,['gzip','-f',outfile],/noshell
 
 end
