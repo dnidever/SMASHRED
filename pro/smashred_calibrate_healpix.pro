@@ -84,6 +84,14 @@ if n_elements(usegaia) eq 0 then usegaia=0
 
 ; Check if the final files already exists
 outfile = outputdir+strtrim(pix,2)+'_combined'
+if file_test(outfile+'_allobj.fits.gz') eq 1 and file_test(outfile+'_allobj_deep.fits.gz') eq 0 and not keyword_set(redo) then begin
+  print,'Skipping to the end'
+  fstr = mrdfits(outfile+'_exposures.fits.gz',1)
+  chstr = mrdfits(outfile+'_chips.fits.gz',1)
+  allobj = mrdfits(outfile+'_allobj.fits.gz',1)
+  allsrc = mrdfits(outfile+'_allsrc.fits.gz',1)
+  goto,extras
+endif
 testfiles = outfile+['_exposures','_chips','_allsrc','_allobj']+'.fits'
 ntestfiles = n_elements(testfiles)
 if (total(file_test(testfiles)) eq ntestfiles or total(file_test(testfiles+'.gz')) eq ntestfiles) and $
@@ -461,6 +469,8 @@ if keyword_set(compress) then begin
   spawn,['gzip','-f',outfile+'_allobj.fits'],out,errout,/noshell
   spawn,['gzip','-f',outfile+'_expmap.fits'],out,errout,/noshell
 endif
+
+extras:
 
 ; Make bright allobj catalog
 SMASHRED_MAKE_BRIGHTCAT,strtrim(pix,2),redo=redo,dir=outputdir
