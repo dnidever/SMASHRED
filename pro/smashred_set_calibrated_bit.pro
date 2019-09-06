@@ -37,7 +37,7 @@ allchipid = strtrim(chstr.expnum,2)+'-'+strtrim(chstr.chip,2)  ; for matching
 ;   ZPCALIBTYPE = 1, 2 and 3 are "real" zeropoint calibrations
 ;     0 - uncalibrated, 4 - GAIA calibrated
 gdphot = where(chstr.zpcalibflag ge 1 and chstr.zpcalibflag le 3,ngdphot,comp=bdphot,ncomp=nbdphot)
-;gdphot = where(chstr.photometric ge 1 and chstr.badsoln eq 0,ngdphot,comp=bdphot,ncomp=nbdphot)
+;;gdphot = where(chstr.photometric ge 1 and chstr.badsoln eq 0,ngdphot,comp=bdphot,ncomp=nbdphot)
 if ngdphot gt 0 then begin
 
   ; Set CALIBRATED for well-calibrated chips
@@ -61,8 +61,13 @@ if ngdphot gt 0 then begin
         revind = overlapstr.revindex[overlapstr.ind0[ind1[i]]:overlapstr.ind1[ind1[i]]]
         gd = where(data[ind].nmatch gt 3 and data[ind].magofferr lt 0.05,ngd)
         ; Some good overlaps
-        if ngd gt 0 then chstr[data[ind[gd]].chstrindex2].calibrated = 1
-      Endfor  ; calibrated chip loop
+        if ngd gt 0 then begin
+           MATCH,chstr.expnum+'-'+strtrim(chstr.chip,2),$
+                 data[ind[gd]].expnum2+'-'+strtrim(data[ind[gd]].chip2,2),indx1,indx2,/sort
+           chstr[indx1].calibrated = 1
+           ;chstr[data[ind[gd]].chstrindex2].calibrated = 1
+        endif
+      Endfor                  ; calibrated chip loop
 
       ; Are we done?
       maxiter = 1000

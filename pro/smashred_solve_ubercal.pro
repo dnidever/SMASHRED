@@ -136,13 +136,14 @@ nuexp = n_elements(uexp)
 expmagoff = fltarr(nuexp)
 expmagofferr = fltarr(nuexp)
 for k=0,nuexp-1 do begin
-  ; Measure median magoff for this exposure
+  ;; Measure median magoff for this exposure
   expindgd = where(ubercalstr.expnum eq uexp[k] and ubercalstr.magoff lt 50,nexpindgd)
   if nexpindgd gt 0 then begin
     expmagoff[k] = median([ubercalstr[expindgd].magoff])
     expmagofferr[k] = mad([ubercalstr[expindgd].magoff]) / sqrt(nexpindgd)  ; error in mean
   endif
-  ; Measure relative offset for chips of this exposure
+  if keyword_set(verbose) then print,k+1,' ',uexp[k],' ',expmagoff[k],' ',stddev([ubercalstr[expindgd].magoff])
+  ;; Measure relative offset for chips of this exposure
   expindall = where(ubercalstr.expnum eq uexp[k],nexpindall)
   if nexpindall gt 0 then rel_magoff[expindall] -= expmagoff[k]
 endfor
@@ -171,7 +172,7 @@ for k=0,nbdind-1 do begin
   expind = where(uexp eq ubercalstr[bdind[k]].expnum,nexpind)
   chind = where(uchips eq ubercalstr[bdind[k]].chip,nchind)
   ; Some values for this chip and exosure
-  if nexpind gt 0 and nchind gt 0 then begin
+  if nexpind gt 1 and nchind gt 1 then begin
     ind = overlapstr.index[overlapstr.ind0[bdind[k]]:overlapstr.ind1[bdind[k]]]   
     ubercalstr[bdind[k]].magoff = expmagoff[expind] + chipdeltamagoff[chind]
     ubercalstr[bdind[k]].magofferr = sqrt( expmagofferr[expind]^2 + chipdeltamagofferr[chind]^2 )  ; add errors in quadrature
@@ -181,7 +182,7 @@ for k=0,nbdind-1 do begin
   ;  Use chiptrans only if necessary
   endif else begin
     MATCH,chiptrans.chip,ubercalstr[bdind[k]].chip,ind1,ind2,/sort,count=nmatch
-    if nexpind gt 0 then begin  ; there are other chips in this exp
+    if nexpind gt 1 then begin  ; there are other chips in this exp
       ubercalstr[bdind[k]].magoff = expmagoff[expind] + chiptrans[ind1].zpterm
       ubercalstr[bdind[k]].magofferr = sqrt( expmagofferr[expind]^2 + chiptrans[ind1].zptermerr^2 )  ; add errors in quadrature
     endif else begin
@@ -196,6 +197,99 @@ for k=0,nbdind-1 do begin
     ubercalstr[bdind[k]].flag = 3  ; set the flag
   endelse
 endfor
+
+;; Check for disconnected "continents" of chips
+;;----------------------------------------------
+;;  they might be split into contiguously connected "continents" with
+;;  gaps between them
+gover = where(overlapstr.noverlap gt 0,ngover)
+If ngover gt 0 then begin
+  group = intarr(n_elements(overlapstr.chip))
+  smashred_find_connected_chips,overlapstr,index,count=nindex
+  if nindex gt 0 then group[index] = 1
+
+  ;; Loop until done
+  doneflag = 0
+  niter = 0
+  last_group = group
+  WHILE (doneflag eq 0) do begin
+    ;; -1 are known single chips, 0 not sure yet
+    left = where(group eq 0 and overlapstr.noverlap gt 0,nleft)
+    if nleft gt 0 then begin
+      smashred_find_connected_chips,overlapstr,index,start=left[0],count=nindex
+      if nindex gt 1 then group[index] = max(group)+1 > 1
+      if nindex eq 1 then group[index] = -1   ;; single chip
+    endif
+    if nleft eq 0 then doneflag=1
+    diff_group = last_group - group
+    if total(abs(diff_group)) eq 0 then doneflag=1
+    last_group = group
+    niter++
+  ENDWHILE
+
+  ngroups = max(group)>1
+  if ngroups gt 1 then begin
+    print,'  There are ',strtrim(ngroups,2),' groups of connected chips'
+    ;; build group index that excludes chips with no overlap
+    ingroups = where(group gt 0,numingroups)
+    grpindex = {index:lonarr(numingroups),value:strarr(ngroups),$
+                num:lonarr(ngroups),lo:lonarr(ngroups),hi:lonarr(ngroups)}
+    grpindex.value = lindgen(ngroups)+1
+    count = 0L
+    for i=0,ngroups-1 do begin
+      ind = where(group eq i+1,nind)
+      grpindex.num[i] = nind
+      grpindex.lo[i] = count
+      grpindex.hi[i] = count+nind-1
+      grpindex.index[count:count+nind-1] = ind
+      count += nind
+      print,'   GROUP'+strtrim(i+1,2),': ',strtrim(nind,2),' chips'
+    endfor
+  endif
+
+  ;; We can connect them if the chips belong to the same exposure
+  ;; Loop over exposures
+  eindex = create_index(overlapstr.expnum)
+  expgrpmagoff = fltarr(nuexp,ngroups)+!values.f_nan
+  for i=0,nuexp-1 do begin
+    ind = eindex.index[eindex.lo[i]:eindex.hi[i]]
+    egrp = group[ind]
+    bindata,egrp-1,ubercalstr[ind].magoff,xbin,ybin,bin=1,/med,xmnbin=xmnbin
+    if n_elements(xbin) gt 1 then $
+      expgrpmagoff[i,long(xmnbin)] = ybin
+  endfor
+  
+  ;; Apply offsets until we have converged
+  if max(total(finite(expgrpmagoff),2)) gt 0 then begin
+    doneflag = 0
+    niter = 0
+    last_expgrpmagoff = expgrpmagoff
+    WHILE (doneflag eq 0) do begin
+      ;; Subtract median across each exposure
+      medexp = median(expgrpmagoff,dim=2,/even)
+      for i=0,nuexp-1 do begin
+         if finite(medexp[i]) then expgrpmagoff[i,*]-=medexp[i]
+      endfor
+      ;; Calculate mean offset for this group across all exposures and apply
+      medgrp = median(expgrpmagoff,dim=1,/even)
+      ;; Subtract from each groups chips MAGOFF and from EXPGRPMAGOFF as well
+      for i=0,ngroups-1 do begin
+        if finite(medgrp[i]) eq 1 then begin
+          ind = grpindex.index[grpindex.lo[i]:grpindex.hi[i]]
+          ubercalstr[ind].magoff -= medgrp[i]
+          expgrpmagoff[*,i] -= medgrp[i]
+        endif
+      endfor
+      ;; Are we done?
+      diff_expgrpmagoff = last_expgrpmagoff - expgrpmagoff
+      maxdiff = max(abs(diff_expgrpmagoff),/nan)
+      if maxdiff lt 1e-4 or finite(maxdiff) eq 0 then doneflag=1
+      last_expgrpmagoff = expgrpmagoff
+      ;print,niter+1,' ',max(abs(diff_expgrpmagoff),/nan)
+      niter++
+    ENDWHILE
+  endif  ;; exposure-level offsets to apply
+Endif  ;; check for "continents"
 
 ; Some chips have no magnitude offsets
 bdflag = where(ubercalstr.flag eq 0,nbdflag)
