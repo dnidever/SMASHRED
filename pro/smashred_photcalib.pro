@@ -340,9 +340,9 @@ WHILE (doneflag eq 0) do begin
     ;  see chstr.ubercal_magoffset for absolute ones
     outfile = tmpdir+field+'_'+ufilter[f]+'_photcalib.dat'
     SAVE,chfiltstr,overlapstr,ubercalstr,file=outfile
- 
+        
   Endfor  ; filter loop
-
+  
   ; BRIGHTER-FATTER CORRECTION??
   ; maybe make it a (instrumental) magnitude-dependent correction, bfcorr
   ; compare psf to aperture photometry to figure it out
