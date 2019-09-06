@@ -227,6 +227,8 @@ If ngover gt 0 then begin
     niter++
   ENDWHILE
 
+  ;; Multiple groups/continents
+  ;;----------------------------
   ngroups = max(group)>1
   if ngroups gt 1 then begin
     print,'  There are ',strtrim(ngroups,2),' groups of connected chips'
@@ -245,51 +247,51 @@ If ngover gt 0 then begin
       count += nind
       print,'   GROUP'+strtrim(i+1,2),': ',strtrim(nind,2),' chips'
     endfor
-  endif
 
-  ;; We can connect them if the chips belong to the same exposure
-  ;; Loop over exposures
-  eindex = create_index(overlapstr.expnum)
-  expgrpmagoff = fltarr(nuexp,ngroups)+!values.f_nan
-  for i=0,nuexp-1 do begin
-    ind = eindex.index[eindex.lo[i]:eindex.hi[i]]
-    egrp = group[ind]
-    bindata,egrp-1,ubercalstr[ind].magoff,xbin,ybin,bin=1,/med,xmnbin=xmnbin
-    if n_elements(xbin) gt 1 then $
-      expgrpmagoff[i,long(xmnbin)] = ybin
-  endfor
+    ;; We can connect them if the chips belong to the same exposure
+    ;; Loop over exposures
+    eindex = create_index(overlapstr.expnum)
+    expgrpmagoff = fltarr(nuexp,ngroups)+!values.f_nan
+    for i=0,nuexp-1 do begin
+      ind = eindex.index[eindex.lo[i]:eindex.hi[i]]
+      egrp = group[ind]
+      bindata,egrp-1,ubercalstr[ind].magoff,xbin,ybin,bin=1,/med,xmnbin=xmnbin
+      if n_elements(xbin) gt 1 then $
+        expgrpmagoff[i,long(xmnbin)] = ybin
+    endfor
   
-  ;; Apply offsets until we have converged
-  if max(total(finite(expgrpmagoff),2)) gt 0 then begin
-    doneflag = 0
-    niter = 0
-    last_expgrpmagoff = expgrpmagoff
-    WHILE (doneflag eq 0) do begin
-      ;; Subtract median across each exposure
-      medexp = median(expgrpmagoff,dim=2,/even)
-      for i=0,nuexp-1 do begin
-         if finite(medexp[i]) then expgrpmagoff[i,*]-=medexp[i]
-      endfor
-      ;; Calculate mean offset for this group across all exposures and apply
-      medgrp = median(expgrpmagoff,dim=1,/even)
-      ;; Subtract from each groups chips MAGOFF and from EXPGRPMAGOFF as well
-      for i=0,ngroups-1 do begin
-        if finite(medgrp[i]) eq 1 then begin
-          ind = grpindex.index[grpindex.lo[i]:grpindex.hi[i]]
-          ubercalstr[ind].magoff -= medgrp[i]
-          expgrpmagoff[*,i] -= medgrp[i]
-        endif
-      endfor
-      ;; Are we done?
-      diff_expgrpmagoff = last_expgrpmagoff - expgrpmagoff
-      maxdiff = max(abs(diff_expgrpmagoff),/nan)
-      if maxdiff lt 1e-4 or finite(maxdiff) eq 0 then doneflag=1
+    ;; Apply offsets until we have converged
+    if max(total(finite(expgrpmagoff),2)) gt 0 then begin
+      doneflag = 0
+      niter = 0
       last_expgrpmagoff = expgrpmagoff
-      ;print,niter+1,' ',max(abs(diff_expgrpmagoff),/nan)
-      niter++
-    ENDWHILE
-  endif  ;; exposure-level offsets to apply
-Endif  ;; check for "continents"
+      WHILE (doneflag eq 0) do begin
+        ;; Subtract median across each exposure
+        medexp = median(expgrpmagoff,dim=2,/even)
+        for i=0,nuexp-1 do begin
+           if finite(medexp[i]) then expgrpmagoff[i,*]-=medexp[i]
+        endfor
+        ;; Calculate mean offset for this group across all exposures and apply
+        medgrp = median(expgrpmagoff,dim=1,/even)
+        ;; Subtract from each groups chips MAGOFF and from EXPGRPMAGOFF as well
+        for i=0,ngroups-1 do begin
+          if finite(medgrp[i]) eq 1 then begin
+            ind = grpindex.index[grpindex.lo[i]:grpindex.hi[i]]
+            ubercalstr[ind].magoff -= medgrp[i]
+            expgrpmagoff[*,i] -= medgrp[i]
+          endif
+        endfor
+        ;; Are we done?
+        diff_expgrpmagoff = last_expgrpmagoff - expgrpmagoff
+        maxdiff = max(abs(diff_expgrpmagoff),/nan)
+        if maxdiff lt 1e-4 or finite(maxdiff) eq 0 then doneflag=1
+        last_expgrpmagoff = expgrpmagoff
+        ;print,niter+1,' ',max(abs(diff_expgrpmagoff),/nan)
+        niter++
+      ENDWHILE
+    endif  ;; exposure-level offsets to apply
+  endif ;; multiple groups/continents
+Endif  ;; some overlaps, check for "continents"
 
 ; Some chips have no magnitude offsets
 bdflag = where(ubercalstr.flag eq 0,nbdflag)
