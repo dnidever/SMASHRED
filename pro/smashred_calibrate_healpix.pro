@@ -347,6 +347,9 @@ print,strtrim(ngdobj,2),' fall inside the healpix boundary'
 ; need an array that translates old srcindex to new srcindex
 ; check nsc_instcal_combine.pro at end where it does this same thing
 
+;print,'KLUDGE!!!'
+;nbdobj=0
+
 ;; Some objects to remove
 if nbdobj gt 0 then begin
   print,'Updating structures'
@@ -431,9 +434,48 @@ print,'--- STEP 3. Calibrate all of the photometry ---'
 print,'==============================================='
 photcalib:
 
+
+;stop
+
 info[0].field = strtrim(pix,2)
-SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
-                   outputdir=outputdir
+if pix ne 47320 and pix ne 47321 then begin
+
+  SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
+                     outputdir=outputdir
+
+  ;stop
+
+;; KLUDGE, using original calibration terms
+endif else begin
+  print,'KLUDGE!!!! SKIPPING UBERCAL USING ORIGINAL FIELD CALIBRATION TERMS'
+  ; Add the photometric transformation equation columns to CHSTR
+  newtags = ['photometric','badsoln','band','colband','colsign','zpterm','zptermsig','amterm',$
+             'amtermsig','colterm','coltermsig','amcolterm','amcoltermsig','colsqterm','colsqtermsig']
+  temp = chstr & undefine,chstr
+  add_tags,temp,newtags,['0B','0B','""','""','-1',replicate('0.0d0',10)],chstr
+  undefine,temp
+  ; Load the SMASH chips catalog
+  allchstr = mrdfits(reduxdir+'smash_chips.fits.gz',1)
+  allchstr.expnum = strtrim(allchstr.expnum,2)
+  MATCH,allchstr.expnum+'-'+strtrim(allchstr.chip,2),chstr.expnum+'-'+strtrim(chstr.chip,2),ind1,ind2,/sort,count=nmatch
+  if nmatch lt n_elements(chstr) then stop,'NOT ALL CHIPS MATCHED!!'
+  ; transfer the information
+  chstr[ind2].photometric = allchstr[ind1].photometric
+  chstr[ind2].badsoln = allchstr[ind1].badsoln
+  chstr[ind2].band = allchstr[ind1].filter
+  chstr[ind2].colband = allchstr[ind1].colband
+  chstr[ind2].colsign = allchstr[ind1].colsign
+  chstr[ind2].zpterm = allchstr[ind1].zpterm
+  chstr[ind2].zptermsig = allchstr[ind1].zptermsig
+  chstr[ind2].amterm = allchstr[ind1].amterm
+  chstr[ind2].amtermsig = allchstr[ind1].amtermsig
+  chstr[ind2].colterm = allchstr[ind1].colterm
+  chstr[ind2].coltermsig = allchstr[ind1].coltermsig
+
+  SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
+  SMASHRED_APPLY_PHOTTRANSEQN,fstr,chstr,allsrc,allobj
+  ;stop
+endelse
 
 ; Compute average morphology and coordinate values
 print,'Calculating average morphology and coordinate parameters'
