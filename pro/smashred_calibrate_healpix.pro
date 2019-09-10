@@ -440,8 +440,8 @@ photcalib:
 ;info[0].field = strtrim(pix,2)
 ;if pix ne 47320 and pix ne 47321 then begin
 
-  SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
-                     outputdir=outputdir
+;  SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
+;                     outputdir=outputdir
 
   ;stop
 
