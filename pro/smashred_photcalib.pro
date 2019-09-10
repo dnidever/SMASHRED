@@ -151,13 +151,13 @@ for i=0,nchstr-1 do begin
   endif
 endfor
 
-print,'Marking 00517186 00517196 00517191 as NON-PHOTOMETRIC'
-b=where(chstr.expnum eq'00517186',nb)
-chstr[b].photometric=0
-b=where(chstr.expnum eq'00517191',nb)
-chstr[b].photometric=0
-b=where(chstr.expnum eq'00517196',nb)
-chstr[b].photometric=0
+;print,'Marking 00517186 00517196 00517191 as NON-PHOTOMETRIC'
+;b=where(chstr.expnum eq'00517186',nb)
+;chstr[b].photometric=0
+;b=where(chstr.expnum eq'00517191',nb)
+;chstr[b].photometric=0
+;b=where(chstr.expnum eq'00517196',nb)
+;chstr[b].photometric=0
 
 ; Double-check that every CHSTR element has the essentials
 ;  COLBAND, COLSIGN, COLTERM COLTERMSIG
