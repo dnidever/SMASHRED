@@ -437,17 +437,18 @@ photcalib:
 
 ;stop
 
-info[0].field = strtrim(pix,2)
-if pix ne 47320 and pix ne 47321 then begin
+;info[0].field = strtrim(pix,2)
+;if pix ne 47320 and pix ne 47321 then begin
 
   SMASHRED_PHOTCALIB,info,fstr,chstr,allsrc,allobj,transfile=transfile,usegaia=usegaia,reduxdir=reduxdir,$
                      outputdir=outputdir
 
   ;stop
 
-;; KLUDGE, using original calibration terms
-endif else begin
-  print,'KLUDGE!!!! SKIPPING UBERCAL USING ORIGINAL FIELD CALIBRATION TERMS'
+;;; KLUDGE, using original calibration terms
+;endif else begin
+;  print,'KLUDGE!!!! SKIPPING UBERCAL USING ORIGINAL FIELD CALIBRATION TERMS'
+
   ; Add the photometric transformation equation columns to CHSTR
   newtags = ['photometric','badsoln','band','colband','colsign','zpterm','zptermsig','amterm',$
              'amtermsig','colterm','coltermsig','amcolterm','amcoltermsig','colsqterm','colsqtermsig']
@@ -474,8 +475,9 @@ endif else begin
 
   SMASHRED_AVERAGEMORPHCOORD,fstr,chstr,allsrc,allobj
   SMASHRED_APPLY_PHOTTRANSEQN,fstr,chstr,allsrc,allobj
+
   ;stop
-endelse
+;endelse
 
 ; Compute average morphology and coordinate values
 print,'Calculating average morphology and coordinate parameters'
