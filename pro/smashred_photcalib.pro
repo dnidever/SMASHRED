@@ -151,6 +151,13 @@ for i=0,nchstr-1 do begin
   endif
 endfor
 
+print,'Marking 00517186 00517196 00517191 as NON-PHOTOMETRIC'
+b=where(chstr.expnum eq'00517186',nb)
+chstr[b].photometric=0
+b=where(chstr.expnum eq'00517191',nb)
+chstr[b].photometric=0
+b=where(chstr.expnum eq'00517196',nb)
+chstr[b].photometric=0
 
 ; Double-check that every CHSTR element has the essentials
 ;  COLBAND, COLSIGN, COLTERM COLTERMSIG
@@ -377,6 +384,8 @@ WHILE (doneflag eq 0) do begin
   print,'ZPTERM diff','max=',max(diffzpterm),'med=',median(diffzpterm),'rms=',stddev(diffzpterm),format='(A12,A5,F11.6,A5,F11.6,A5,F11.6)'
 
   niter++
+
+  ;stop
 
 ENDWHILE
 
