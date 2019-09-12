@@ -31,7 +31,7 @@ nallobj = n_elements(allobj)
 
 ; Copy to new schema
 nan = !values.f_nan
-xtra_schema = {id:'',gaia_match:0B,gaia_matchdist:9999.0,gaia_source:-1L,gaia_ra:9999.0d0,gaia_dec:9999.0d0,$
+xtra_schema = {id:'',gaia_match:0B,gaia_matchdist:9999.0,gaia_source:-1LL,gaia_ra:9999.0d0,gaia_dec:9999.0d0,$
                gaia_raerr:9999.0,gaia_decerr:9999.0,gaia_parallax:9999.0,gaia_parallax_error:9999.0,$
                gaia_pmra:9999.0,gaia_pmra_error:9999.9,gaia_pmdec:9999.0,gaia_pmdec_error:9999.0,$
                gaia_gmag:9999.0,gaia_gerr:9999.0,gaia_bpmag:9999.0,gaia_bperr:9999.0,gaia_rpmag:9999.0,gaia_rperr:9999.0,$
