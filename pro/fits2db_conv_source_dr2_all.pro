@@ -28,12 +28,12 @@ hpix = file_basename(hfiles,'_combined_allsrc.fits.gz')
 ;; Commands
 fields = [periphery_fields,hpix]
 allcmd = "fits2db_conv_source_dr2,'"+fields+"'"
-alldirs = strarr(n_elements(cmd))+tmpdir
 nallcmd = n_elements(allcmd)
+alldirs = strarr(nallcmd)+tmpdir
 
 ;; Randomize
 rnd = sort(randomu(0,nallcmd))
-pix = pix[rnd]
+fields = fields[rnd]
 allcmd = allcmd[rnd]
 alldirs = alldirs[rnd]
 
@@ -53,8 +53,11 @@ dirs = alldirs[torun]
 print,'Running ',strtrim(n_elements(torun),2),' on ',thishost
 
 
+nmulti = 5
 
-pbs_daemon,cmd,dirs,jobs=jobs,/idle,/hyperthread,nmulti=nmulti,wait=10,perfix='fits2db'
+stop
+
+pbs_daemon,cmd,dirs,jobs=jobs,/idle,/hyperthread,nmulti=nmulti,wait=10,prefix='fits2db'
 
 stop
 
