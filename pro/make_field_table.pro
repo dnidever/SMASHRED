@@ -2,11 +2,11 @@ pro make_field_table
 
   ;; Make the SMASH field table for DR2
 
-  smash = importascii('~/smash/tiling/smash_fields_final.txt',/header)
-  calib = mrdfits('~/smash/reduction/check_calibrated_v6.fits',1)
+  smash = importascii('~/projects/SMASHRED/data/smash_fields_final.txt',/header)
+  calib = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/check_calibrated_v6.fits',1)
   calib.field = strtrim(calib.field,2)
-  dr1 = mrdfits('~/smash/reduction/smash_dr1_field_table.fits',1)
-  chstr = mrdfits('~/smash/smash_chips.fits.gz',1)
+  ;dr1 = mrdfits('~/smash/reduction/smash_dr1_field_table.fits',1)
+  chstr = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/smash_chips.fits.gz',1)
   chstr.smash_field = strtrim(chstr.smash_field,2)
   
   schema = {name:'',fieldid:0L,ra:0.0d0,dec:0.0d0,glon:0.0d0,glat:0.0d0,mlon:0.0d0,mlat:0.0d0,$
@@ -51,6 +51,15 @@ pro make_field_table
 
   ang2pix_ring,256,(90-cat.dec)/!radeg,cat.ra/!radeg,pix
   cat.ring256 = pix
+
+  ;; Get number of objects from FIELDXX_combined_allobj.fits.gz files
+  for i=0,n_elements(cat)-1 do begin
+    file = '/dl1/users/dnidever/smash/cp/red/photred/catalogs/final/v6/'+cat[i].name+'_combined_allobj.fits.gz'
+    hd = headfits(file,exten=1)
+    cat[i].nobj = long(sxpar(hd,'NAXIS2'))
+  endfor
+
+  ;MWRFITS,cat,'/dl1/users/dnidever/smash/cp/red/photred/catalogs/dr2/smash_dr2_field_table.fits',/create
   
   stop
 
