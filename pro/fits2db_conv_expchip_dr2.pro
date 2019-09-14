@@ -6,16 +6,14 @@ dir = '/dl1/users/dnidever/smash/cp/red/photred/catalogs/final/'+version+'/'
 outdir = dir+'db/'
 if file_test(outdir,/directory) eq 0 then file_mkdir,outdir
 
-fieldstr = importascii('/d1/users/dnidever/smash/cp/red/photred/check_calibrated_v6.fits',/header)
+fieldstr = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/catalogs/final/v6/check_calibrated_v6.fits',1)
 fieldstr.field = strtrim(fieldstr.field,2)
 nfields = n_elements(fieldstr)
-
-fieldid = fix(strmid(strtrim(ifield,2),5))
-print,ifield
 
 ;; Loop over fields
 for i=0,nfields-1 do begin
   ifield = fieldstr[i].field
+  print,strtrim(i+1,2),' ',ifield
   fieldid = fix(strmid(strtrim(ifield,2),5))
   expfile = dir+ifield+'_combined_exposures.fits.gz'
   expstr = mrdfits(expfile,1,/silent)
@@ -69,7 +67,7 @@ for i=0,nfields-1 do begin
                   calib_colterm:0.0,calib_coltermsig:0.0}
   newchips = replicate(schema_chips,nchips)
   STRUCT_ASSIGN,chips,newchips
-  newchips.chipid = strtrim(chips.expnum,2)+'_'+strtrim(chips.chip,2)
+  newchips.chipid = strtrim(chips.expnum,2)+'_'+strtrim(string(chips.chip,format='(i02)'),2)
   newchips.fieldid = fieldid
   newchips.photred_field = chips.field
   newchips.dateobs = chips.utdate+'T'+chips.uttime
@@ -123,7 +121,7 @@ for i=0,nfields-1 do begin
   push,allchips,newchips
   push,allexp,newexp
   
-  stop
+  ;stop
   
 endfor
 
