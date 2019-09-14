@@ -4,7 +4,8 @@ pro fits2db_conv_source_dr2,ifield,redo=redo
 
   version = 'v6'
   dir = '/dl1/users/dnidever/smash/cp/red/photred/catalogs/final/'+version+'/'
-  outdir = dir+'db/'
+  ;outdir = dir+'db/'
+  outdir = '/data0/dnidever/smash/dr2/'
   if file_test(outdir,/directory) eq 0 then file_mkdir,outdir
 
   fieldid = ifield
