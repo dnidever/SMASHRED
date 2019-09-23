@@ -12,7 +12,8 @@ outdir = '/dl1/users/dnidever/smash/dr2/'
 
 ; Restore the DR2 fields
 dr2 = importascii('~/projects/SMASHRED/data/smash_fields_final.txt',/header)
-dr2.field = strtrim(dr2.field,2)
+add_tag,dr2,'field','',dr2
+dr2.field = 'Field'+strtrim(dr2.num,2)
 ndr2 = n_elements(dr2)
 
 ; Get smash reduction info
@@ -28,6 +29,7 @@ ndr2 = n_elements(dr2)
 
 ;; Load all the DECam information
 if n_elements(data) eq 0 then begin
+  print,'Loading DECam Archive information'
   data = mrdfits('/dl1/users/dnidever/nsc/instcal/v3/lists/decam_archive_info_070819.fits.gz',1)
   data.prodtype = strtrim(data.prodtype,2)
   data.proctype = strtrim(data.proctype,2)
@@ -38,6 +40,22 @@ data_expnum = strmid(file_basename(data.dtacqnam,'.fits.fz'),6)
 ;; Get SMASH exposures
 expstr = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/catalogs/dr2/smash_dr2_exposure.fits',1)
 
+;; VOT of PropIDs from the NOAO Science Archive
+nsa1 = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/observations/nsa_2013A-0411.vot.fits.gz',1)  ; Nidever, LAF proposal
+nsa2 = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/observations/nsa_2013A-0719.vot.fits.gz',1)  ; Saha
+;; only keep the few SMASH fields
+g=where(nsa2.ra lt 50 and nsa2.dec lt -50,ng)
+nsa2 = nsa2[g]
+nsa3 = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/observations/nsa_2013B-0440.vot.fits.gz',1)  ; Nidever, main SMASH proposal
+nsa4 = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/observations/nsa_2013B-0614.vot.fits.gz',1)  ; Munoz
+nsa = [nsa1,nsa2,nsa3,nsa4]
+nsa.telescope = strtrim(nsa.telescope,2)
+nsa.instrument = strtrim(nsa.instrument,2)
+g = where(nsa.telescope eq 'ct4m' and nsa.instrument eq 'decam',ng)
+nsa = nsa[g]
+add_tag,nsa,'expnum','',nsa
+nsa.expnum = strmid(file_basename(nsa.dtacqnam,'.fits.fz'),6)
+;; this includes all of the standard star fields as well
 
 ;; Get RAW filenames
 graw = where(stregex(data.proctype,'raw',/boolean,/fold_case) eq 1 and data.prodtype eq 'image',ngraw)
@@ -45,100 +63,79 @@ MATCH,data_expnum[graw],expstr.expnum,ind1,ind2,/sort,count=nmatch
 rawstr = data[graw[ind1]]
 ; missing 00627575
 
-stop
-
+;; InstCal
+;;=========
 ;; Get InstCal filenames
 ginstcal_im = where(stregex(data.proctype,'InstCal',/boolean,/fold_case) eq 1 and data.prodtype eq 'image',ninstcal_im)
 MATCH,data_expnum[ginstcal_im],expstr.expnum,ind1,ind2,/sort,count=nmatch
 instcalstr_im = data[ginstcal_im[ind1]]
+; 5982, all
 
-ginstcal_dq = where(stregex(data.proctype,'InstCal',/boolean,/fold_case) eq 1 and data.prodtype eq 'dqimage',ninstcal_dq)
+ginstcal_dq = where(stregex(data.proctype,'InstCal',/boolean,/fold_case) eq 1 and data.prodtype eq 'dqmask',ninstcal_dq)
 MATCH,data_expnum[ginstcal_dq],expstr.expnum,ind1,ind2,/sort,count=nmatch
 instcalstr_dq = data[ginstcal_dq[ind1]]
+; 5982, all
 
-ginstcal_wt = where(stregex(data.proctype,'InstCal',/boolean,/fold_case) eq 1 and data.prodtype eq 'weight',ninstcal_wt)
+ginstcal_wt = where(stregex(data.proctype,'InstCal',/boolean,/fold_case) eq 1 and data.prodtype eq 'wtmap',ninstcal_wt)
 MATCH,data_expnum[ginstcal_wt],expstr.expnum,ind1,ind2,/sort,count=nmatch
 instcalstr_wt = data[ginstcal_wt[ind1]]
+; 5977, 5 missing
 
-instalstr = [instcalstr_im,instcalstr_dq,instcalstr_wt]
+instcalstr = [instcalstr_im,instcalstr_dq,instcalstr_wt]
 
-stop
 
+;; Resampled
+;;===========
 ;; Get Resampled filenames
-gresamp = where(stregex(data.proctype,'Resampled',/boolean,/fold_case) eq 1 and data.prodtype eq 'image',ngresamp)
-MATCH,data_expnum[gresamp],expstr.expnum,ind1,ind2,/sort,count=nmatch
-resampstr = data[gresamp[ind1]]
+gresamp_im = where(stregex(data.proctype,'Resampled',/boolean,/fold_case) eq 1 and data.prodtype eq 'image',nresamp_im)
+MATCH,data_expnum[gresamp_im],expstr.expnum,ind1,ind2,/sort,count=nmatch
+resampstr_im = data[gresamp_im[ind1]]
+; 5980, 2 missing
 
+gresamp_dq = where(stregex(data.proctype,'Resampled',/boolean,/fold_case) eq 1 and data.prodtype eq 'dqmask',nresamp_dq)
+MATCH,data_expnum[gresamp_dq],expstr.expnum,ind1,ind2,/sort,count=nmatch
+resampstr_dq = data[gresamp_dq[ind1]]
+; 5979, 3 missing
+
+gresamp_wt = where(stregex(data.proctype,'Resampled',/boolean,/fold_case) eq 1 and data.prodtype eq 'wtmap',nresamp_wt)
+MATCH,data_expnum[gresamp_wt],expstr.expnum,ind1,ind2,/sort,count=nmatch
+resampstr_wt = data[gresamp_wt[ind1]]
+; 5976, 6 missing
+
+resampstr = [resampstr_im,resampstr_dq,resampstr_wt]
+
+
+;; Stacked
+;;===========
 ;; Get Stacked filenames
-gstacked = where(stregex(data.proctype,'Stacked',/boolean,/fold_case) eq 1 and data.prodtype eq 'image',ngstacked)
-MATCH,data_expnum[gstacked],expstr.expnum,ind1,ind2,/sort,count=nmatch
-stackstr = data[gstacked[ind1]]
+gstacked_dq = where(stregex(data.proctype,'Stacked',/boolean,/fold_case) eq 1 and data.prodtype eq 'dqmask',ngstacked_dq)
+MATCH,data_expnum[gstacked_dq],expstr.expnum,ind1,ind2,/sort,count=nmatch
+stackstr_dq = data[gstacked_dq[ind1]]
+; 1507
+
+gstacked_exp = where(stregex(data.proctype,'Stacked',/boolean,/fold_case) eq 1 and data.prodtype eq 'expmap',ngstacked_exp)
+MATCH,data_expnum[gstacked_exp],expstr.expnum,ind1,ind2,/sort,count=nmatch
+stackstr_exp = data[gstacked_exp[ind1]]
+; 1506 
+
+gstacked_im = where(stregex(data.proctype,'Stacked',/boolean,/fold_case) eq 1 and data.prodtype eq 'image',ngstacked_im)
+MATCH,data_expnum[gstacked_im],expstr.expnum,ind1,ind2,/sort,count=nmatch
+stackstr_im = data[gstacked_im[ind1]]
+; 1501
+
+gstacked_im1 = where(stregex(data.proctype,'Stacked',/boolean,/fold_case) eq 1 and data.prodtype eq 'image1',ngstacked_im1)
+MATCH,data_expnum[gstacked_im1],expstr.expnum,ind1,ind2,/sort,count=nmatch
+stackstr_im1 = data[gstacked_im1[ind1]]
+; 1454
+
+gstacked_wt = where(stregex(data.proctype,'Stacked',/boolean,/fold_case) eq 1 and data.prodtype eq 'wtmap',ngstacked_wt)
+MATCH,data_expnum[gstacked_wt],expstr.expnum,ind1,ind2,/sort,count=nmatch
+stackstr_wt = data[gstacked_wt[ind1]]
+; 1505
+
+stackstr = [stackstr_dq,stackstr_exp,stackstr_im,stackstr_im1,stackstr_wt]
 
 
-; All RAW files
-;allrawstr = mrdfits(catdir+'observations/decam_all_raw.vot.fits',1)
-;add_tag,allrawstr,'expnum','',allrawstr
-;allrawstr.expnum = strmid(file_basename(allrawstr.dtacqnam,'.fits.fz'),6)
-
-; Get RAW filenames
-;rawfpath = mrdfits(catdir+'observations/mss_filenames_raw.fits.gz',1)
-
-; Read in the VO tables
-;read_votable,catdir+'observations/smash_raw_vot.xml',rawstr
-;add_tag,rawstr,'expnum','',rawstr
-;rawstr.expnum = strmid(file_basename(rawstr.dtacqnam,'.fits.fz'),6)
-;add_tag,rawstr,'smashfield','',rawstr
-;smashred_getfieldname,rawstr,rawinfo
-;rawstr.smashfield = rawinfo.field
-;add_tag,rawstr,'nsaname','',rawstr
-;rawstr.nsaname = strtrim(strmid(file_basename(rawstr.reference),9),2)
-;add_tag,rawstr,'fullpath','',rawstr
-;match,rawfpath.base,strtrim(rawstr.nsaname,2),ind1,ind2,/sort
-;rawstr[ind2].fullpath = rawfpath[ind1].filename
-;add_tag,rawstr,'night','',rawstr
-;rawstr.night = strmid(rawstr.fullpath,22,8)
-;;mwrfits,rawstr,catdir+'observations/smash_raw_vot.fits',/create
-rawstr = mrdfits(catdir+'observations/smash_raw_vot.fits',1)
-
-;read_votable,catdir+'observations/smash_instcal_vot.xml',instcalstr
-;add_tag,instcalstr,'expnum','',instcalstr
-;instcalstr.expnum = strmid(file_basename(instcalstr.dtacqnam,'.fits.fz'),6)
-;add_tag,instcalstr,'smashfield','',instcalstr
-;smashred_getfieldname,instcalstr,instcalinfo
-;instcalstr.smashfield = instcalinfo.field
-;add_tag,instcalstr,'nsaname','',instcalstr
-;instcalstr.nsaname = strtrim(strmid(file_basename(instcalstr.reference),9),2)
-;add_tag,instcalstr,'fullpath','',instcalstr
-;match,fpath.base,instcalstr.nsaname,ind1,ind2,/sort
-;instcalstr[ind2].fullpath = strtrim(fpath[ind1].filename,2)
-;add_tag,instcalstr,'night','',instcalstr
-;for i=0,n_elements(instcalstr)-1 do begin
-;  match,rawstr.expnum,instcalstr[i].expnum,ind1,ind2,/sort,count=nmatch
-;  if nmatch eq 0 then stop,'cannot match to rawstr'
-;  instcalstr[i].night = rawstr[ind1[0]].night
-;endfor
-;;mwrfits,instcalstr,catdir+'observations/smash_instcal_vot.fits',/create
-instcalstr = mrdfits(catdir+'observations/smash_instcal_vot.fits',1)
-
-;read_votable,catdir+'observations/smash_resampled_vot.xml',resampstr
-;add_tag,resampstr,'expnum','',resampstr
-;resampstr.expnum = strmid(file_basename(resampstr.dtacqnam,'.fits.fz'),6)
-;add_tag,resampstr,'smashfield','',resampstr
-;smashred_getfieldname,resampstr,resampinfo
-;resampstr.smashfield = resampinfo.field
-;add_tag,resampstr,'nsaname','',resampstr
-;resampstr.nsaname = strtrim(strmid(file_basename(resampstr.reference),9),2)
-;add_tag,resampstr,'fullpath','',resampstr
-;match,fpath.base,resampstr.nsaname,ind1,ind2,/sort
-;resampstr[ind2].fullpath = strtrim(fpath[ind1].filename,2)
-;add_tag,resampstr,'night','',resampstr
-;for i=0,n_elements(resampstr)-1 do begin
-;  match,rawstr.expnum,resampstr[i].expnum,ind1,ind2,/sort,count=nmatch
-;  if nmatch eq 0 then stop,'cannot match to rawstr'
-;  resampstr[i].night = rawstr[ind1[0]].night
-;endfor
-;;mwrfits,resampstr,catdir+'observations/smash_resampled_vot.fits',/create
-resampstr = mrdfits(catdir+'observations/smash_resampled_vot.fits',1)
 
 ;read_votable,catdir+'observations/smash_stacked_vot.xml',stackstr
 ;add_tag,stackstr,'smashfield','',stackstr
