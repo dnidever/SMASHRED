@@ -9,7 +9,7 @@ pro make_field_table
   chstr = mrdfits('/dl1/users/dnidever/smash/cp/red/photred/smash_chips.fits.gz',1)
   chstr.smash_field = strtrim(chstr.smash_field,2)
   
-  schema = {name:'',fieldid:0L,ra:0.0d0,dec:0.0d0,glon:0.0d0,glat:0.0d0,mlon:0.0d0,mlat:0.0d0,$
+  schema = {name:'',fieldid:0L,ra:0.0d0,dec:0.0d0,glon:0.0d0,glat:0.0d0,mslon:0.0d0,mslat:0.0d0,$
             ring256:0L,nchips:0L,nsrc:0L,nobj:0L,nexp:0L,nexp_u:0L,nexp_g:0L,nexp_r:0L,nexp_i:0L,$
             nexp_z:0L,ucalib:0L,gcalib:0L,rcalib:0L,icalib:0L,zcalib:0L}
   tags = tag_names(schema)
@@ -21,8 +21,8 @@ pro make_field_table
   cat.glon = glon
   cat.glat = glat
   gal2mag,glon,glat,mlon,mlat
-  cat.mlon = mlon
-  cat.mlat = mlat
+  cat.mslon = mlon
+  cat.mslat = mlat
   cat.ucalib = calib.nucalib
   cat.gcalib = calib.ngcalib
   cat.rcalib = calib.nrcalib

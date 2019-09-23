@@ -1,16 +1,22 @@
-pro fits2db_conv_source_dr2,field
+pro fits2db_conv_source_dr2,ifield,redo=redo
 
   ;; Convert source table for database
 
   version = 'v6'
   dir = '/dl1/users/dnidever/smash/cp/red/photred/catalogs/final/'+version+'/'
   outdir = dir+'db/'
+  ;outdir = '/data0/dnidever/smash/dr2/'
   if file_test(outdir,/directory) eq 0 then file_mkdir,outdir
 
   fieldid = ifield
   if strmid(ifield,0,5) eq 'Field' then fieldid = fix(strmid(strtrim(ifield,2),5))
   print,ifield
 
+  outfile = outdir+ifield+'_source.fits'
+  if file_test(outfile+'.gz') eq 1 and not keyword_set(redo) then begin
+    print,outfile+'.gz exists and /redo not set'
+    return
+  endif
 
   ;SOURCE table
   ;id -> origid
@@ -39,6 +45,7 @@ pro fits2db_conv_source_dr2,field
   allsrc = mrdfits(dir+ifield+'_combined_allsrc.fits.gz',1)
   nallsrc = n_elements(allsrc)
   chips = mrdfits(dir+ifield+'_combined_chips.fits.gz',1)
+  nchips = n_elements(chips)
 
   schema_allsrc = {sourceid:'',id:'',origid:0L,refid:0L,fieldid:0L,expnum:'',chip:0,chipid:'',$
                    mjd:0.0d0,filter:'',x:0.0,y:0.0,xref:0.0,yref:0.0,forced:0b,mag:0.0,err:0.0,$
@@ -46,23 +53,27 @@ pro fits2db_conv_source_dr2,field
                    raerr:0.0,decerr:0.0,raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,decref:0.0d0}
   newsrc = replicate(schema_allsrc,nallsrc)
   STRUCT_ASSIGN,allsrc,newsrc
-  newsrc.chipid = strtrim(chips[allsrc.chipindx].expnum,2)+'_'+strtrim(chips[allsrc.chipindx].chip,2)
+  newsrc.expnum = chips[allsrc.chipindx].expnum
+  newsrc.chip = chips[allsrc.chipindx].chip
+  for i=0LL,nallsrc-1 do newsrc[i].chipid=strtrim(newsrc[i].expnum,2)+'-'+string(newsrc[i].chip,format='(i02)')
+  ;; this next line causes a seg fault for Field169
+  ;newsrc.chipid = strtrim(chips[allsrc.chipindx].expnum,2)+'_'+strtrim(string(chips[allsrc.chipindx].chip,format='(i02)'),2)
   newsrc.sourceid = newsrc.chipid+'.'+strtrim(allsrc.id,2)
-  newsrc.id = strmid(strtrim(allsrc.fid,2),5) ; strip 'Field' portion
+  if strmid(ifield,0,5) eq 'Field' then newsrc.id = strmid(strtrim(allsrc.fid,2),5) else $
+    newsrc.id=strtrim(allsrc.fid,2)  ; strip 'Field' portion
   newsrc.fieldid = fieldid
   newsrc.origid = allsrc.id         ; original allstar/allframe ID
   newsrc.refid = allsrc.idref
-  newsrc.expnum = chips[allsrc.chipindx].expnum
-  newsrc.chip = chips[allsrc.chipindx].chip
+  chips_mjd = dblarr(nchips)
+  for j=0,nchips-1 do chips_mjd[j]=date2jd(chips[j].utdate+'T'+chips[j].uttime,/mjd)  
   newsrc.mjd = chips_mjd[allsrc.chipindx]
   newsrc.filter = chips[allsrc.chipindx].filter
 
-  outfile = outdir+ifield+'_source.fits'
   print,'Writing to ',outfile
   MWRFITS,newsrc,outfile,/create
   spawn,['gzip','-f',outfile],/noshell
   undefine,allsrc    ; free up memory
   
-  stop
+  ;stop
 
   end
