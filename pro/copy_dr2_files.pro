@@ -29,25 +29,33 @@ cinfiles = strarr(2000000L)
 coutfiles = strarr(2000000L)
 cnt = 0LL
 push,reddirarr
-for i=0,ndr1-1 do begin
-  print,strtrim(i+1,2),'/'+strtrim(ndr1,2),' ',dr1[i].field
-  chstr = mrdfits(catdir+'catalogs/final/'+version+'/'+dr1[i].field+'_combined_chips.fits.gz',1)
+for i=0,ndr2-1 do begin
+  print,strtrim(i+1,2),'/'+strtrim(ndr2,2),' ',dr2[i].field
+  chstr = mrdfits(catdir+'catalogs/final/'+version+'/'+dr2[i].field+'_combined_chips.fits.gz',1)
   chstr.field = strtrim(chstr.field,2)
   chstr.base = strtrim(chstr.base,2)
   chstr.night = strtrim(chstr.night,2)
   chstr.expnum = strtrim(chstr.expnum,2)
   chstr.refexpnum = strtrim(chstr.refexpnum,2)
-  fstr = mrdfits(catdir+'catalogs/final/'+version+'/'+dr1[i].field+'_combined_exposures.fits.gz',1)
+  fstr = mrdfits(catdir+'catalogs/final/'+version+'/'+dr2[i].field+'_combined_exposures.fits.gz',1)
 
-  ; Get the reduction directories for this field
-  allreddir = chstr.night+'/'+chstr.field
-  ui = uniq(allreddir,sort(allreddir))
-  reddir = allreddir[ui]
-  nreddir = n_elements(reddir)
+  ;; Use deep/ directory for long exposures
+  ;; ONE night:
+  ;;  no PHOTDIR in chstr
+  ;; Multiple nights:
+  ;;  PHOTDIR column and gives deep/ directory
+
+  ;; USE deep/ directory, same code works for both cases
+  gd = where(allredinfo.field eq dr2[i].field and allredinfo.sh eq 1,ngd)
+  dpsumfile = '/dl1/users/dnidever/smash/cp/red/photred/deep/'+dr2[i].field+'/'+dr2[i].field+'_summary.fits'
+  sumfiles = [dpsumfile,allredinfo[gd].file]
+  SMASHRED_GETREDINFO,redinfo,sumfiles=sumfiles,/silent
+  reddir = file_dirname(redinfo.file)   ; these are absolute paths
+  for j=0,n_elements(reddir)-1 do begin  ; make relative to smash/cp/red/photred/
+    lo = strpos(reddir[j],'smash/cp/red/photred')
+    reddir[j] = strmid(reddir[j],lo+21)
+  endfor
   push,reddirarr,reddir
-
-  match,allredinfo.field,dr1[i].field,ind1,ind2,/sort,count=nredinfo
-  redinfo = allredinfo[ind1]
 
   ; Loop through each reduction directory, e.g. 20130317/F1/
   for j=0,nreddir-1 do begin
@@ -138,6 +146,8 @@ for i=0,ndr1-1 do begin
     cnt += nfiles1
   endfor  ; reduction directory
 
+;; DEAL WITH DEEP/ FILES AS WELL!!!!!
+
   ;stop
 
 endfor  ; field
@@ -172,8 +182,10 @@ nightdirs = nightdirs[ui]
 push,cmddir,'mkdir '+nightdirs
 push,cmddir,'mkdir '+outdir+reddirarr
 
+;; USE SYMLINKS!!!!
+
 cmd = [cmddir,cmdcp]
-writeline,'copy_dr1_files.txt',cmd
+writeline,'copy_dr2_files.txt',cmd
 
 stop
 
