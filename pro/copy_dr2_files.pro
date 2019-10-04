@@ -302,6 +302,7 @@ cmdcp = 'ln -s '+cinfiles+' '+coutfiles   ; USE SYMLINKS!!
 
 ; Make commands to make the directories
 cmddir = 'mkdir '+outdir
+push,cmddir,'mkdir '+outdir+'deep'
 nightdirs = outdir+file_dirname(reddirarr)
 ui = uniq(nightdirs,sort(nightdirs))
 nightdirs = nightdirs[ui]
