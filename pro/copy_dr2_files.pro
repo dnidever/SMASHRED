@@ -4,7 +4,7 @@ pro copy_dr2_files
 
 catdir = '/dl1/users/dnidever/smash/cp/red/photred/'
 indir = '/dl1/users/dnidever/smash/cp/red/photred/'
-outdir = '/dl1/users/dnidever/smash/dr2/'
+outdir = '/dl1/users/dnidever/smash/dr2/photred/'
 version = 'v6'
 
 ; Restore the DR2 fields
@@ -281,8 +281,6 @@ cinfiles = cinfiles[0:cnt-1]
 coutfiles = coutfiles[0:cnt-1]
 testinfiles = testinfiles[0:cnt-1]
 
-stop
-
 ; Make sure they are unique, will get duplicate fields and
 ; photred.setup files
 ui = uniq(cinfiles,sort(cinfiles))
@@ -290,12 +288,13 @@ cinfilesorig = cinfiles
 coutfilesorig = coutfiles
 cinfiles = cinfiles[ui]
 coutfiles = coutfiles[ui]
+testinfiles = testinfiles[ui]
 
 ; Checking that all the files exist
-print,'Checking that all ',strtrim(n_elements(cinfiles),2),' exist'
-t = catdir+strmid(cinfiles,strlen(indir))
-bd = where(file_test(t) eq 0,nbd)
-print,strtrim(nbd,2),' files do NOT exist'
+;print,'Checking that all ',strtrim(n_elements(cinfiles),2),' exist'
+;t = catdir+strmid(cinfiles,strlen(indir))
+;bd = where(file_test(t) eq 0,nbd)
+;print,strtrim(nbd,2),' files do NOT exist'
 
 ; Construct the copy commands
 ;cmdcp = 'cp '+cinfiles+' '+coutfiles
