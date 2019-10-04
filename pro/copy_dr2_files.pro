@@ -27,6 +27,7 @@ if nbd gt 0 then remove,bd,allredinfo
 ; Loop through the fields and construct the list of files
 cinfiles = strarr(4000000L)
 coutfiles = strarr(4000000L)
+testinfiles = intarr(4000000L)
 cnt = 0LL
 undefine,reddirarr
 for i=0,ndr2-1 do begin
@@ -198,9 +199,13 @@ for i=0,ndr2-1 do begin
           push,coutfiles1,outdir+cfiles5
   
           ;; combination files
-          ;;cinfiles6 = reddir[j]+'/'+chstr[chind[k]].base+'_comb'+$
-          cinfiles6 = reddir[j]+'/'+chstr[chind[k]].base+$ 
-                      ['.zero','.weights','.scale','.shift']
+          if file_test(catdir+reddir[j]+'/'+chstr[chind[k]].base+'.zero') then begin
+            cinfiles6 = reddir[j]+'/'+chstr[chind[k]].base+$ 
+                        ['.zero','.weights','.scale','.shift']
+          endif else begin
+            cinfiles6 = reddir[j]+'/'+chstr[chind[k]].base+'_comb'+$ 
+                        ['.zero','.weights','.scale','.shift']
+          endelse
           coutfiles6 = reddir[j]+'/'+chstr[chind[k]].base+'_comb'+$
                       ['.zero','.weights','.scale','.shift']
           push,cinfiles1,indir+cinfiles6
@@ -220,6 +225,7 @@ for i=0,ndr2-1 do begin
       nfiles1 = n_elements(cinfiles1)
       cinfiles[cnt:cnt+nfiles1-1] = cinfiles1
       coutfiles[cnt:cnt+nfiles1-1] = coutfiles1
+      testinfiles[cnt:cnt+nfiles1-1] = test
       cnt += nfiles1
 
     endfor ; chips
@@ -253,6 +259,7 @@ for i=0,ndr2-1 do begin
     nfiles1 = n_elements(cinfiles1)
     cinfiles[cnt:cnt+nfiles1-1] = cinfiles1
     coutfiles[cnt:cnt+nfiles1-1] = coutfiles1
+    testinfiles[cnt:cnt+nfiles1-1] = file_test(cinfiles1)
     cnt += nfiles1
   endfor  ; reduction directory
 
@@ -262,11 +269,12 @@ endfor  ; field
 
 print,'Final CNT = ',cnt
 
-stop
-
 ; Trim the extra lines
 cinfiles = cinfiles[0:cnt-1]
 coutfiles = coutfiles[0:cnt-1]
+testinfiles = testinfiles[0:cnt-1]
+
+stop
 
 ; Make sure they are unique, will get duplicate fields and
 ; photred.setup files
