@@ -31,7 +31,7 @@ testinfiles = intarr(4000000L)
 cnt = 0LL
 undefine,reddirarr
 for i=0,ndr2-1 do begin
-;for i=91,ndr2-1 do begin
+;for i=143,ndr2-1 do begin
   print,strtrim(i+1,2),'/'+strtrim(ndr2,2),' ',dr2[i].field
   chstr = mrdfits(catdir+'catalogs/final/'+version+'/'+dr2[i].field+'_combined_chips.fits.gz',1)
   chstr.field = strtrim(chstr.field,2)
@@ -148,7 +148,7 @@ for i=0,ndr2-1 do begin
                  ['.fits.fz','s.fits.fz','.psf','.als','.opt','.als.opt','.log']
       ;; gaiawcs.head only exist for data taken before Sep 2016
       ;;   after that Gaia DR1 was the default astrometric catalog
-      if long(chstr[chind[0]].night) lt 20160901L then push,cfiles1,reddir[j]+'/'+chstr[chind[k]].base+'.gaiawcs.head'
+      if long(chstr[chind[k]].night) lt 20160901L then push,cfiles1,reddir[j]+'/'+chstr[chind[k]].base+'.gaiawcs.head'
       push,cinfiles1,indir+cfiles1
       push,coutfiles1,outdir+cfiles1
 
@@ -200,14 +200,21 @@ for i=0,ndr2-1 do begin
   
           ;; combination files
           if file_test(catdir+reddir[j]+'/'+chstr[chind[k]].base+'.zero') then begin
-            cinfiles6 = reddir[j]+'/'+chstr[chind[k]].base+$ 
-                        ['.zero','.weights','.scale','.shift']
+            cbase = reddir[j]+'/'+chstr[chind[k]].base
           endif else begin
-            cinfiles6 = reddir[j]+'/'+chstr[chind[k]].base+'_comb'+$ 
-                        ['.zero','.weights','.scale','.shift']
+            cbase = reddir[j]+'/'+chstr[chind[k]].base+'_comb'
           endelse
+          cinfiles6 = cbase+['.zero','.weights','.scale']
           coutfiles6 = reddir[j]+'/'+chstr[chind[k]].base+'_comb'+$
-                      ['.zero','.weights','.scale','.shift']
+                      ['.zero','.weights','.scale']
+          if file_test(cbase+'.shift') eq 1 then begin
+            ;; the recent alftiletype=WCS with allframe_combine.pro
+            ;; does NOT create .shift files
+             ;; this only affects: 20161029, 20161030, 20161031,
+             ;; 20170308, 20170804
+            push,cinfiles6,cbase+'.shift'
+            push,coutfiles6,reddir[j]+'/'+chstr[chind[k]].base+'_comb.shift'
+          endif
           push,cinfiles1,indir+cinfiles6
           push,coutfiles1,outdir+coutfiles6
         endif
