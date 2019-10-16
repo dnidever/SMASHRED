@@ -64,14 +64,25 @@ for i=0,nginstcal-1 do begin
   base = file_basename(str[ginstcal[i]].fullpath)
   if strmid(base,0,3) ne 'c4d' then begin   ;; construct new name
     origbase = base
-    ;; c4d_140106_052819, 2014-01-06T05:28:19
+    ;; c4d_161030_013526_ooi_z_v1.fits.fz
+    ;; ooi - prodtype = image
+    ;; ood - prodtype = dqmask
+    ;; oow - prodtype = wtmap
     base = 'c4d_'+strmid(dateobs,2,2)+strmid(dateobs,5,2)+strmid(dateobs,8,2)+'_'+$
-                  strmid(dateobs,11,2)+strmid(dateobs,14,2)+strmid(dateobs,17,2)+'_ori.fits.fz'
+                  strmid(dateobs,11,2)+strmid(dateobs,14,2)+strmid(dateobs,17,2)+'_oo'
+    case str[ginstcal[i]].prodtype of
+    'image': type='i'
+    'dqmask': type='d'
+    'wtmap': type='w'
+    else: stop,'prodtype not understood'
+    endcase
+    base += type+'_'+strmid(str[ginstcal[i]].filter,0,1)+'_v1.fits.fz'
   endif
   if file_test(outdir1+'/'+base) eq 0 then $
     FILE_LINK,str[ginstcal[i]].fullpath,outdir1+'/'+base
 endfor
 
+stop
 
 ;; Resampled
 ;;-----------
@@ -84,7 +95,7 @@ for i=0,ngresamp-1 do begin
   CALDAT,mjd+2400000.5d0-0.5,month,day,year,hour,minute,second
   night = string(year,format='(i04)')+string(month,format='(i02)')+string(day,format='(i02)')
   ;; Make subdirectory if necessary
-  outdir1 = outdir+'resamped/'+strtrim(night,2)
+  outdir1 = outdir+'resampled/'+strtrim(night,2)
   if file_test(outdir1,/directory) eq 0 then file_mkdir,outdir1
   ;; Make symlink
   ;;  use the new naming convention c4d_140603_060636_ori.fits.fz
