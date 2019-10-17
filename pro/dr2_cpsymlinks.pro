@@ -43,8 +43,6 @@ endfor
 
 stop
 
-here:
-
 
 ;; Instcal
 ;;---------
@@ -84,6 +82,7 @@ endfor
 
 stop
 
+
 ;; Resampled
 ;;-----------
 gresamp = where(stregex(str.proctype,'Resampled',/boolean,/fold_case) eq 1,ngresamp)
@@ -100,15 +99,29 @@ for i=0,ngresamp-1 do begin
   ;; Make symlink
   ;;  use the new naming convention c4d_140603_060636_ori.fits.fz
   base = file_basename(str[gresamp[i]].fullpath)
-  ;if strmid(base,0,3) ne 'c4d' then begin   ;; construct new name
-  ;  origbase = base
-  ;  ;; c4d_140106_052819, 2014-01-06T05:28:19
-  ;  base = 'c4d_'+strmid(dateobs,2,2)+strmid(dateobs,5,2)+strmid(dateobs,8,2)+'_'+$
-  ;                strmid(dateobs,11,2)+strmid(dateobs,14,2)+strmid(dateobs,17,2)+'_ori.fits.fz'
-  ;endif
+  if strmid(base,0,3) ne 'c4d' then begin   ;; construct new name
+    origbase = base
+    ;; c4d_161030_013526_ooi_z_v1.fits.fz
+    ;; opi - prodtype = image
+    ;; opd - prodtype = dqmask
+    ;; opw - prodtype = wtmap
+    base = 'c4d_'+strmid(dateobs,2,2)+strmid(dateobs,5,2)+strmid(dateobs,8,2)+'_'+$
+                  strmid(dateobs,11,2)+strmid(dateobs,14,2)+strmid(dateobs,17,2)+'_op'
+    case str[gresamp[i]].prodtype of
+    'image': type='i'
+    'dqmask': type='d'
+    'wtmap': type='w'
+    else: stop,'prodtype not understood'
+    endcase
+    base += type+'_'+strmid(str[gresamp[i]].filter,0,1)+'_v1.fits.fz'
+  endif
   if file_test(outdir1+'/'+base) eq 0 then $
     FILE_LINK,str[gresamp[i]].fullpath,outdir1+'/'+base
 endfor
+
+stop
+
+here:
 
 ;; Stacked
 ;;---------
@@ -126,12 +139,41 @@ for i=0,ngstack-1 do begin
   ;; Make symlink
   ;;  use the new naming convention c4d_140603_060636_ori.fits.fz
   base = file_basename(str[gstack[i]].fullpath)
-  ;if strmid(base,0,3) ne 'c4d' then begin   ;; construct new name
-  ;  origbase = base
-  ;  ;; c4d_140106_052819, 2014-01-06T05:28:19
-  ;  base = 'c4d_'+strmid(dateobs,2,2)+strmid(dateobs,5,2)+strmid(dateobs,8,2)+'_'+$
-  ;                strmid(dateobs,11,2)+strmid(dateobs,14,2)+strmid(dateobs,17,2)+'_ori.fits.fz'
-  ;endif
+  if strmid(base,0,3) ne 'c4d' then begin   ;; construct new name
+    origbase = base
+    ;; c4d_161030_013526_ooi_z_v1.fits.fz
+    ;; osi - prodtype = image
+    ;; osj - prodtype = image1
+    ;; ose - prodtype = expmap
+    ;; osd - prodtype = dqmask
+    ;; osw - prodtype = wtmap
+    base = 'c4d_'+strmid(dateobs,2,2)+strmid(dateobs,5,2)+strmid(dateobs,8,2)+'_'+$
+                  strmid(dateobs,11,2)+strmid(dateobs,14,2)+strmid(dateobs,17,2)+'_os'
+    case str[gstack[i]].prodtype of
+    'image': type='i'
+    'image1': type='j'
+    'expmap': type='e'
+    'dqmask': type='d'
+    'wtmap': type='w'
+    else: stop,'prodtype not understood'
+    endcase
+    filt = strmid(str[gstack[i]].filter,0,1)
+    if filt eq 'N' then begin   ; filter=N/A
+      hd = headfits(str[gstack[i]].fullpath,exten=0)
+      filter1 = sxpar(hd,'filter',count=nfilter1)
+      if nfilter1 gt 0 then filt=strmid(filter1,0,1) else begin
+        ;; Check PLFNAME
+        ;; DEC13A_20130317_822a4c6-g-20130318T002924_se.fits
+        filters = ['u','g','r','i','z']
+        plfname = strtrim(sxpar(hd,'plfname'),2)
+        for k=0,n_elements(filters)-1 do begin
+          if stregex(plfname,'-'+filters[k]+'-',/boolean) eq 1 then filt=filters[k]
+        endfor
+        if filt eq 'N' then stop,'filter problem'
+      endelse
+    endif
+    base += type+'_'+filt+'_v1.fits.fz'
+  endif
   if file_test(outdir1+'/'+base) eq 0 then $
     FILE_LINK,str[gstack[i]].fullpath,outdir1+'/'+base
 endfor
