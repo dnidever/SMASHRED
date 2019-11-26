@@ -53,15 +53,17 @@ pro fits2db_conv_source_dr2,ifield,redo=redo
                    raerr:0.0,decerr:0.0,raindiv:0.0d0,decindiv:0.0d0,raref:0.0d0,decref:0.0d0}
   newsrc = replicate(schema_allsrc,nallsrc)
   STRUCT_ASSIGN,allsrc,newsrc
-  newsrc.chipid = strtrim(chips[allsrc.chipindx].expnum,2)+'_'+strtrim(string(chips[allsrc.chipindx].chip,format='(i02)'),2)
+  newsrc.expnum = chips[allsrc.chipindx].expnum
+  newsrc.chip = chips[allsrc.chipindx].chip
+  for i=0LL,nallsrc-1 do newsrc[i].chipid=strtrim(newsrc[i].expnum,2)+'-'+string(newsrc[i].chip,format='(i02)')
+  ;; this next line causes a seg fault for Field169
+  ;newsrc.chipid = strtrim(chips[allsrc.chipindx].expnum,2)+'_'+strtrim(string(chips[allsrc.chipindx].chip,format='(i02)'),2)
   newsrc.sourceid = newsrc.chipid+'.'+strtrim(allsrc.id,2)
   if strmid(ifield,0,5) eq 'Field' then newsrc.id = strmid(strtrim(allsrc.fid,2),5) else $
     newsrc.id=strtrim(allsrc.fid,2)  ; strip 'Field' portion
   newsrc.fieldid = fieldid
   newsrc.origid = allsrc.id         ; original allstar/allframe ID
   newsrc.refid = allsrc.idref
-  newsrc.expnum = chips[allsrc.chipindx].expnum
-  newsrc.chip = chips[allsrc.chipindx].chip
   chips_mjd = dblarr(nchips)
   for j=0,nchips-1 do chips_mjd[j]=date2jd(chips[j].utdate+'T'+chips[j].uttime,/mjd)  
   newsrc.mjd = chips_mjd[allsrc.chipindx]
