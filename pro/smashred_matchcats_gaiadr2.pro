@@ -117,7 +117,11 @@ if file_test(wisedir+field+'_wise.fits.gz') eq 0 then begin
   return
 endif
 wise = MRDFITS(wisedir+field+'_wise.fits.gz',1)
-SRCMATCH,allobj.ra,allobj.dec,wise.ra,wise.dec,0.5,ind1,ind2,/sph,count=nmatch
+if tag_exist(wise,'RA') then begin
+  SRCMATCH,allobj.ra,allobj.dec,wise.ra,wise.dec,0.5,ind1,ind2,/sph,count=nmatch
+endif else begin
+  SRCMATCH,allobj.ra,allobj.dec,wise.raj2000,wise.dej2000,0.5,ind1,ind2,/sph,count=nmatch
+endelse
 print,strtrim(nmatch,2),' WISE matches'
 if nmatch gt 0 then begin
   xtra[ind1].wise_match = 1
