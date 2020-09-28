@@ -58,8 +58,10 @@ cendec = mean(decr)
 step = 0.25/3600.0d0
 delta_dec = range(decr)
 delta_ra = range(rar)*cos(cendec/!radeg)
-nx = ceil(delta_ra*1.05/step)
-ny = ceil(delta_dec*1.05/step)
+;; 09/28/2020, DLN changed from 1.05 to 1.06 because
+;;  it wasn't big enough for 48411
+nx = ceil(delta_ra*1.06/step)
+ny = ceil(delta_dec*1.06/step)
 xref = nx/2
 yref = ny/2
 im = intarr(nx,ny)
